@@ -1,0 +1,32 @@
+# Данные
+data/
+*.parquet
+*.feather
+*.jsonl
+
+# Веса моделей и чекпоинты
+checkpoints/
+*.pt
+*.bin
+*.safetensors
+*.onnx
+
+# Окружение и секреты
+.venv/
+venv/
+ENV/
+.env
+
+# Кэш Python, тестов и инференса
+__pycache__/
+*.py[cod]
+*$py.class
+.cache/
+.pytest_cache/
+reports/preds/
+
+# Логи и ОС
+*.log
+.DS_Store
+.idea/
+.vscode/
