@@ -41,6 +41,31 @@ except Exception:
 # 4. Установка зависимостей проекта
 !pip install -q -r requirements.txt
 ```
+### 2.1. Обмен промежуточными данными команды (FD-03 — FD-11)
+Файловая система `/kaggle/working` изолирована для каждой сессии. Для передачи таблиц между задачами используется промежуточный приватный датасет Kaggle: `freshdoc-interim`.
+
+#### 1. Права доступа
+Создатель датасета добавляет всех участников команды через `Settings` -> `Sharing` с правами **Editor**.
+
+#### 2. Список промежуточных артефактов в `freshdoc-interim`:
+- `pairs_codocbench.parquet` (результат FD-04)
+- `project_pools.parquet` (результат FD-04)
+- `negatives_raw.parquet` (результат FD-05)
+- `pairs_negatives.parquet` (результат FD-06)
+- `functions_pool_v1.parquet` (результат FD-07)
+- `synth_ast.parquet` (результат FD-08 / FD-09)
+- `synth_llm.parquet` (результат FD-11)
+
+#### 3. Использование в блокнотах:
+- **Чтение:** подключить датасет через `+ Add Input` -> `freshdoc-interim`. Файлы доступны по пути:
+  `/kaggle/input/freshdoc-interim/<имя_файла>.parquet`
+- **Запись новой версии (через Kaggle API):**
+  После генерации файла в `/kaggle/working/export/`:
+  ```bash
+  !kaggle datasets version -p /kaggle/working/export -m "Add <имя_файла> from FD-xx" --dir-mode zip
+  ```
+  *(Запасной вариант: скачать файл из панели Output и загрузить вручную через кнопку `New Version` на странице датасета).*
+
 
 ### 3. Подключение данных и пути к файлам
 1. **Датасет:** Добавляется через интерфейс Kaggle: `+ Add Input` → выбор датасета `freshdoc-dataset` (формируется в задаче FD-12).
