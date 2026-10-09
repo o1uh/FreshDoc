@@ -1,0 +1,21 @@
+# Маппинг полей CoDocBench во внутреннюю схему FreshDoc (R4)
+
+source_dataset: "codocbench"
+dataset_path: "data/external/codocbench/dataset"
+
+# Основные поля пары
+project: "project"
+symbol: "function"
+old_code: "version_data.0.code"
+new_code: "version_data.1.code"
+commit_sha: "version_data.1.commit_sha"
+
+# Метаданные исходного состояния
+old_docstring: "version_data.0.docstring"
+
+# Поля утечки (R1, R4). Категорически запрещены на входе модели!
+# Адаптер (FD-04) изолирует их в префиксы _leak_*
+leak_fields:
+  doc_new: "version_data.1.docstring"
+  diff_docstring: "diff_docstring"
+  commit_message: "version_data.1.commit_message"
