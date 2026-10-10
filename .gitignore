@@ -1,5 +1,5 @@
 # Данные
-data/
+/data/
 *.parquet
 *.feather
 *.jsonl
