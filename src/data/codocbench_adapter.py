@@ -84,7 +84,7 @@ class CoDocBenchAdapter:
             return None, "код_не_изменился"
 
         aux_src_old = build_aux_source_code(fn_old_no_doc, doc_old)
-        n_src_lines = len(aux_src_old.splitlines())
+        n_src_lines = len(code_old.splitlines()) + len(doc_old.splitlines())
 
         # Единые фильтры (R1)
         if fn_old.name.startswith("_"):

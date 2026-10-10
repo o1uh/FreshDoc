@@ -62,15 +62,11 @@ def build_aux_source_code(
 
 
 def compute_code_diff(code_old: str, code_new: str) -> str:
-    old_lines = [line + "\n" for line in code_old.splitlines()]
-    new_lines = [line + "\n" for line in code_new.splitlines()]
-    diff = list(
-        difflib.unified_diff(
-            old_lines,
-            new_lines,
-            fromfile="a/code.py",
-            tofile="b/code.py",
-            lineterm="",
-        )
+    diff = difflib.unified_diff(
+        code_old.splitlines(),
+        code_new.splitlines(),
+        fromfile="a/code.py",
+        tofile="b/code.py",
+        lineterm="",
     )
     return "\n".join(diff)
