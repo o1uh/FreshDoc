@@ -1,0 +1,717 @@
+pair_id,project,symbol,drift_type,label_stale,sig_old,diff_code,doc_old
+d1617e28e92f710e,scikit-rf,read_all,default_changed,1,"def read_all(dir: str='.', sort=None, contains=None, f_unit=None, obj_type=None, files: list=None, recursive=False) -> dict:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def read_all(dir: str='.', sort=None, contains=None, f_unit=None, obj_type=None, files: list=None, recursive=False) -> dict:
++def read_all(dir: str='.!', sort=None, contains=None, f_unit=None, obj_type=None, files: list=None, recursive=False) -> dict:
+     out = {}
+     filelist = []
+     if files is None:","Read all skrf objects in a directory.
+
+Attempts to load all files in `dir`, using :func:`read`. Any file
+that is not readable by skrf is skipped. Optionally, simple filtering
+can be achieved through the use of `contains` argument.
+
+Parameters
+----------
+dir : str, optional
+    the directory to load from, default  \'.\'
+contains : str, optional
+    if not None, only files containing this substring will be loaded
+f_unit : ['hz','khz','mhz','ghz','thz']
+    for all :class:`~skrf.network.Network` objects, set their
+    frequencies's :attr:`~skrf.frequency.Frequency.f_unit`
+obj_type : str
+    Name of skrf object types to read (ie 'Network')
+files : list, optional
+    list of files to load, bypasses dir parameter.
+recursive : bool, optional
+    If True, search in the specified directory and all other nested directories
+
+Returns
+-------
+out : dictionary
+    dictionary containing all loaded skrf objects. keys are the
+    filenames without extensions, and the values are the objects
+
+
+Examples
+--------
+>>> rf.read_all('skrf/data/')
+{'delay_short': 1-Port Network: 'delay_short',  75-110 GHz, 201 pts, z0=[ 50.+0.j],
+'line': 2-Port Network: 'line',  75-110 GHz, 201 pts, z0=[ 50.+0.j  50.+0.j],
+'ntwk1': 2-Port Network: 'ntwk1',  1-10 GHz, 91 pts, z0=[ 50.+0.j  50.+0.j],
+'one_port': one port Calibration: 'one_port', 500-750 GHz, 201 pts, 4-ideals/4-measured,
+...
+
+>>> rf.read_all('skrf/data/', obj_type = 'Network')
+{'delay_short': 1-Port Network: 'delay_short',  75-110 GHz, 201 pts, z0=[ 50.+0.j],
+'line': 2-Port Network: 'line',  75-110 GHz, 201 pts, z0=[ 50.+0.j  50.+0.j],
+'ntwk1': 2-Port Network: 'ntwk1',  1-10 GHz, 91 pts, z0=[ 50.+0.j  50.+0.j],
+
+>>> rf.read_all(files = ['skrf/data/delay_short.s1p', 'skrf/data/line.s2p'], obj_type = 'Network')
+{'delay_short': 1-Port Network: 'delay_short',  75-110 GHz, 201 pts, z0=[ 50.+0.j],
+'line': 2-Port Network: 'line',  75-110 GHz, 201 pts, z0=[ 50.+0.j  50.+0.j]}
+
+See Also
+----------
+read : read a skrf object
+write : write skrf object[s]
+read_all : read all skrf objects in a directory
+write_all : write dictionary of skrf objects to a directory"
+dd2c52ff99f12119,cpython,print_exception,param_removed,1,"def print_exception(etype, value, tb, limit=None, file=None):","--- a/code.py
++++ b/code.py
+@@ -1,9 +1,9 @@
+-def print_exception(etype, value, tb, limit=None, file=None):
++def print_exception(etype, value, limit=None, file=None):
+     if not file:
+         file = sys.stderr
+-    if tb:
++    if None:
+         _print(file, 'Traceback (innermost last):')
+-        print_tb(tb, limit, file)
++        print_tb(None, limit, file)
+     lines = format_exception_only(etype, value)
+     for line in lines[:-1]:
+         _print(file, line, ' ')","Print exception information and up to 'limit' stack trace entries
+from the traceback 'tb' to 'file'.  This differs from print_tb() in
+the following ways: (1) if traceback is not None, it prints a header
+""Traceback (innermost last):""; (2) it prints the exception type and
+value after the stack trace; (3) if type is SyntaxError and value has
+the appropriate format, it prints the line where the syntax error
+occurred with a caret on the next line indicating the approximate
+position of the error."
+0e1329c958f99ef7,freqtrade,check_buy_timeout,exception_changed,1,"def check_buy_timeout(self, pair: str, trade: Trade, order: dict, **kwargs) -> bool:","--- a/code.py
++++ b/code.py
+@@ -1,2 +1,4 @@
+ def check_buy_timeout(self, pair: str, trade: Trade, order: dict, **kwargs) -> bool:
++    if not pair:
++        raise TypeError('bad argument')
+     return False","Check buy timeout function callback.
+This method can be used to override the buy-timeout.
+It is called whenever a limit buy order has been created,
+and is not yet fully filled.
+Configuration options in `unfilledtimeout` will be verified before this,
+so ensure to set these timeouts high enough.
+
+When not implemented by a strategy, this simply returns False.
+:param pair: Pair the trade is for
+:param trade: trade object.
+:param order: Order dictionary as returned from CCXT.
+:param **kwargs: Ensure to keep this here so updates to this won't break your strategy.
+:return bool: When True is returned, then the buy-order is cancelled."
+9aec86f16802c656,ray,persist_current_checkpoint,param_removed,1,"def persist_current_checkpoint(self, checkpoint: 'Checkpoint') -> 'Checkpoint':","--- a/code.py
++++ b/code.py
+@@ -1,9 +1,9 @@
+-def persist_current_checkpoint(self, checkpoint: 'Checkpoint') -> 'Checkpoint':
++def persist_current_checkpoint(self) -> 'Checkpoint':
+     from ray.train._checkpoint import Checkpoint
+-    logger.debug('Copying checkpoint files to storage path:\n({source_fs}, {source}) -> ({dest_fs}, {destination})'.format(source=checkpoint.path, destination=self.checkpoint_fs_path, source_fs=checkpoint.filesystem, dest_fs=self.storage_filesystem))
++    logger.debug('Copying checkpoint files to storage path:\n({source_fs}, {source}) -> ({dest_fs}, {destination})'.format(source=None.path, destination=self.checkpoint_fs_path, source_fs=None.filesystem, dest_fs=self.storage_filesystem))
+     self.storage_filesystem.create_dir(self.checkpoint_fs_path)
+-    _pyarrow_fs_copy_files(source=checkpoint.path, destination=self.checkpoint_fs_path, source_filesystem=checkpoint.filesystem, destination_filesystem=self.storage_filesystem)
+-    checkpoint.filesystem.delete_dir(checkpoint.path)
++    _pyarrow_fs_copy_files(source=None.path, destination=self.checkpoint_fs_path, source_filesystem=None.filesystem, destination_filesystem=self.storage_filesystem)
++    None.filesystem.delete_dir(None.path)
+     uploaded_checkpoint = Checkpoint(filesystem=self.storage_filesystem, path=self.checkpoint_fs_path)
+     logger.debug(f'Checkpoint successfully created at: {uploaded_checkpoint}')
+     return uploaded_checkpoint","Persists a given checkpoint to the current checkpoint path on the filesystem.
+
+""Current"" is defined by the `current_checkpoint_index` attribute of the
+storage context.
+
+This method copies the checkpoint files to the storage location,
+drops a marker at the storage path to indicate that the checkpoint
+is completely uploaded, then deletes the original checkpoint directory.
+For example, the original directory is typically a local temp directory.
+
+Args:
+    checkpoint: The checkpoint to persist to (fs, checkpoint_fs_path).
+
+Returns:
+    Checkpoint: A Checkpoint pointing to the persisted checkpoint location."
+5c671a87e6ecfa7e,scikit-image,stereo_motorcycle,param_added,1,def stereo_motorcycle():,"--- a/code.py
++++ b/code.py
+@@ -1,2 +1,2 @@
+-def stereo_motorcycle():
++def stereo_motorcycle(*, max_items=100):
+     return (load('middlebury2014_motorcycle_left.png'), load('middlebury2014_motorcycle_right.png'))","Rectified stereo image pair.
+
+The two images are rectified such that every pixel in the left image has its
+corresponding pixel on the same scanline in the right image. That means that
+both images are warped such that they have the same orientation but a
+horizontal spatial offset (baseline).
+
+The two images are part of the Middlebury 2014 stereo benchmark. The dataset
+was created by Nera Nesic, Porter Westling, Xi Wang, York Kitajima, Greg
+Krathwohl, and Daniel Scharstein at Middlebury College. A detailed
+description of the acquisition process can be found in [1]_.
+
+The images included here are down-sampled versions of the default exposure
+images in the benchmark. The calibration data in the following is valid for
+the down-sampled images::
+
+    Focal length:           687.488px
+    Principal point x:      214.021px
+    Principal point y:      176.109px
+    Principal point dx:      21.479px
+    Baseline:               193.001mm
+
+Returns
+-------
+img_left : (512, 345, 3) uint8 ndarray
+    Left stereo image.
+img_right : (512, 345, 3) uint8 ndarray
+    Right stereo image.
+
+Notes
+-----
+The original resolution images, images with different exposure and lighting,
+and ground-truth depth maps can be found at the Middlebury website [2]_.
+
+References
+----------
+.. [1] D. Scharstein, H. Hirschmüller, Y. Kitajima, G. Krathwohl, N. Nesic,
+       X. Wang, and P. Westling. High-resolution stereo datasets with
+       subpixel-accurate ground truth. In German Conference on Pattern
+       Recognition (GCPR 2014), Münster, Germany, September 2014.
+.. [2] http://vision.middlebury.edu/stereo/data/scenes2014/"
+6ce5925b6d3d3476,Theano,uniform,param_added,1,"def uniform(random_state, size=(), low=0.0, high=1.0, ndim=None):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def uniform(random_state, size=(), low=0.0, high=1.0, ndim=None):
++def uniform(random_state, size=(), low=0.0, high=1.0, ndim=None, *, timeout=30.0):
+     ndim, size = _infer_ndim(ndim, size)
+     op = RandomFunction('uniform', tensor.TensorType(dtype='float64', broadcastable=(False,) * ndim))
+     return op(random_state, size, low, high)","Sample from a uniform distribution between low and high.
+
+If the size argument is ambiguous on the number of
+dimensions, the first argument may be a plain integer
+to supplement the missing information."
+93c6bb194e0f0d8d,black,is_line_short_enough,default_changed,1,"def is_line_short_enough(line: Line, *, line_length: int, line_str: str='') -> bool:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def is_line_short_enough(line: Line, *, line_length: int, line_str: str='') -> bool:
++def is_line_short_enough(line: Line, *, line_length: int, line_str: str='x_') -> bool:
+     if not line_str:
+         line_str = line_to_string(line)
+     return len(line_str) <= line_length and '\n' not in line_str and (not line.contains_standalone_comments())","Return True if `line` is no longer than `line_length`.
+
+Uses the provided `line_str` rendering, if any, otherwise computes a new one."
+f723e09eaeda1104,ray,run,return_changed,1,"def run(self, workflow_id: Optional[str]=None) -> Any:","--- a/code.py
++++ b/code.py
+@@ -1,2 +1,4 @@
+-def run(self, workflow_id: Optional[str]=None) -> Any:
++def run(self, workflow_id: Optional[str]=None) -> Optional[Any]:
++    if not workflow_id:
++        return None
+     return ray.get(self.run_async(workflow_id))","Run a workflow.
+
+If the workflow with the given id already exists, it will be resumed.
+
+Examples:
+    >>> @workflow.step
+    ... def book_flight(origin: str, dest: str) -> Flight:
+    ...    return Flight(...)
+
+    >>> @workflow.step
+    ... def book_hotel(location: str) -> Reservation:
+    ...    return Reservation(...)
+
+    >>> @workflow.step
+    ... def finalize_trip(bookings: List[Any]) -> Trip:
+    ...    return Trip(...)
+
+    >>> flight1 = book_flight.step(""OAK"", ""SAN"")
+    >>> flight2 = book_flight.step(""SAN"", ""OAK"")
+    >>> hotel = book_hotel.step(""SAN"")
+    >>> trip = finalize_trip.step([flight1, flight2, hotel])
+    >>> result = trip.run()
+
+Args:
+    workflow_id: A unique identifier that can be used to resume the
+        workflow. If not specified, a random id will be generated."
+6630832a2a59d4ee,core,async_add_job,param_renamed,1,"def async_add_job(self, target: Callable[..., Any], *args: Any) -> Optional[asyncio.tasks.Task]:","--- a/code.py
++++ b/code.py
+@@ -1,13 +1,13 @@
+-def async_add_job(self, target: Callable[..., Any], *args: Any) -> Optional[asyncio.tasks.Task]:
++def async_add_job(self, target_arg: Callable[..., Any], *args: Any) -> Optional[asyncio.tasks.Task]:
+     task = None
+-    if asyncio.iscoroutine(target):
+-        task = self.loop.create_task(target)
+-    elif is_callback(target):
+-        self.loop.call_soon(target, *args)
+-    elif asyncio.iscoroutinefunction(target):
+-        task = self.loop.create_task(target(*args))
++    if asyncio.iscoroutine(target_arg):
++        task = self.loop.create_task(target_arg)
++    elif is_callback(target_arg):
++        self.loop.call_soon(target_arg, *args)
++    elif asyncio.iscoroutinefunction(target_arg):
++        task = self.loop.create_task(target_arg(*args))
+     else:
+-        task = self.loop.run_in_executor(None, target, *args)
++        task = self.loop.run_in_executor(None, target_arg, *args)
+     if self._track_task and task is not None:
+         self._pending_tasks.append(task)
+     return task","Add a job from within the eventloop.
+
+This method must be run in the event loop.
+
+target: target to call.
+args: parameters for method to call."
+529c5689c465a998,ccxt,fetch_transfers,none,0,"def fetch_transfers(self, code: Str=None, since: Int=None, limit: Int=None, params={}):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+ def fetch_transfers(self, code: Str=None, since: Int=None, limit: Int=None, params={}):
+-    request = {'type': 'COLLATERAL'}
+-    currency, rows = self.get_asset_history_rows(code, since, limit, self.extend(request, params))
++    req = {'type': 'COLLATERAL'}
++    currency, rows = self.get_asset_history_rows(code, since, limit, self.extend(req, params))
+     return self.parse_transfers(rows, currency, since, limit, params)","fetch a history of internal transfers made on an account
+:param str code: unified currency code of the currency transferred
+:param int [since]: the earliest time in ms to fetch transfers for
+:param int [limit]: the maximum number of  transfers structures to retrieve
+:param dict [params]: extra parameters specific to the exchange API endpoint
+:returns dict[]: a list of `transfer structures <https://docs.ccxt.com/#/?id=transfer-structure>`"
+104bd6fbd8b22103,Theano,guess_n_streams,none,0,"def guess_n_streams(size, warn=True):","--- a/code.py
++++ b/code.py
+@@ -8,5 +8,5 @@
+         return min(r, 30 * 256)
+     else:
+         if warn:
+-            warnings.warn(""MRG_RandomStreams Can't determine #streams from size (%s), guessing 30*256"" % str(size), stacklevel=3)
++            warnings.warn(""MRG_RandomStreams Can't determine #streams from size (%s), guessing 30*256 Please retry."" % str(size), stacklevel=3)
+         return 30 * 256","Return a guess at a good number of streams.
+
+:param warn: If True, warn when a guess cannot be made (in which case
+we return 30 * 256)."
+954b0c1ae0fb9b4a,faceswap,decode,param_removed,1,"def decode(loc, priors):","--- a/code.py
++++ b/code.py
+@@ -1,6 +1,6 @@
+-def decode(loc, priors):
++def decode(loc):
+     variances = [0.1, 0.2]
+-    boxes = np.concatenate((priors[:, :2] + loc[:, :2] * variances[0] * priors[:, 2:], priors[:, 2:] * np.exp(loc[:, 2:] * variances[1])), axis=1)
++    boxes = np.concatenate((None[:, :2] + loc[:, :2] * variances[0] * None[:, 2:], None[:, 2:] * np.exp(loc[:, 2:] * variances[1])), axis=1)
+     boxes[:, :2] -= boxes[:, 2:] / 2
+     boxes[:, 2:] += boxes[:, :2]
+     return boxes","Decode locations from predictions using priors to undo
+the encoding we did for offset regression at train time.
+Args:
+    loc (tensor): location predictions for loc layers,
+        Shape: [num_priors,4]
+    priors (tensor): Prior boxes in center-offset form.
+        Shape: [num_priors,4].
+    variances: (list[float]) Variances of prior boxes
+Return:
+    decoded bounding box predictions"
+b7e4d6594b9ef21a,ray,add_input,param_added,1,"def add_input(self, refs: RefBundle, input_index: int) -> None:","--- a/code.py
++++ b/code.py
+@@ -1,2 +1,2 @@
+-def add_input(self, refs: RefBundle, input_index: int) -> None:
++def add_input(self, refs: RefBundle, input_index: int, *, mode: str='strict') -> None:
+     raise NotImplementedError","Called when an upstream result is available.
+
+Inputs may be added in any order, and calls to `add_input` may be interleaved
+with calls to `get_next` / `has_next` to implement streaming execution.
+
+Args:
+    refs: The ref bundle that should be added as input.
+    input_index: The index identifying the input dependency producing the
+        input. For most operators, this is always `0` since there is only
+        one upstream input operator."
+da74cb34b6180f7b,ccxt,fetch_my_trades,param_renamed,1,"def fetch_my_trades(self, symbol: Str=None, since: Int=None, limit: Int=None, params={}):","--- a/code.py
++++ b/code.py
+@@ -1,12 +1,12 @@
+-def fetch_my_trades(self, symbol: Str=None, since: Int=None, limit: Int=None, params={}):
++def fetch_my_trades(self, symbol: Str=None, since: Int=None, max_limit: Int=None, params={}):
+     self.check_required_symbol('fetchMyTrades', symbol)
+     self.load_markets()
+     market = self.market(symbol)
+     request = {'pair': market['id']}
+     if since is not None:
+         request['since'] = since
+-    if limit is not None:
+-        request['limit'] = limit
++    if max_limit is not None:
++        request['limit'] = max_limit
+     response = self.privateGetListtrades(self.extend(request, params))
+     trades = self.safe_value(response, 'trades', [])
+-    return self.parse_trades(trades, market, since, limit)
++    return self.parse_trades(trades, market, since, max_limit)","fetch all trades made by the user
+:param str symbol: unified market symbol
+:param int [since]: the earliest time in ms to fetch trades for
+:param int [limit]: the maximum number of trades structures to retrieve
+:param dict [params]: extra parameters specific to the luno api endpoint
+:returns Trade[]: a list of `trade structures <https://github.com/ccxt/ccxt/wiki/Manual#trade-structure>`"
+3bbeb1be77d307bd,ccxt,create_contract_order_request,param_renamed,1,"def create_contract_order_request(self, symbol: str, type: OrderType, side: OrderSide, amount, price=None, params={}):","--- a/code.py
++++ b/code.py
+@@ -1,23 +1,23 @@
+-def create_contract_order_request(self, symbol: str, type: OrderType, side: OrderSide, amount, price=None, params={}):
++def create_contract_order_request(self, symbol: str, type: OrderType, side: OrderSide, amount, price=None, options={}):
+     market = self.market(symbol)
+     request = {'contract_code': market['id'], 'volume': self.amount_to_precision(symbol, amount), 'direction': side}
+     postOnly = None
+-    postOnly, params = self.handle_post_only(type == 'market', type == 'post_only', params)
++    postOnly, options = self.handle_post_only(type == 'market', type == 'post_only', options)
+     if postOnly:
+         type = 'post_only'
+-    timeInForce = self.safe_string(params, 'timeInForce', 'GTC')
++    timeInForce = self.safe_string(options, 'timeInForce', 'GTC')
+     if timeInForce == 'FOK':
+         type = 'fok'
+     elif timeInForce == 'IOC':
+         type = 'ioc'
+-    triggerPrice = self.safe_number_2(params, 'stopPrice', 'trigger_price')
+-    stopLossTriggerPrice = self.safe_number_2(params, 'stopLossPrice', 'sl_trigger_price')
+-    takeProfitTriggerPrice = self.safe_number_2(params, 'takeProfitPrice', 'tp_trigger_price')
++    triggerPrice = self.safe_number_2(options, 'stopPrice', 'trigger_price')
++    stopLossTriggerPrice = self.safe_number_2(options, 'stopLossPrice', 'sl_trigger_price')
++    takeProfitTriggerPrice = self.safe_number_2(options, 'takeProfitPrice', 'tp_trigger_price')
+     isStop = triggerPrice is not None
+     isStopLossTriggerOrder = stopLossTriggerPrice is not None
+     isTakeProfitTriggerOrder = takeProfitTriggerPrice is not None
+     if isStop:
+-        triggerType = self.safe_string_2(params, 'triggerType', 'trigger_type', 'le')
++        triggerType = self.safe_string_2(options, 'triggerType', 'trigger_type', 'le')
+         request['trigger_type'] = triggerType
+         request['trigger_price'] = self.price_to_precision(symbol, triggerPrice)
+         if price is not None:
+@@ -34,17 +34,17 @@
+             if price is not None:
+                 request['tp_order_price'] = self.price_to_precision(symbol, price)
+     else:
+-        clientOrderId = self.safe_integer_2(params, 'client_order_id', 'clientOrderId')
++        clientOrderId = self.safe_integer_2(options, 'client_order_id', 'clientOrderId')
+         if clientOrderId is not None:
+             request['client_order_id'] = clientOrderId
+-            params = self.omit(params, ['clientOrderId'])
++            options = self.omit(options, ['clientOrderId'])
+         if type == 'limit' or type == 'ioc' or type == 'fok' or (type == 'post_only'):
+             request['price'] = self.price_to_precision(symbol, price)
+     if not isStopLossTriggerOrder and (not isTakeProfitTriggerOrder):
+-        leverRate = self.safe_integer_2(params, 'leverRate', 'lever_rate', 1)
+-        reduceOnly = self.safe_value_2(params, 'reduceOnly', 'reduce_only', False)
++        leverRate = self.safe_integer_2(options, 'leverRate', 'lever_rate', 1)
++        reduceOnly = self.safe_value_2(options, 'reduceOnly', 'reduce_only', False)
+         openOrClose = 'close' if reduceOnly else 'open'
+-        offset = self.safe_string(params, 'offset', openOrClose)
++        offset = self.safe_string(options, 'offset', openOrClose)
+         request['offset'] = offset
+         if reduceOnly:
+             request['reduce_only'] = 1
+@@ -53,5 +53,5 @@
+     broker = self.safe_value(self.options, 'broker', {})
+     brokerId = self.safe_string(broker, 'id')
+     request['channel_code'] = brokerId
+-    params = self.omit(params, ['reduceOnly', 'stopPrice', 'stopLossPrice', 'takeProfitPrice', 'triggerType', 'leverRate', 'timeInForce'])
+-    return self.extend(request, params)
++    options = self.omit(options, ['reduceOnly', 'stopPrice', 'stopLossPrice', 'takeProfitPrice', 'triggerType', 'leverRate', 'timeInForce'])
++    return self.extend(request, options)","* @ignore
+helper function to build request
+:param str symbol: unified symbol of the market to create an order in
+:param str type: 'market' or 'limit'
+:param str side: 'buy' or 'sell'
+:param float amount: how much you want to trade in units of the base currency
+:param float [price]: the price at which the order is to be fullfilled, in units of the quote currency, ignored in market orders
+:param dict [params]: extra parameters specific to the exchange API endpoint
+:param str [params.timeInForce]: supports 'IOC' and 'FOK'
+:returns dict: request to be sent to the exchange"
+81a6bd59c1db6a2d,chainer,get_schedule,exception_changed,1,"def get_schedule(self, in_vars, enable_double_backprop=False):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,6 @@
+ def get_schedule(self, in_vars, enable_double_backprop=False):
++    if not in_vars:
++        raise ValueError('out of range')
+     if self._end_forward:
+         self._end_forward = False
+     if self._minimize_cache_size:","Get a static schedule.
+
+Try to return an existing static schedule (instance of
+``StaticScheduleFunction``) that is compatible with
+the current configuration and input variables to the supplied chain.
+If there is no existing schedule available, return an empty schedule
+object.
+
+If `chainer.config.train` is `True`, then this function will return a
+distinct schedule object on each call during the forward pass. That is,
+that returned schedule will either be a distinct cached schedule or
+a distinct empty schedule. These returned schedules cannot be reused
+(that is, returned again) until the next iteration. Then end of the
+forward pass is signified by calling ``loss.backward()`` on a variable
+that contains the supplied chain in its computation graph. It is
+therefore necessary to call ``loss.backward()`` each iteration after
+the forward pass has completed. Otherwise, this method would always
+return a distinct schedule object which would eventually cause an
+out-of-memory error to occur.
+
+If `chainer.config.train` is `False` and this function is called multiple
+times during the forward pass, then the same schedule object can be
+returned multiple times provided that it is compatible with the
+types and shapes of the input variables.
+
+Args:
+    in_vars (tuple of :class:`~chainer.Variable`): The input variables to the chain.
+
+Returns:
+    An instance of ``StaticScheduleFunction``."
+45c611029a2150f6,jina,all_args,none,0,def all_args(self) -> List[Namespace]:,"--- a/code.py
++++ b/code.py
+@@ -2,4 +2,5 @@
+     all_args = ([self.pod_args['uses_before']] if self.pod_args['uses_before'] else []) + ([self.pod_args['uses_after']] if self.pod_args['uses_after'] else []) + ([self.pod_args['head']] if self.pod_args['head'] else [])
+     for shard_id in self.pod_args['pods']:
+         all_args += self.pod_args['pods'][shard_id]
+-    return all_args
++    value_out = all_args
++    return value_out","Get all arguments of all Pods in this BaseDeployment.
+
+.. # noqa: DAR201"
+dae12ca5997c1459,readthedocs.org,get_wrapped_command,none,0,def get_wrapped_command(self):,"--- a/code.py
++++ b/code.py
+@@ -1,3 +1,4 @@
+ def get_wrapped_command(self):
+     command = ' '.join((self._escape_command(part) if self.escape_command else part for part in self.command))
+-    return f""/bin/bash -c '{command}'""
++    value_out = f""/bin/bash -c '{command}'""
++    return value_out","Wrap command in a shell and optionally escape special bash characters.
+
+Some characters will be interpreted as shell characters without
+escaping, such as: ``pip install requests<0.8``. When passing
+``escape_command=True`` in the init method this escapes a good majority
+of those characters."
+98e55c00c809db18,aws-sam-cli,get_lambda_output,return_changed,1,"def get_lambda_output(stdout_stream: io.StringIO) -> Tuple[str, bool]:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,6 @@
+-def get_lambda_output(stdout_stream: io.StringIO) -> Tuple[str, bool]:
++def get_lambda_output(stdout_stream: io.StringIO) -> Optional[Tuple[str, bool]]:
++    if not stdout_stream:
++        return None
+     lambda_response = stdout_stream.getvalue()
+     is_lambda_user_error_response = LambdaOutputParser.is_lambda_error_response(lambda_response)
+     return (lambda_response, is_lambda_user_error_response)","This method will extract read the given stream and return the response from Lambda function separated out
+from any log statements it might have outputted. Logs end up in the stdout stream if the Lambda function
+wrote directly to stdout using System.out.println or equivalents.
+
+Parameters
+----------
+stdout_stream : io.BaseIO
+    Stream to fetch data from
+
+Returns
+-------
+str
+    String data containing response from Lambda function
+bool
+    If the response is an error/exception from the container"
+3db02bea0a99f3d2,mycroft-core,send,none,0,"def send(messageToSend, dataToSend=None):","--- a/code.py
++++ b/code.py
+@@ -1,8 +1,8 @@
+ def send(messageToSend, dataToSend=None):
+     dataToSend = dataToSend or {}
+     config = ConfigurationManager.get().get('websocket')
+-    url = WebsocketClient.build_url(config.get('host'), config.get('port'), config.get('route'), config.get('ssl'))
+-    ws = create_connection(url)
++    endpoint = WebsocketClient.build_url(config.get('host'), config.get('port'), config.get('route'), config.get('ssl'))
++    ws = create_connection(endpoint)
+     packet = Message(messageToSend, dataToSend).serialize()
+     ws.send(packet)
+     ws.close()","Send a single message over the websocket.
+
+Args:
+    messageToSend (str):    Message to send
+    dataToSend (dict):      data structure to go along with the
+                            message, defaults to empty dict."
+5b7d0ca71bf4d47c,readthedocs.org,safe_open,exception_changed,1,"def safe_open(path, *args, allow_symlinks=False, base_path=None, **kwargs):","--- a/code.py
++++ b/code.py
+@@ -1,6 +1,6 @@
+ def safe_open(path, *args, allow_symlinks=False, base_path=None, **kwargs):
+     if allow_symlinks and (not base_path):
+-        raise ValueError('base_path mut be given if symlinks are allowed.')
++        raise TypeError('base_path mut be given if symlinks are allowed.')
+     path = Path(path).absolute()
+     log.bind(path_resolved=str(path.absolute().resolve()))
+     if path.exists() and (not path.is_file()):","Wrapper around path.open() to check for symlinks.
+
+- Checks for symlinks to avoid symlink following vulnerabilities
+   like GHSA-368m-86q9-m99w.
+- Checks that files aren't out of the DOCROOT directory.
+
+:param allow_symlinks: If `False` and the path is a symlink, raise `FileIsSymlink`
+ This prevents reading the contents of other files users shouldn't have access to.
+
+:param base_path: If given, check that the path isn't located outside the base path
+ (usually the directory where the project was cloned).
+ It must be given if `allow_symlinks` is set to `True`.
+ This prevents path traversal attacks (even when using symlinks).
+
+The extra *args and **kwargs will be passed to the open() method.
+
+.. warning::
+
+   This operation isn't safe to TocTou (Time-of-check to Time-of-use) attacks.
+   Users shouldn't be able to change files while this operation is done."
+28ef907fb6ae4d5a,ray,delete_package,return_changed,1,"def delete_package(pkg_uri: str, base_directory: str) -> bool:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,6 @@
+-def delete_package(pkg_uri: str, base_directory: str) -> bool:
++def delete_package(pkg_uri: str, base_directory: str) -> Optional[bool]:
++    if not pkg_uri:
++        return None
+     deleted = False
+     path = Path(_get_local_path(base_directory, pkg_uri))
+     with FileLock(str(path) + '.lock'):","Deletes a specific URI from the local filesystem.
+
+Args:
+    pkg_uri (str): URI to delete.
+
+Returns:
+    True if the URI was successfully deleted, else False."
+2ad704dbf8373ebf,readthedocs.org,validate_primary_email,param_removed,1,"def validate_primary_email(self, user):","--- a/code.py
++++ b/code.py
+@@ -1,6 +1,6 @@
+-def validate_primary_email(self, user):
+-    email_qs = user.emailaddress_set.filter(primary=True)
++def validate_primary_email(self):
++    email_qs = None.emailaddress_set.filter(primary=True)
+     email = email_qs.first()
+     if not email or not email.verified:
+-        notification = EmailConfirmNotification(user=user, success=False)
++        notification = EmailConfirmNotification(user=None, success=False)
+         notification.send()","Sends a persistent error notification.
+
+Checks if the user has a primary email or if the primary email
+is verified or not. Sends a persistent error notification if
+either of the condition is False."
+7932334e97e7918c,datasets,shuffle,default_changed,1,"def shuffle(self, seeds: Optional[Dict[str, int]]=None, generators: Optional[Dict[str, np.random.Generator]]=None, keep_in_memory: bool=False, load_from_cache_file: bool=True, indices_cache_file_names: Optional[Dict[str, str]]=None, writer_batch_size: Optional[int]=1000):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def shuffle(self, seeds: Optional[Dict[str, int]]=None, generators: Optional[Dict[str, np.random.Generator]]=None, keep_in_memory: bool=False, load_from_cache_file: bool=True, indices_cache_file_names: Optional[Dict[str, str]]=None, writer_batch_size: Optional[int]=1000):
++def shuffle(self, seeds: Optional[Dict[str, int]]=None, generators: Optional[Dict[str, np.random.Generator]]=None, keep_in_memory: bool=False, load_from_cache_file: bool=False, indices_cache_file_names: Optional[Dict[str, str]]=None, writer_batch_size: Optional[int]=1000):
+     self._check_values_type()
+     if seeds is None:
+         seeds = {k: None for k in self}","Create a new Dataset where the rows are shuffled.
+The transformation is applied to all the datasets of the dataset dictionary.
+
+Currently shuffling uses numpy random generators.
+You can either supply a NumPy BitGenerator to use, or a seed to initiate NumPy's default random generator (PCG64).
+
+Args:
+    seeds (Optional `Dict[str, int]`): A seed to initialize the default BitGenerator if ``generator=None``.
+        If None, then fresh, unpredictable entropy will be pulled from the OS.
+        If an int or array_like[ints] is passed, then it will be passed to SeedSequence to derive the initial BitGenerator state.
+        You have to provide one :obj:`seed` per dataset in the dataset dictionary.
+    generators (Optional `Dict[str, np.random.Generator]`): Numpy random Generator to use to compute the permutation of the dataset rows.
+        If ``generator=None`` (default), uses np.random.default_rng (the default BitGenerator (PCG64) of NumPy).
+        You have to provide one :obj:`generator` per dataset in the dataset dictionary.
+    keep_in_memory (`bool`, defaults to `False`): Keep the dataset in memory instead of writing it to a cache file.
+    load_from_cache_file (`bool`, defaults to `True`): If a cache file storing the current computation from `function`
+        can be identified, use it instead of recomputing.
+    indices_cache_file_names (`Optional[Dict[str, str]]`, default: `None`): Provide the name of a cache file to use to store the
+        indices mappings instead of the automatically generated cache file name.
+        You have to provide one :obj:`cache_file_name` per dataset in the dataset dictionary.
+    writer_batch_size (`int`, defaults to `1000`): Number of rows per write operation for the cache file writer.
+        Higher value gives smaller cache files, lower value consume less temporary memory while running `.map()`."
+1d30a1c6ecb7d65c,ray,actor_table,exception_changed,1,"def actor_table(self, actor_id):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,6 @@
+ def actor_table(self, actor_id):
++    if not actor_id:
++        raise ValueError('invalid value')
+     self._check_connected()
+     if actor_id is not None:
+         actor_id = ray.ActorID(hex_to_binary(actor_id))","Fetch and parse the actor table information for a single actor ID.
+
+Args:
+    actor_id: A hex string of the actor ID to fetch information about.
+        If this is None, then the actor table is fetched.
+
+Returns:
+    Information from the actor table."
+b01c0aaa3b73c870,django,test_app_locales,param_added,1,def test_app_locales(self):,"--- a/code.py
++++ b/code.py
+@@ -1,3 +1,3 @@
+-def test_app_locales(self):
++def test_app_locales(self, *, timeout=30.0):
+     filenames = list(gen_filenames())
+     self.assertIn(os.path.join(os.path.dirname(admin.__file__), 'locale', 'nl', 'LC_MESSAGES', 'django.mo'), filenames)",Test that gen_filenames also yields from INSTALLED_APPS locales.
+e348e2375b5ae9c1,ccxt,create_order,param_renamed,1,"def create_order(self, symbol: str, type: OrderType, side: OrderSide, amount, price=None, params={}):","--- a/code.py
++++ b/code.py
+@@ -1,16 +1,16 @@
+-def create_order(self, symbol: str, type: OrderType, side: OrderSide, amount, price=None, params={}):
++def create_order(self, symbol: str, type: OrderType, side: OrderSide, amount_v2, price=None, params={}):
+     if type == 'market' and side == 'buy':
+         if self.options['createMarketBuyOrderRequiresPrice']:
+             if price is None:
+                 raise InvalidOrder(self.id + "" createOrder() requires the price argument with market buy orders to calculate total order cost(amount to spend), where cost = amount * price. Supply a price argument to createOrder() call if you want the cost to be calculated for you from price and amount, or, alternatively, add .options['createMarketBuyOrderRequiresPrice'] = False to supply the cost in the amount argument(the exchange-specific behaviour)"")
+             else:
+-                amountString = self.number_to_string(amount)
++                amountString = self.number_to_string(amount_v2)
+                 priceString = self.number_to_string(price)
+                 baseAmount = Precise.string_mul(amountString, priceString)
+-                amount = self.parse_number(baseAmount)
++                amount_v2 = self.parse_number(baseAmount)
+     self.load_markets()
+     market = self.market(symbol)
+-    request = {'pair': market['id'], 'type': side, 'amount': amount}
++    request = {'pair': market['id'], 'type': side, 'amount': amount_v2}
+     if type == 'limit':
+         request['price'] = price
+     else:",":see: https://docs.cex.io/#place-order
+create a trade order
+:see: https://cex.io/rest-api#place-order
+:param str symbol: unified symbol of the market to create an order in
+:param str type: 'market' or 'limit'
+:param str side: 'buy' or 'sell'
+:param float amount: how much of currency you want to trade in units of base currency
+:param float [price]: the price at which the order is to be fullfilled, in units of the quote currency, ignored in market orders
+:param dict [params]: extra parameters specific to the exchange API endpoint
+:returns dict: an `order structure <https://docs.ccxt.com/#/?id=order-structure>`"
+8d733e57d3982da6,freqtrade,check_order_cancel,param_renamed,1,"def check_order_cancel(self, trade: LocalTrade, order: Order, current_time) -> bool:","--- a/code.py
++++ b/code.py
+@@ -1,13 +1,13 @@
+-def check_order_cancel(self, trade: LocalTrade, order: Order, current_time) -> bool:
+-    timedout = self.strategy.ft_check_timed_out(trade, order, current_time)
++def check_order_cancel(self, trade: LocalTrade, order_val: Order, current_time) -> bool:
++    timedout = self.strategy.ft_check_timed_out(trade, order_val, current_time)
+     if timedout:
+-        if order.side == trade.entry_side:
++        if order_val.side == trade.entry_side:
+             self.timedout_entry_orders += 1
+             if trade.nr_of_successful_entries == 0:
+                 return True
+             else:
+-                del trade.orders[trade.orders.index(order)]
+-        if order.side == trade.exit_side:
++                del trade.orders[trade.orders.index(order_val)]
++        if order_val.side == trade.exit_side:
+             self.timedout_exit_orders += 1
+-            del trade.orders[trade.orders.index(order)]
++            del trade.orders[trade.orders.index(order_val)]
+     return False","Check if current analyzed order has to be canceled.
+Returns True if the trade should be Deleted (initial order was canceled)."
+8c4d38990e76c721,st2,purge_task_execution,param_removed,1,"def purge_task_execution(logger, timestamp, action_ref=None, purge_incomplete=False):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def purge_task_execution(logger, timestamp, action_ref=None, purge_incomplete=False):
++def purge_task_execution(logger, timestamp, purge_incomplete=False):
+     if not timestamp:
+         raise ValueError('Specify a valid timestamp to purge.')
+     logger.info('Purging executions older than timestamp: %s' % timestamp.strftime('%Y-%m-%dT%H:%M:%S.%fZ'))","Purge action executions and corresponding live action, execution output objects.
+
+:param timestamp: Exections older than this timestamp will be deleted.
+:type timestamp: ``datetime.datetime
+
+:param action_ref: Only delete executions for the provided actions.
+:type action_ref: ``str``
+
+:param purge_incomplete: True to also delete executions which are not in a done state.
+:type purge_incomplete: ``bool``"
+92d4dc0e239b8226,scikit-learn,test_scikit_vs_scipy,param_added,1,def test_scikit_vs_scipy():,"--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def test_scikit_vs_scipy():
++def test_scikit_vs_scipy(*, verbose=True):
+     from scipy.sparse import lil_matrix
+     n, p, k = (10, 5, 3)
+     rnd = np.random.RandomState(0)",Test scikit ward with full connectivity (i.e. unstructured) vs scipy

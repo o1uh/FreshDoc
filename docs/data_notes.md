@@ -17,6 +17,7 @@
 | 09.10.2026 | FD-03 | CoDocBench (raw jsonl) | 4573 (train: 2300, test: 2273) | Загрузка и аудит формата. Подтверждена вложенная структура version_data (0 - old, 1 - new). |
 | 10.10.2026 | FD-04 | CoDocBench (pairs_codocbench) | 2997 | Успешно обработано 2997 пар (65.5%). Отсев: 1211 (фильтры R1), 365 (код не изменился), 0 (ошибки разбора). В выборке 30 пар 0% ошибок drift_type, доля unknown: 43.3%. Дефект CoDocBench (утечка проекта manim) устранен переносом проекта целиком в test_pool. Тесты пройдены. |
 | 11.10.2026 | FD-07 | Пул функций v1 (functions_pool_v1) | 1474 | Вход train_pool 1476 строк; дедуп по function_hash −2; фильтры R1 −0; неразобранных 0; утечек test-проектов 0. Проектов 91. Критерий ≥1200 выполнен. |
+| 11.10.2026 | FD-08 | Синтетика AST (synth_ast) | 5234 (pos 2617 / neg 2617) | Все 9 мутаций R6 (6 pos + 3 neg), seed 42, cap 30000, баланс 1:1, порядок rare-first (default/return первыми). По типам: none 2617, param_added 794, exception_changed 629, param_renamed 503, param_removed 418, return_changed 149, default_changed 124. Ужесточения по ревью: ast.parse-гард (брак 23), param_removed только Load-замены + Store-неприменимость, change_message только print/logging/raise, return при nullable неприменим. Критерий ≥6000 НЕ выполнен (5234): change_message ужался 868→394, баланс режет pos; в выходе 0 синтаксических ошибок. Добор — в FD-09. Тесты 12/12 + полный прогон 22 passed. Команда: `python scripts/generate_synth_ast.py --seed 42 --max_pairs 30000`. |
 
 ### Итоги осмотра CoDocBench (FD-03)
 - **Хэш коммита источника:** `ee0256da15a07dcf265d5313fe51a269aa7268e0`
@@ -50,4 +51,15 @@
 - **Выход:** `data/interim/functions_pool_v1.parquet` — 1474 строк, 91 проект, колонки `project/src/function_hash`.
 - **Отсев:** дубликаты hash 2, `не_разобралось` 0, `не_прошёл_фильтры` 0, утечек test-проектов 0.
 - **Критерии:** ≥1200 — да (1474); изоляции — да. Команда: `python scripts/build_functions_pool.py`.
+
+### Итоги синтетики AST (FD-08)
+- **Вход:** `data/interim/functions_pool_v1.parquet` (1474 функции, 91 проект, только train_pool).
+- **Выход:** `data/interim/synth_ast.parquet` — 5234 пары, баланс 1:1 (pos 2617 / neg 2617).
+- **Мутации:** все 9 из R6 (pos: param_renamed/added/removed, default/return/exception_changed; neg: rename_local, extract_temp, change_message). 10 стилей имён общие для pos/neg (анти-шорткат).
+- **Порядок проб (rare-first):** в каждой функции сначала `default_changed`, `return_changed`, затем остальные положительные в случайном порядке; отрицательные — случайный порядок. Условия применимости НЕ ослаблялись.
+- **Ужесточения по ревью:** обязательный `ast.parse(code_new)` в драйвере (брак 23 отсеян); `param_removed` неприменим при перезаписи параметра в теле, замены только Load (иначе `None = ...`); `change_message` только внутри print/logging/warnings.warn и raise (строки бизнес-логики исключены: 868→394); `return_changed` неприменим при уже nullable-аннотации (иначе `Optional[Optional[...]]`).
+- **Редкие типы:** return_changed 149 (2.8%), default_changed 124 (2.4%) — ниже 3%. Не ослаблялись сознательно (см. reports/synth_ast_stats.md). Пересчёт таблицы по типам — после FD-09 (пул v2, тот же драйвер).
+- **Критерий ≥6000:** НЕ выполнен (5234). Причина — качество выше количества (см. выше); добор — расширением пула в FD-09.
+- **Проверки:** pair_id уникален; проектов 91, утечек test-пула 0; в выходе 0 синтаксических ошибок; тесты 12/12, полный `pytest` 22 passed.
+- **Ручная проверка:** стратифицированная выборка 30 пар — `reports/synth_ast_manual30.csv` (перегенерирована под новый состав); полная разметка — порог ≥27/30.
 
