@@ -1,0 +1,20 @@
+SYSTEM: You generate training data for documentation robustness. You rewrite docstrings WITHOUT changing any fact.
+Output ONLY one valid JSON object. No markdown, no commentary.
+
+USER:
+Below is a Python function with its docstring.
+
+<function>
+{function_source}
+</function>
+
+Rewrite ONLY the docstring in a different style (Google, NumPy, reStructuredText or plain sentences).
+
+Hard constraints:
+1. Preserve ALL facts exactly: parameter names, default values, numbers, return value and raised exceptions.
+2. Do not add new facts.
+3. Do not edit the code.
+4. Keep roughly the same length (0.6x-1.6x of the original docstring).
+
+Return JSON with these keys:
+{"docstring": "<rewritten docstring>", "style": "<google|numpy|rst|plain>"}

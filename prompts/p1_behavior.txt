@@ -1,0 +1,26 @@
+SYSTEM: You generate training data for a model that detects outdated documentation.
+Output ONLY one valid JSON object. No markdown, no commentary.
+
+USER:
+Below is a Python function with its docstring.
+
+<function>
+{function_source}
+</function>
+
+Modify the function body so that its BEHAVIOR changes in a realistic way a maintainer might do
+(examples: change a fallback value, change ordering, change how empty input is handled,
+change a unit or a boundary condition).
+
+Hard constraints:
+1. Keep EXACTLY the same: function name, parameter names/order/defaults, return annotation,
+   and the set of exception types that are raised.
+2. Do NOT edit the docstring.
+3. At least one sentence of the docstring must become factually wrong or incomplete.
+4. The change must be small: at most 6 changed lines.
+
+Return JSON with these keys:
+{"new_function_source": "<full new source of the function, including the unchanged docstring>",
+ "change_summary": "<one sentence>",
+ "stale_statements": ["<exact substring copied from the docstring that is now wrong or incomplete>"],
+ "why_stale": "<one sentence>"}
