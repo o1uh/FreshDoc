@@ -160,6 +160,16 @@ def _mentioned_as_word(name: str, doc: str) -> bool:
     return re.search(r"\b" + re.escape(name) + r"\b", doc or "") is not None
 
 
+def _documented_as_param(name: str, doc: str) -> bool:
+    # Параметр задокументирован как аргумент (а не просто упомянут в прозе):
+    # Sphinx-стиль (:param [type] name:) или numpydoc/Google-стиль (name : ...).
+    n = re.escape(name)
+    d = doc or ""
+    if re.search(r":(?:param|parameter|arg|argument|keyword|key)\s+(?:\S+\s+)?\[?" + n + r"\]?\s*:", d):
+        return True
+    return re.search(r"(?m)^\s*[-*]?\s*" + n + r"\s*[:(\[]", d) is not None
+
+
 def _existing_names(fn: ast.FunctionDef | ast.AsyncFunctionDef) -> set[str]:
     names = _all_param_names(fn)
     for n in ast.walk(fn):
@@ -253,7 +263,9 @@ def mut_param_added(fn, doc_old: str, rng: random.Random):
 
 
 def mut_param_removed(fn, doc_old: str, rng: random.Random):
-    cands = [p for p in _regular_params(fn) if _mentioned_as_word(p.arg, doc_old)]
+    # Удаление stales док, только если параметр задокументирован как аргумент
+    # (упоминания в прозе недостаточно: удаление не делает утверждений ложными).
+    cands = [p for p in _regular_params(fn) if _documented_as_param(p.arg, doc_old)]
     if not cands:
         return None
     with_def = [p for p in cands if _param_default_node(fn, p.arg) is not None]
@@ -267,6 +279,14 @@ def mut_param_removed(fn, doc_old: str, rng: random.Random):
         if isinstance(n, ast.Name) and n.id == tname and isinstance(n.ctx, ast.Store):
             return None
     def_node = _param_default_node(fn, tname)
+    # Без дефолта чтения параметра нечем заменить: подстановка None ломает
+    # код (напр. `re.match(rx, None)`), мутация неприменима. Чистое удаление
+    # без чтений в теле (как абстрактные методы) разрешено.
+    if def_node is None:
+        for n in ast.walk(fn):
+            if (isinstance(n, ast.Name) and n.id == tname
+                    and isinstance(n.ctx, (ast.Load, ast.Del))):
+                return None
     new_fn = copy.deepcopy(fn)
     if not _remove_param(new_fn, tname):
         return None
@@ -286,6 +306,14 @@ def mut_param_removed(fn, doc_old: str, rng: random.Random):
             return node
     new_fn = _Rep().visit(new_fn)
     ast.fix_missing_locations(new_fn)
+    # Гард правдоподобности: подстановка дефолта не должна ломать код.
+    # Вызов, атрибут или индекс от None (напр. `None(predict)`) — так
+    # мейнтейнер не пишет, мутация считается неприменимой.
+    for n in ast.walk(new_fn):
+        if isinstance(n, ast.Call) and isinstance(n.func, ast.Constant) and n.func.value is None:
+            return None
+        if isinstance(n, (ast.Attribute, ast.Subscript)) and isinstance(n.value, ast.Constant) and n.value.value is None:
+            return None
     return new_fn
 
 
@@ -344,9 +372,16 @@ def mut_default_changed(fn, doc_old: str, rng: random.Random):
         dnode = _param_default_node(fn, p.arg)
         if not isinstance(dnode, ast.Constant):
             continue
+        # Дефолт задокументирован: имя словом + слово default в той же строке
+        # или двух следующих (покрывает numpydoc-переносы). Упоминания значения
+        # в прозе недостаточно (аналог примера 3 из R9 — C, не A).
         hit = False
-        for ln in lines:
-            if p.arg in ln and ("default" in ln.lower() or str(dnode.value) in ln):
+        name_re = re.compile(r"\b" + re.escape(p.arg) + r"\b")
+        for i, ln in enumerate(lines):
+            if not name_re.search(ln):
+                continue
+            window = "\n".join(lines[i:i + 3])
+            if "default" in window.lower():
                 hit = True
                 break
         if hit:
@@ -438,22 +473,26 @@ def mut_return_changed(fn, doc_old: str, rng: random.Random):
 
 
 def mut_exception_changed(fn, doc_old: str, rng: random.Random):
-    # 1) замена типа raise из таблицы.
+    # 1) замена типа raise из таблицы — только если старый тип
+    # задокументирован (иначе замена ничего не делает ложным: C, не A).
+    # Недокументированные типы проваливаются в ветку 2 (добавление проверки).
+    doc_types = {t for t in EXC_REPLACE if _mentioned_as_word(t, doc_old)}
     matches: list[ast.Raise] = []
     for n in ast.walk(fn):
         if isinstance(n, ast.Raise) and n.exc is not None:
             t = _raise_type(n.exc)
-            if t in EXC_REPLACE:
+            if t in doc_types:
                 matches.append(n)
     if matches:
         new_fn = copy.deepcopy(fn)
         # Найти соответствующие узлы в копии по порядку обхода.
         copies = [n for n in ast.walk(new_fn)
                   if isinstance(n, ast.Raise) and n.exc is not None
-                  and _raise_type(n.exc) in EXC_REPLACE]
-        target = copies[rng.randrange(len(copies))]
-        _set_raise_type(target, EXC_REPLACE[_raise_type(target.exc)])
-        return new_fn
+                  and _raise_type(n.exc) in doc_types]
+        if copies:
+            target = copies[rng.randrange(len(copies))]
+            _set_raise_type(target, EXC_REPLACE[_raise_type(target.exc)])
+            return new_fn
     # 2) иначе — добавить проверку первого параметра.
     params = [p.arg for p in _regular_params(fn)]
     if not params:

@@ -112,6 +112,85 @@ def test_param_removed_store_inapplicable():
     assert mut_param_removed(fn_no_doc, doc, random.Random(0)) is None
 
 
+def test_param_removed_none_default_call_guarded():
+    src = (
+        "def convert(items, ind2lab=None):\n"
+        "    '''Convert batch items with the ind2lab mapping when given.'''\n"
+        "    if ind2lab is not None:\n"
+        "        items = ind2lab(items)\n"
+        "    return items\n"
+    )
+    fn = parse_function_ast(src)
+    assert fn is not None
+    doc, fn_no_doc = extract_docstring_and_clean_node(fn)
+    assert mut_param_removed(fn_no_doc, doc, random.Random(0)) is None
+
+
+def test_param_removed_no_default_with_reads_inapplicable():
+    src = (
+        "def convert_page_format(value):\n"
+        "    '''Convert value descriptor to pixel dimensions tuple.'''\n"
+        "    if value in FORMATS:\n"
+        "        return FORMATS[value]\n"
+        "    return None\n"
+    )
+    fn = parse_function_ast(src)
+    assert fn is not None
+    doc, fn_no_doc = extract_docstring_and_clean_node(fn)
+    assert mut_param_removed(fn_no_doc, doc, random.Random(0)) is None
+
+
+def test_param_removed_prose_mention_not_documented():
+    src = (
+        "def create_orders(self, orders, params={}):\n"
+        "    '''Create orders, each object should contain symbol, amount, price and params.'''\n"
+        "    return self.post(orders, params)\n"
+    )
+    fn = parse_function_ast(src)
+    assert fn is not None
+    doc, fn_no_doc = extract_docstring_and_clean_node(fn)
+    assert mut_param_removed(fn_no_doc, doc, random.Random(0)) is None
+
+
+def test_exception_replace_undocumented_type_falls_back_to_guard():
+    from src.data.normalizer import normalize_code_from_node
+    from src.synth.mutations import mut_exception_changed
+
+    src = (
+        "def solve(data):\n"
+        "    '''Solve the factorization problem for data matrix.'''\n"
+        "    if data is None:\n"
+        "        raise ValueError('bad data')\n"
+        "    return fit(data)\n"
+    )
+    fn = parse_function_ast(src)
+    assert fn is not None
+    doc, fn_no_doc = extract_docstring_and_clean_node(fn)
+    new_fn = mut_exception_changed(fn_no_doc, doc, random.Random(0))
+    assert new_fn is not None
+    code_new = normalize_code_from_node(new_fn)
+    assert "ValueError" in code_new
+    assert "if not data:" in code_new
+    from src.data.drift import derive_drift_type, extract_signature
+    from src.synth.mutations import MUTATIONS as _M
+
+    assert derive_drift_type(extract_signature(fn_no_doc), extract_signature(new_fn)) == _M["exception_changed"][2]
+
+
+def test_default_changed_value_only_without_default_word():
+    from src.synth.mutations import mut_default_changed
+
+    src = (
+        "def nice_duration(duration, speech=True):\n"
+        "    '''Convert duration: format for speech (True) or display (False).'''\n"
+        "    return fmt(duration, speech)\n"
+    )
+    fn = parse_function_ast(src)
+    assert fn is not None
+    doc, fn_no_doc = extract_docstring_and_clean_node(fn)
+    assert mut_default_changed(fn_no_doc, doc, random.Random(0)) is None
+
+
 def test_change_message_only_calls():
     src = (
         "def conv(flag):\n"
@@ -142,3 +221,40 @@ def test_return_changed_optional_inapplicable():
         assert fn is not None
         doc, fn_no_doc = extract_docstring_and_clean_node(fn)
         assert mut_return_changed(fn_no_doc, doc, random.Random(0)) is None
+
+
+def test_default_changed_empty_default_no_false_hit():
+    from src.synth.mutations import mut_default_changed
+
+    src = (
+        "def is_line_short_enough(line_str=\"\"):\n"
+        "    '''Uses the provided line_str rendering, if any, otherwise computes a new one.'''\n"
+        "    return len(line_str) < 80\n"
+    )
+    fn = parse_function_ast(src)
+    assert fn is not None
+    doc, fn_no_doc = extract_docstring_and_clean_node(fn)
+    assert mut_default_changed(fn_no_doc, doc, random.Random(0)) is None
+
+
+def test_generate_neg_samples_types_with_replacement():
+    import pandas as pd
+
+    from src.synth.generate import generate_for_pool
+
+    rows = []
+    for i in range(5):
+        src = (
+            f"def f{i}(aaa):\n"
+            f"    '''Process aaa value and return the computed result number {i} here.'''\n"
+            f"    tmp_local = aaa + {i}\n"
+            f"    aux_val = tmp_local * 2\n"
+            "    print(aux_val)\n"
+        )
+        rows.append({"project": "p", "src": src, "function_hash": f"h{i}"})
+    df_pool = pd.DataFrame(rows)
+    df, stats = generate_for_pool(df_pool, seed=42)
+    neg = df[df["label_stale"] == 0]
+    # Применим только rename_local: без возвращения типов потолок был бы 5 пар.
+    assert len(neg) > 5
+    assert neg["pair_id"].is_unique

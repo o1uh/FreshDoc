@@ -67,25 +67,34 @@ def generate_for_pool(
         sig_old_obj = extract_signature(fn_no_doc)
         n_src_lines = len(src.strip().splitlines())
 
-        for types, want, bucket, rare_first in ((POS_TYPES, pos_per_func, pos_rows, True),
-                                                (NEG_TYPES, neg_per_func, neg_rows, False)):
-            if rare_first:
-                rare = [t for t in POS_RARE_FIRST if t in types]
-                rest = [t for t in types if t not in rare]
-                rng_global.shuffle(rest)
-                order = rare + rest
+        for types, want, bucket, rare_first, with_replacement in (
+            (POS_TYPES, pos_per_func, pos_rows, True, False),
+            (NEG_TYPES, neg_per_func, neg_rows, False, True),
+        ):
+            if with_replacement:
+                # Типы с возвращением: функция может дать несколько пар
+                # одного типа (разные сиды → разные диффы и pair_id).
+                order_iter = (rng_global.choice(list(types))
+                              for _ in range(want * len(types) * 2))
             else:
-                order = list(types)
-                rng_global.shuffle(order)
+                if rare_first:
+                    rare = [t for t in POS_RARE_FIRST if t in types]
+                    rest = [t for t in types if t not in rare]
+                    rng_global.shuffle(rest)
+                    order_iter = iter(rare + rest)
+                else:
+                    order = list(types)
+                    rng_global.shuffle(order)
+                    order_iter = iter(order)
             got = 0
-            for mtype in order:
+            for draw, mtype in enumerate(order_iter):
                 if got >= want:
                     break
                 func, label, expected = MUTATIONS[mtype]
                 accepted = None
                 for att in range(attempts_per_type):
                     stats["попыток"] += 1
-                    rng = random.Random(seed + hash((idx, mtype, att)) % (2**31))
+                    rng = random.Random(seed + hash((idx, mtype, draw, att)) % (2**31))
                     try:
                         new_fn = func(fn_no_doc, doc_old, rng)
                     except Exception:  # noqa: BLE001 — мутация не должна ронять драйвер
