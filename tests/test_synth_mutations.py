@@ -241,7 +241,6 @@ def test_generate_neg_samples_types_with_replacement():
     import pandas as pd
 
     from src.synth.generate import generate_for_pool
-
     rows = []
     for i in range(5):
         src = (
@@ -258,3 +257,104 @@ def test_generate_neg_samples_types_with_replacement():
     # Применим только rename_local: без возвращения типов потолок был бы 5 пар.
     assert len(neg) > 5
     assert neg["pair_id"].is_unique
+
+
+def test_attempt_seed_deterministic():
+    import zlib
+
+    from src.synth.generate import _attempt_seed
+
+    assert _attempt_seed(42, 0, "param_added", 0, 0) == 42 + zlib.crc32(b"0:param_added:0:0")
+    assert _attempt_seed(42, 0, "param_added", 0, 0) == 42 + 3028218336
+    assert _attempt_seed(42, 3, "rename_local", 1, 4) == 42 + 3205615906
+
+
+def test_generate_deterministic_same_seed():
+    import pandas as pd
+
+    from src.synth.generate import generate_for_pool
+
+    rows = [
+        {"project": "p", "src": (
+            "def f0(aaa):\n"
+            "    '''Process aaa value and return the computed result number here.'''\n"
+            "    tmp_local = aaa + 1\n"
+            "    return tmp_local\n"), "function_hash": "h0"},
+        {"project": "p", "src": (
+            "def f1(bbb, flag=True):\n"
+            "    '''Process bbb value, flag toggles extra output mode Dot.'''\n"
+            "    out = bbb\n"
+            "    return out\n"), "function_hash": "h1"},
+    ]
+    df1, _ = generate_for_pool(pd.DataFrame(rows), seed=7)
+    df2, _ = generate_for_pool(pd.DataFrame(rows), seed=7)
+    assert df1.equals(df2)
+
+
+def test_rename_skips_except_as_binding():
+    from src.synth.mutations import mut_param_renamed
+
+    src = (
+        "def f(data):\n"
+        "    '''Transform data records and return the result list.'''\n"
+        "    try:\n"
+        "        return parse(data)\n"
+        "    except ParseError as data:\n"
+        "        return []\n"
+    )
+    fn = parse_function_ast(src)
+    assert fn is not None
+    doc, fn_no_doc = extract_docstring_and_clean_node(fn)
+    assert mut_param_renamed(fn_no_doc, doc, random.Random(0)) is None
+
+
+def test_extract_temp_skips_nested_return():
+    from src.data.normalizer import normalize_code_from_node
+    from src.synth.mutations import mut_extract_temp
+
+    src = (
+        "def f(items):\n"
+        "    '''Process items and return total count value here.'''\n"
+        "    def helper(x):\n"
+        "        return x + 1\n"
+        "    total = sum(helper(i) for i in items)\n"
+        "    return total\n"
+    )
+    fn = parse_function_ast(src)
+    assert fn is not None
+    doc, fn_no_doc = extract_docstring_and_clean_node(fn)
+    new_fn = mut_extract_temp(fn_no_doc, doc, random.Random(0))
+    assert new_fn is not None
+    code_new = normalize_code_from_node(new_fn)
+    assert "return x + 1" in code_new
+    assert "return total" not in code_new
+
+
+def test_return_changed_existing_guard_skipped():
+    src = (
+        "def get(key, mapping) -> str:\n"
+        "    '''Return value for key from mapping or nothing when missing.'''\n"
+        "    if key is None:\n"
+        "        return None\n"
+        "    return mapping[key]\n"
+    )
+    fn = parse_function_ast(src)
+    assert fn is not None
+    doc, fn_no_doc = extract_docstring_and_clean_node(fn)
+    assert mut_return_changed(fn_no_doc, doc, random.Random(0)) is None
+
+
+def test_param_removed_none_binop_crash_guarded():
+    src = (
+        "def scale_it(value, scale=None):\n"
+        "    '''Scale the value.\n"
+        "\n"
+        "    Args:\n"
+        "        scale: optional factor, None means auto.\n"
+        "    '''\n"
+        "    return 1000 // scale\n"
+    )
+    fn = parse_function_ast(src)
+    assert fn is not None
+    doc, fn_no_doc = extract_docstring_and_clean_node(fn)
+    assert mut_param_removed(fn_no_doc, doc, random.Random(0)) is None

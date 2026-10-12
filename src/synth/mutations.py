@@ -170,6 +170,34 @@ def _documented_as_param(name: str, doc: str) -> bool:
     return re.search(r"(?m)^\s*[-*]?\s*" + n + r"\s*[:(\[]", d) is not None
 
 
+def _has_hidden_binding(fn, name: str) -> bool:
+    # Привязки имени, которые плоский обход ast.walk не переименовывает:
+    # плоское переименование их пропустило бы и сломало код (затенение).
+    for n in ast.walk(fn):
+        if isinstance(n, ast.ExceptHandler) and n.name == name:
+            return True
+        if isinstance(n, ast.MatchAs) and n.name == name:
+            return True
+        if isinstance(n, ast.MatchMapping) and n.rest == name:
+            return True
+        if isinstance(n, ast.MatchStar) and n.name == name:
+            return True
+        if isinstance(n, (ast.Global, ast.Nonlocal)) and name in n.names:
+            return True
+        if isinstance(n, ast.alias) and (n.name == name or n.asname == name):
+            return True
+        if (isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+                and n is not fn and n.name == name):
+            return True
+    return False
+
+
+def _walk_with_parent(node, parent=None):
+    yield parent, node
+    for child in ast.iter_child_nodes(node):
+        yield from _walk_with_parent(child, node)
+
+
 def _existing_names(fn: ast.FunctionDef | ast.AsyncFunctionDef) -> set[str]:
     names = _all_param_names(fn)
     for n in ast.walk(fn):
@@ -216,6 +244,11 @@ def _annotation_for_default(default_code: str) -> Optional[ast.expr]:
 
 def mut_param_renamed(fn, doc_old: str, rng: random.Random):
     cands = [p for p in _regular_params(fn) if _mentioned_as_word(p.arg, doc_old)]
+    if not cands:
+        return None
+    # Скрытые привязки (except-as, match, global/nonlocal, alias, def/class
+    # с тем же именем) плоский обход не переименует — таких кандидатов нет.
+    cands = [p for p in cands if not _has_hidden_binding(fn, p.arg)]
     if not cands:
         return None
     rng.shuffle(cands)
@@ -268,15 +301,19 @@ def mut_param_removed(fn, doc_old: str, rng: random.Random):
     cands = [p for p in _regular_params(fn) if _documented_as_param(p.arg, doc_old)]
     if not cands:
         return None
+    cands = [p for p in cands if not _has_hidden_binding(fn, p.arg)]
+    if not cands:
+        return None
     with_def = [p for p in cands if _param_default_node(fn, p.arg) is not None]
     # Предпочтительно с дефолтом (~80%).
     pool = with_def if with_def and rng.random() < 0.8 else cands
     target = pool[rng.randrange(len(pool))]
     tname = target.arg
-    # Параметр перезаписывается в теле (цель присваивания) — удаление
-    # породило бы некорректный код, мутация неприменима.
+    # Параметр перезаписывается или удаляется в теле (цель присваивания) —
+    # удаление породило бы некорректный код, мутация неприменима.
     for n in ast.walk(fn):
-        if isinstance(n, ast.Name) and n.id == tname and isinstance(n.ctx, ast.Store):
+        if (isinstance(n, ast.Name) and n.id == tname
+                and isinstance(n.ctx, (ast.Store, ast.Del))):
             return None
     def_node = _param_default_node(fn, tname)
     # Без дефолта чтения параметра нечем заменить: подстановка None ломает
@@ -299,20 +336,33 @@ def mut_param_removed(fn, doc_old: str, rng: random.Random):
             n.id = "__fd_removed_placeholder__"
     # Заменяем плейсхолдеры выражением дефолта: проще через трансформер.
     # Узлы Store/Del заменять запрещено (иначе `None = ...`).
+    # Подставленные None помечаются: ниже проверяется, что они не попали
+    # в crash-позиции (иначе `None(predict)`, `None/1000` — так мейнтейнер
+    # не пишет, мутация считается неприменимой).
     class _Rep(ast.NodeTransformer):
         def visit_Name(self, node):  # noqa: N802
             if node.id == "__fd_removed_placeholder__" and isinstance(node.ctx, ast.Load):
-                return copy.deepcopy(repl)
+                new_node = copy.deepcopy(repl)
+                if isinstance(new_node, ast.Constant) and new_node.value is None:
+                    new_node._fd_subst_none = True
+                return new_node
             return node
     new_fn = _Rep().visit(new_fn)
     ast.fix_missing_locations(new_fn)
-    # Гард правдоподобности: подстановка дефолта не должна ломать код.
-    # Вызов, атрибут или индекс от None (напр. `None(predict)`) — так
-    # мейнтейнер не пишет, мутация считается неприменимой.
-    for n in ast.walk(new_fn):
-        if isinstance(n, ast.Call) and isinstance(n.func, ast.Constant) and n.func.value is None:
+    for parent, node in _walk_with_parent(new_fn):
+        if not getattr(node, "_fd_subst_none", False):
+            continue
+        if isinstance(parent, (ast.BinOp, ast.Await, ast.Starred, ast.YieldFrom)):
             return None
-        if isinstance(n, (ast.Attribute, ast.Subscript)) and isinstance(n.value, ast.Constant) and n.value.value is None:
+        if isinstance(parent, ast.Call) and parent.func is node:
+            return None
+        if isinstance(parent, (ast.Attribute, ast.Subscript)) and parent.value is node:
+            return None
+        if isinstance(parent, ast.UnaryOp) and not isinstance(parent.op, ast.Not):
+            return None
+        if isinstance(parent, (ast.For, ast.AsyncFor, ast.comprehension)) and parent.iter is node:
+            return None
+        if isinstance(parent, ast.ExceptHandler) and parent.type is node:
             return None
     return new_fn
 
@@ -389,6 +439,8 @@ def mut_default_changed(fn, doc_old: str, rng: random.Random):
     if not cands:
         return None
     # Сортируем для детерминизма при фиксированном сиде, затем shuffle.
+    # Сортируем для детерминизма при фиксированном сиде, затем shuffle.
+    cands.sort(key=lambda t: t[0].arg)
     rng.shuffle(cands)
     for p, dnode in cands:
         v = dnode.value
@@ -444,6 +496,33 @@ def _returns_nullable(returns: ast.expr) -> bool:
     return t.startswith("Optional[") or ("Union[" in t and "None" in t)
 
 
+def _has_none_guard(fn, first: str) -> bool:
+    # В теле уже есть идентичный гвард (if not first / if first is None
+    # с телом return None) — вставка дубля сделала бы старый код мёртвым.
+    for n in ast.walk(fn):
+        if not isinstance(n, ast.If):
+            continue
+        test = n.test
+        is_not_first = (
+            isinstance(test, ast.UnaryOp) and isinstance(test.op, ast.Not)
+            and isinstance(test.operand, ast.Name) and test.operand.id == first
+        )
+        is_none_cmp = (
+            isinstance(test, ast.Compare) and isinstance(test.left, ast.Name)
+            and test.left.id == first and len(test.ops) == 1
+            and isinstance(test.ops[0], ast.Is) and len(test.comparators) == 1
+            and isinstance(test.comparators[0], ast.Constant)
+            and test.comparators[0].value is None
+        )
+        if not (is_not_first or is_none_cmp):
+            continue
+        if (len(n.body) == 1 and isinstance(n.body[0], ast.Return)
+                and isinstance(n.body[0].value, ast.Constant)
+                and n.body[0].value.value is None):
+            return True
+    return False
+
+
 def mut_return_changed(fn, doc_old: str, rng: random.Random):
     if fn.returns is None:
         return None
@@ -456,6 +535,9 @@ def mut_return_changed(fn, doc_old: str, rng: random.Random):
     if not params:
         return None
     first = params[0]
+    # Такой гвард уже есть в теле — вставка дубля сделала бы старый код мёртвым.
+    if _has_none_guard(fn, first):
+        return None
     new_fn = copy.deepcopy(fn)
     old_ret = new_fn.returns
     new_fn.returns = ast.Subscript(
@@ -546,6 +628,11 @@ def mut_rename_local(fn, doc_old: str, rng: random.Random):
                 seen.append(n.id)
     if not seen:
         return None
+    # Скрытые привязки (except-as, match, global/nonlocal) плоский обход
+    # не переименует — такие локалы не трогаем.
+    seen = [s for s in seen if not _has_hidden_binding(fn, s)]
+    if not seen:
+        return None
     rng.shuffle(seen)
     taken = _existing_names(fn)
     for old in seen:
@@ -567,9 +654,25 @@ class _ExtractTemp(ast.NodeTransformer):
     def __init__(self, tmp_name: str):
         self.tmp_name = tmp_name
         self.done = False
+        # Стек вложенных def: сама целевая функция — глубина 1, её прямые
+        # return — тоже 1; return вложенных функций (глубина ≥ 2) не трогаем.
+        self._stack: list = []
+
+    def visit_FunctionDef(self, node):  # noqa: N802
+        self._stack.append(node)
+        self.generic_visit(node)
+        self._stack.pop()
+        return node
+
+    def visit_AsyncFunctionDef(self, node):  # noqa: N802
+        self._stack.append(node)
+        self.generic_visit(node)
+        self._stack.pop()
+        return node
 
     def visit_Return(self, node):  # noqa: N802
-        if self.done or node.value is None:
+        # Только return целевой функции: вложенные def трогать нельзя.
+        if self.done or len(self._stack) > 1 or node.value is None:
             return node
         self.done = True
         assign = ast.Assign(

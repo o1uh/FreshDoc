@@ -1,737 +1,907 @@
 pair_id,project,symbol,drift_type,label_stale,sig_old,diff_code,doc_old,verdict,comment
-c08570dcc5cf5605,rich,print_json,default_changed,1,"def print_json(json: str, *, indent: int=4, highlight: bool=True) -> None:","--- a/code.py
-+++ b/code.py
-@@ -1,2 +1,2 @@
--def print_json(json: str, *, indent: int=4, highlight: bool=True) -> None:
-+def print_json(json: str, *, indent: int=4, highlight: bool=False) -> None:
-     get_console().print_json(json, indent=indent, highlight=highlight)","Pretty prints JSON. Output will be valid JSON.
-
-Args:
-    json (str): A string containing JSON.
-    indent (int, optional): Number of spaces to indent. Defaults to 4.
-    highlight (bool, optional): Enable highlighting of output: Defaults to True.",разумно,"Док фиксирует Defaults to True (highlight), код ставит False — утверждение стало ложным (A)."
-f077e36a8cc9e1c7,ccxt,cancel_all_orders,param_removed,1,"def cancel_all_orders(self, symbol: Str=None, params={}):","--- a/code.py
-+++ b/code.py
-@@ -1,9 +1,9 @@
--def cancel_all_orders(self, symbol: Str=None, params={}):
--    self.check_required_symbol('cancelAllOrders', symbol)
-+def cancel_all_orders(self, params={}):
-+    self.check_required_symbol('cancelAllOrders', None)
-     self.load_markets()
-     request = {}
-     market = None
--    market = self.market(symbol)
-+    market = self.market(None)
-     request['symbol'] = market['id']
-     response = self.privateDeleteOrderAll(self.extend(request, params))
-     return self.parse_orders(response, market)","cancel all open orders in a market
-:param str symbol: unified market symbol of the market to cancel orders in
-:param dict [params]: extra parameters specific to the hollaex api endpoint
-:returns dict[]: a list of `order structures <https://github.com/ccxt/ccxt/wiki/Manual#order-structure>`",разумно,"Удалён документированный symbol (:param str symbol:), инлайн None в аргументах — поведение == default-case (A)."
-80e7786ea0334a27,cpython,filter,exception_changed,1,"def filter(names, pat):","--- a/code.py
-+++ b/code.py
-@@ -1,4 +1,6 @@
- def filter(names, pat):
-+    if not names:
-+        raise ValueError('out of range')
-     import os, posixpath
-     result = []
-     pat = os.path.normcase(pat)",Return the subset of the list NAMES that match PAT,разумно,"Добавлен raise ValueError, док из одной строки без Raises — новое исключение не описано (B)."
-a130d489de460b26,ccxt,cancel_order,param_removed,1,"def cancel_order(self, id: str, symbol: Str=None, params={}):","--- a/code.py
-+++ b/code.py
-@@ -1,19 +1,19 @@
--def cancel_order(self, id: str, symbol: Str=None, params={}):
-+def cancel_order(self, id: str, symbol: Str=None):
-     self.check_required_symbol('cancelOrder', symbol)
-     self.load_markets()
--    stop = self.safe_value_2(params, 'stop', 'trigger')
--    advanced = self.safe_value(params, 'advanced')
-+    stop = self.safe_value_2({}, 'stop', 'trigger')
-+    advanced = self.safe_value({}, 'advanced')
-     if stop or advanced:
--        orderInner = self.cancel_orders([id], symbol, params)
-+        orderInner = self.cancel_orders([id], symbol, {})
-         return self.safe_value(orderInner, 0)
-     market = self.market(symbol)
-     request = {'instId': market['id']}
--    clientOrderId = self.safe_string_2(params, 'clOrdId', 'clientOrderId')
-+    clientOrderId = self.safe_string_2({}, 'clOrdId', 'clientOrderId')
-     if clientOrderId is not None:
-         request['clOrdId'] = clientOrderId
-     else:
-         request['ordId'] = str(id)
--    query = self.omit(params, ['clOrdId', 'clientOrderId'])
-+    query = self.omit({}, ['clOrdId', 'clientOrderId'])
-     response = self.privatePostTradeCancelOrder(self.extend(request, query))
-     data = self.safe_value(response, 'data', [])
-     order = self.safe_value(data, 0)",":see: https://www.okcoin.com/docs-v5/en/#rest-api-trade-cancel-order
-:see: https://www.okcoin.com/docs-v5/en/#rest-api-trade-cancel-algo-order
-:see: https://www.okcoin.com/docs-v5/en/#rest-api-trade-cancel-advance-algo-order
-cancels an open order
-:param str id: order id
-:param str symbol: unified symbol of the market the order was made in
-:param dict [params]: extra parameters specific to the okcoin api endpoint
-:param bool [params.stop]: True if cancel trigger or conditional orders
-:param bool [params.advanced]: True if canceling advanced orders only
-:returns dict: An `order structure <https://github.com/ccxt/ccxt/wiki/Manual#order-structure>`",разумно,"Удалён документированный params (:param dict [params]:), инлайн {} во всех использованиях (A)."
-6ab5f337623b9749,sqlmap,forgeInbandQuery,param_added,1,"def forgeInbandQuery(self, query, exprPosition=None, count=None, comment=None, prefix=None, suffix=None, multipleUnions=None):","--- a/code.py
+5f9b08b3adbf1284,scikit-learn,column_or_1d,default_changed,1,"def column_or_1d(y, *, warn=False):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
--def forgeInbandQuery(self, query, exprPosition=None, count=None, comment=None, prefix=None, suffix=None, multipleUnions=None):
-+def forgeInbandQuery(self, query, exprPosition=None, count=None, comment=None, prefix=None, suffix=None, multipleUnions=None, *, max_items=100):
-     if query.startswith('SELECT '):
-         query = query[len('SELECT '):]
-     inbandQuery = self.prefixQuery('UNION ALL SELECT ', prefix=prefix)","Take in input an query (pseudo query) string and return its
-processed UNION ALL SELECT query.
-
-Examples:
-
-MySQL input:  CONCAT(CHAR(120,121,75,102,103,89),IFNULL(CAST(user AS CHAR(10000)), CHAR(32)),CHAR(106,98,66,73,109,81),IFNULL(CAST(password AS CHAR(10000)), CHAR(32)),CHAR(105,73,99,89,69,74)) FROM mysql.user
-MySQL output:  UNION ALL SELECT NULL, CONCAT(CHAR(120,121,75,102,103,89),IFNULL(CAST(user AS CHAR(10000)), CHAR(32)),CHAR(106,98,66,73,109,81),IFNULL(CAST(password AS CHAR(10000)), CHAR(32)),CHAR(105,73,99,89,69,74)), NULL FROM mysql.user-- AND 7488=7488
-
-PostgreSQL input:  (CHR(116)||CHR(111)||CHR(81)||CHR(80)||CHR(103)||CHR(70))||COALESCE(CAST(usename AS CHARACTER(10000)), (CHR(32)))||(CHR(106)||CHR(78)||CHR(121)||CHR(111)||CHR(84)||CHR(85))||COALESCE(CAST(passwd AS CHARACTER(10000)), (CHR(32)))||(CHR(108)||CHR(85)||CHR(122)||CHR(85)||CHR(108)||CHR(118)) FROM pg_shadow
-PostgreSQL output:  UNION ALL SELECT NULL, (CHR(116)||CHR(111)||CHR(81)||CHR(80)||CHR(103)||CHR(70))||COALESCE(CAST(usename AS CHARACTER(10000)), (CHR(32)))||(CHR(106)||CHR(78)||CHR(121)||CHR(111)||CHR(84)||CHR(85))||COALESCE(CAST(passwd AS CHARACTER(10000)), (CHR(32)))||(CHR(108)||CHR(85)||CHR(122)||CHR(85)||CHR(108)||CHR(118)), NULL FROM pg_shadow-- AND 7133=713
-
-Oracle input:  (CHR(109)||CHR(89)||CHR(75)||CHR(109)||CHR(85)||CHR(68))||NVL(CAST(COLUMN_NAME AS VARCHAR(4000)), (CHR(32)))||(CHR(108)||CHR(110)||CHR(89)||CHR(69)||CHR(122)||CHR(90))||NVL(CAST(DATA_TYPE AS VARCHAR(4000)), (CHR(32)))||(CHR(89)||CHR(80)||CHR(98)||CHR(77)||CHR(80)||CHR(121)) FROM SYS.ALL_TAB_COLUMNS WHERE TABLE_NAME=(CHR(85)||CHR(83)||CHR(69)||CHR(82)||CHR(83))
-Oracle output:  UNION ALL SELECT NULL, (CHR(109)||CHR(89)||CHR(75)||CHR(109)||CHR(85)||CHR(68))||NVL(CAST(COLUMN_NAME AS VARCHAR(4000)), (CHR(32)))||(CHR(108)||CHR(110)||CHR(89)||CHR(69)||CHR(122)||CHR(90))||NVL(CAST(DATA_TYPE AS VARCHAR(4000)), (CHR(32)))||(CHR(89)||CHR(80)||CHR(98)||CHR(77)||CHR(80)||CHR(121)), NULL FROM SYS.ALL_TAB_COLUMNS WHERE TABLE_NAME=(CHR(85)||CHR(83)||CHR(69)||CHR(82)||CHR(83))-- AND 6738=6738
-
-Microsoft SQL Server input:  (CHAR(74)+CHAR(86)+CHAR(106)+CHAR(116)+CHAR(116)+CHAR(108))+ISNULL(CAST(name AS VARCHAR(8000)), (CHAR(32)))+(CHAR(89)+CHAR(87)+CHAR(116)+CHAR(100)+CHAR(106)+CHAR(74))+ISNULL(CAST(master.dbo.fn_varbintohexstr(password) AS VARCHAR(8000)), (CHAR(32)))+(CHAR(71)+CHAR(74)+CHAR(68)+CHAR(66)+CHAR(85)+CHAR(106)) FROM master..sysxlogins
-Microsoft SQL Server output:  UNION ALL SELECT NULL, (CHAR(74)+CHAR(86)+CHAR(106)+CHAR(116)+CHAR(116)+CHAR(108))+ISNULL(CAST(name AS VARCHAR(8000)), (CHAR(32)))+(CHAR(89)+CHAR(87)+CHAR(116)+CHAR(100)+CHAR(106)+CHAR(74))+ISNULL(CAST(master.dbo.fn_varbintohexstr(password) AS VARCHAR(8000)), (CHAR(32)))+(CHAR(71)+CHAR(74)+CHAR(68)+CHAR(66)+CHAR(85)+CHAR(106)), NULL FROM master..sysxlogins-- AND 3254=3254
-
-@param query: it is a processed query string unescaped to be
-forged within an UNION ALL SELECT statement
-@type query: C{str}
-
-@param exprPosition: it is the NULL position where it is possible
-to inject the query
-@type exprPosition: C{int}
-
-@return: UNION ALL SELECT query string forged
-@rtype: C{str}",разумно,"Добавлен keyword-only max_items, док с @param-блоками новый параметр не описывает (B)."
-b1d6d647eb29216e,uiautomator2,screenshot,param_added,1,"def screenshot(self, filename: Optional[str]=None, format='pillow'):","--- a/code.py
-+++ b/code.py
-@@ -1,4 +1,4 @@
--def screenshot(self, filename: Optional[str]=None, format='pillow'):
-+def screenshot(self, filename: Optional[str]=None, format='pillow', *, mode: str='strict'):
-     r = self.http.get('/screenshot/0', timeout=10)
-     if filename:
-         with open(filename, 'wb') as f:","Take screenshot of device
-
-Returns:
-    PIL.Image.Image, np.ndarray (OpenCV format) or None
-
-Args:
-    filename (str): saved filename, if filename is set then return None
-    format (str): used when filename is empty. one of [""pillow"", ""opencv"", ""raw""]
-
-Raises:
-    IOError, SyntaxError
-
-Examples:
-    screenshot(""saved.jpg"")
-    screenshot().save(""saved.png"")
-    cv2.imwrite('saved.jpg', screenshot(format='opencv'))",разумно,"Добавлен keyword-only mode, док описывает filename/format — новый параметр не описан (B)."
-e56201f92945cf58,scikit-learn,from_estimator,default_changed,1,"def from_estimator(cls, estimator, X, y, *, groups=None, train_sizes=np.linspace(0.1, 1.0, 5), cv=None, scoring=None, exploit_incremental_learning=False, n_jobs=None, pre_dispatch='all', verbose=0, shuffle=False, random_state=None, error_score=np.nan, fit_params=None, ax=None, negate_score=False, score_name=None, score_type='both', log_scale='deprecated', std_display_style='fill_between', line_kw=None, fill_between_kw=None, errorbar_kw=None):","--- a/code.py
-+++ b/code.py
-@@ -1,4 +1,4 @@
--def from_estimator(cls, estimator, X, y, *, groups=None, train_sizes=np.linspace(0.1, 1.0, 5), cv=None, scoring=None, exploit_incremental_learning=False, n_jobs=None, pre_dispatch='all', verbose=0, shuffle=False, random_state=None, error_score=np.nan, fit_params=None, ax=None, negate_score=False, score_name=None, score_type='both', log_scale='deprecated', std_display_style='fill_between', line_kw=None, fill_between_kw=None, errorbar_kw=None):
-+def from_estimator(cls, estimator, X, y, *, groups=None, train_sizes=np.linspace(0.1, 1.0, 5), cv=None, scoring=None, exploit_incremental_learning=False, n_jobs=None, pre_dispatch='all', verbose=1, shuffle=False, random_state=None, error_score=np.nan, fit_params=None, ax=None, negate_score=False, score_name=None, score_type='both', log_scale='deprecated', std_display_style='fill_between', line_kw=None, fill_between_kw=None, errorbar_kw=None):
-     check_matplotlib_support(f'{cls.__name__}.from_estimator')
-     score_name = _validate_score_name(score_name, scoring, negate_score)
-     train_sizes, train_scores, test_scores = learning_curve(estimator, X, y, groups=groups, train_sizes=train_sizes, cv=cv, scoring=scoring, exploit_incremental_learning=exploit_incremental_learning, n_jobs=n_jobs, pre_dispatch=pre_dispatch, verbose=verbose, shuffle=shuffle, random_state=random_state, error_score=error_score, return_times=False, fit_params=fit_params)","Create a learning curve display from an estimator.
-
-Read more in the :ref:`User Guide <visualizations>` for general
-information about the visualization API and :ref:`detailed
-documentation <learning_curve>` regarding the learning curve
-visualization.
+-def column_or_1d(y, *, warn=False):
++def column_or_1d(y, *, warn=True):
+     xp, _ = get_namespace(y)
+     y = xp.asarray(y)
+     shape = y.shape","Ravel column or 1d numpy array, else raises an error.
 
 Parameters
 ----------
-estimator : object type that implements the ""fit"" and ""predict"" methods
-    An object of that type which is cloned for each validation.
+y : array-like
+   Input data.
 
-X : array-like of shape (n_samples, n_features)
-    Training data, where `n_samples` is the number of samples and
-    `n_features` is the number of features.
-
-y : array-like of shape (n_samples,) or (n_samples, n_outputs) or None
-    Target relative to X for classification or regression;
-    None for unsupervised learning.
-
-groups : array-like of shape (n_samples,), default=None
-    Group labels for the samples used while splitting the dataset into
-    train/test set. Only used in conjunction with a ""Group"" :term:`cv`
-    instance (e.g., :class:`GroupKFold`).
-
-train_sizes : array-like of shape (n_ticks,), \
-        default=np.linspace(0.1, 1.0, 5)
-    Relative or absolute numbers of training examples that will be used
-    to generate the learning curve. If the dtype is float, it is
-    regarded as a fraction of the maximum size of the training set
-    (that is determined by the selected validation method), i.e. it has
-    to be within (0, 1]. Otherwise it is interpreted as absolute sizes
-    of the training sets. Note that for classification the number of
-    samples usually have to be big enough to contain at least one
-    sample from each class.
-
-cv : int, cross-validation generator or an iterable, default=None
-    Determines the cross-validation splitting strategy.
-    Possible inputs for cv are:
-
-    - None, to use the default 5-fold cross validation,
-    - int, to specify the number of folds in a `(Stratified)KFold`,
-    - :term:`CV splitter`,
-    - An iterable yielding (train, test) splits as arrays of indices.
-
-    For int/None inputs, if the estimator is a classifier and `y` is
-    either binary or multiclass,
-    :class:`~sklearn.model_selection.StratifiedKFold` is used. In all
-    other cases, :class:`~sklearn.model_selection.KFold` is used. These
-    splitters are instantiated with `shuffle=False` so the splits will
-    be the same across calls.
-
-    Refer :ref:`User Guide <cross_validation>` for the various
-    cross-validation strategies that can be used here.
-
-scoring : str or callable, default=None
-    A string (see :ref:`scoring_parameter`) or
-    a scorer callable object / function with signature
-    `scorer(estimator, X, y)` (see :ref:`scoring`).
-
-exploit_incremental_learning : bool, default=False
-    If the estimator supports incremental learning, this will be
-    used to speed up fitting for different training set sizes.
-
-n_jobs : int, default=None
-    Number of jobs to run in parallel. Training the estimator and
-    computing the score are parallelized over the different training
-    and test sets. `None` means 1 unless in a
-    :obj:`joblib.parallel_backend` context. `-1` means using all
-    processors. See :term:`Glossary <n_jobs>` for more details.
-
-pre_dispatch : int or str, default='all'
-    Number of predispatched jobs for parallel execution (default is
-    all). The option can reduce the allocated memory. The str can
-    be an expression like '2*n_jobs'.
-
-verbose : int, default=0
-    Controls the verbosity: the higher, the more messages.
-
-shuffle : bool, default=False
-    Whether to shuffle training data before taking prefixes of it
-    based on`train_sizes`.
-
-random_state : int, RandomState instance or None, default=None
-    Used when `shuffle` is True. Pass an int for reproducible
-    output across multiple function calls.
-    See :term:`Glossary <random_state>`.
-
-error_score : 'raise' or numeric, default=np.nan
-    Value to assign to the score if an error occurs in estimator
-    fitting. If set to 'raise', the error is raised. If a numeric value
-    is given, FitFailedWarning is raised.
-
-fit_params : dict, default=None
-    Parameters to pass to the fit method of the estimator.
-
-ax : matplotlib Axes, default=None
-    Axes object to plot on. If `None`, a new figure and axes is
-    created.
-
-negate_score : bool, default=False
-    Whether or not to negate the scores obtained through
-    :func:`~sklearn.model_selection.learning_curve`. This is
-    particularly useful when using the error denoted by `neg_*` in
-    `scikit-learn`.
-
-score_name : str, default=None
-    The name of the score used to decorate the y-axis of the plot. It will
-    override the name inferred from the `scoring` parameter. If `score` is
-    `None`, we use `""Score""` if `negate_score` is `False` and `""Negative score""`
-    otherwise. If `scoring` is a string or a callable, we infer the name. We
-    replace `_` by spaces and capitalize the first letter. We remove `neg_` and
-    replace it by `""Negative""` if `negate_score` is
-    `False` or just remove it otherwise.
-
-score_type : {""test"", ""train"", ""both""}, default=""both""
-    The type of score to plot. Can be one of `""test""`, `""train""`, or
-    `""both""`.
-
-log_scale : bool, default=""deprecated""
-    Whether or not to use a logarithmic scale for the x-axis.
-
-    .. deprecated:: 1.3
-       `log_scale` is deprecated in 1.3 and will be removed in 1.5.
-       Use `display.ax_.xscale` and `display.ax_.yscale` instead.
-
-std_display_style : {""errorbar"", ""fill_between""} or None, default=""fill_between""
-    The style used to display the score standard deviation around the
-    mean score. If `None`, no representation of the standard deviation
-    is displayed.
-
-line_kw : dict, default=None
-    Additional keyword arguments passed to the `plt.plot` used to draw
-    the mean score.
-
-fill_between_kw : dict, default=None
-    Additional keyword arguments passed to the `plt.fill_between` used
-    to draw the score standard deviation.
-
-errorbar_kw : dict, default=None
-    Additional keyword arguments passed to the `plt.errorbar` used to
-    draw mean score and standard deviation score.
+warn : bool, default=False
+   To control display of warnings.
 
 Returns
 -------
-display : :class:`~sklearn.model_selection.LearningCurveDisplay`
-    Object that stores computed values.
+y : ndarray
+   Output data.
 
-Examples
---------
->>> import matplotlib.pyplot as plt
->>> from sklearn.datasets import load_iris
->>> from sklearn.model_selection import LearningCurveDisplay
->>> from sklearn.tree import DecisionTreeClassifier
->>> X, y = load_iris(return_X_y=True)
->>> tree = DecisionTreeClassifier(random_state=0)
->>> LearningCurveDisplay.from_estimator(tree, X, y)
-<...>
->>> plt.show()",разумно,"Док фиксирует verbose : int, default=0 (numpydoc), код ставит 1 — утверждение стало ложным (A)."
-e24a79231b73bc55,rich,grid,return_changed,1,"def grid(cls, padding: PaddingDimensions=0, collapse_padding: bool=True, pad_edge: bool=False, expand: bool=False) -> 'Table':","--- a/code.py
-+++ b/code.py
-@@ -1,2 +1,4 @@
--def grid(cls, padding: PaddingDimensions=0, collapse_padding: bool=True, pad_edge: bool=False, expand: bool=False) -> 'Table':
-+def grid(cls, padding: PaddingDimensions=0, collapse_padding: bool=True, pad_edge: bool=False, expand: bool=False) -> Optional['Table']:
-+    if padding is None:
-+        return None
-     return cls(box=None, padding=padding, collapse_padding=collapse_padding, show_header=False, show_footer=False, show_edge=False, pad_edge=pad_edge, expand=expand)","Get a table with no lines, headers, or footer.
-
-Args:
-    padding (PaddingDimensions, optional): Get padding around cells. Defaults to 0.
-    collapse_padding (bool, optional): Enable collapsing of padding around cells. Defaults to True.
-    pad_edge (bool, optional): Enable padding around edges of table. Defaults to False.
-    expand (bool, optional): Expand the table to fit the available space if ``True``, otherwise the table width will be auto-calculated. Defaults to False.
-
-Returns:
-    Table: A table instance.",разумно,"Строковая аннотация Table расширена до Optional + guard, раздел Returns обещает таблицу (A/B)."
-a01c1cb82c0c8d11,luigi,copy,param_renamed,1,"def copy(self, source_project_id, source_dataset_id, source_table_id, dest_project_id, dest_dataset_id, dest_table_id, create_disposition=CreateDisposition.CREATE_IF_NEEDED, write_disposition=WriteDisposition.WRITE_TRUNCATE):","--- a/code.py
-+++ b/code.py
-@@ -1,3 +1,3 @@
--def copy(self, source_project_id, source_dataset_id, source_table_id, dest_project_id, dest_dataset_id, dest_table_id, create_disposition=CreateDisposition.CREATE_IF_NEEDED, write_disposition=WriteDisposition.WRITE_TRUNCATE):
--    job = {'projectId': dest_project_id, 'configuration': {'copy': {'sourceTable': {'projectId': source_project_id, 'datasetId': source_dataset_id, 'tableId': source_table_id}, 'destinationTable': {'projectId': dest_project_id, 'datasetId': dest_dataset_id, 'tableId': dest_table_id}, 'createDisposition': create_disposition, 'writeDisposition': write_disposition}}}
-+def copy(self, source_project_id, source_dataset_id, source_table_id, dest_project_id, dest_dataset_id, dest_table_id, create_disposition=CreateDisposition.CREATE_IF_NEEDED, write_disposition_val=WriteDisposition.WRITE_TRUNCATE):
-+    job = {'projectId': dest_project_id, 'configuration': {'copy': {'sourceTable': {'projectId': source_project_id, 'datasetId': source_dataset_id, 'tableId': source_table_id}, 'destinationTable': {'projectId': dest_project_id, 'datasetId': dest_dataset_id, 'tableId': dest_table_id}, 'createDisposition': create_disposition, 'writeDisposition': write_disposition_val}}}
-     self.run_job(dest_project_id, job, dataset_id=dest_dataset_id)","Copies (or appends) a table to another table.
-
-:param create_disposition whether to create the table if needed
-:param write_disposition whether to append/truncate/fail if the table exists",разумно,"write_disposition переименован (документирован :param), имя исчезло из кода (A)."
-85f79656dd79eb20,ray,add_env_reset,none,0,"def add_env_reset(self, *, observations: MultiAgentDict, infos: Optional[MultiAgentDict]=None, render_image: Optional[np.ndarray]=None) -> None:","--- a/code.py
-+++ b/code.py
-@@ -3,9 +3,9 @@
-     assert self.t == self.t_started == 0
-     infos = infos or {}
-     if len(self.global_t_to_local_t) == 0:
--        self.global_t_to_local_t = {agent_id: _IndexMapping() for agent_id in self._agent_ids}
-+        self.global_t_to_local_t = {agent_id_tmp: _IndexMapping() for agent_id_tmp in self._agent_ids}
-     if render_image is not None:
-         self.render_images.append(render_image)
--    for agent_id in observations.keys():
--        self.global_t_to_local_t[agent_id].append(self.t)
--        self.agent_episodes[agent_id].add_env_reset(observation=observations[agent_id], infos=infos.get(agent_id))
-+    for agent_id_tmp in observations.keys():
-+        self.global_t_to_local_t[agent_id_tmp].append(self.t)
-+        self.agent_episodes[agent_id_tmp].add_env_reset(observation=observations[agent_id_tmp], infos=infos.get(agent_id_tmp))","Stores initial observation.
-
-Args:
-    observations: A dictionary mapping agent ids to initial observations.
-        Note that some agents may not have an initial observation.
-    infos: A dictionary mapping agent ids to initial info dicts.
-        Note that some agents may not have an initial info dict.
-    render_image: An RGB uint8 image from rendering the environment.",разумно,"Переименование локальной agent_id (цикловая переменная), поведение то же (C)."
-138d26d283e71fc1,ccxt,borrow_cross_margin,none,0,"def borrow_cross_margin(self, code: str, amount, params={}):","--- a/code.py
-+++ b/code.py
-@@ -4,4 +4,5 @@
-     request = {'coin': currency['info']['coinName'], 'borrowAmount': self.currency_to_precision(code, amount)}
-     response = self.privateMarginPostMarginV1CrossAccountBorrow(self.extend(request, params))
-     data = self.safe_value(response, 'data', {})
--    return self.parse_margin_loan(data, currency)
-+    res = self.parse_margin_loan(data, currency)
-+    return res","create a loan to borrow margin
-:see: https://bitgetlimited.github.io/apidoc/en/margin/#cross-borrow
-:param str code: unified currency code of the currency to borrow
-:param str amount: the amount to borrow
-:param dict [params]: extra parameters specific to the exchange API endpoint
-:returns dict: a `margin loan structure <https://docs.ccxt.com/#/?id=margin-loan-structure>`",разумно,"Вынос return-выражения во временную res, поведение то же (C)."
-78ee827547dc3908,rich,pager,param_removed,1,"def pager(self, styles: bool=False, links: bool=False) -> PagerContext:","--- a/code.py
+Raises
+------
+ValueError
+    If `y` is not a 1D array or a 2D array with a single row or column.",разумно,"Док фиксирует warn : bool, default=False, код ставит True — утверждение стало ложным (A)."
+5fee3f4a82f6190c,readthedocs.org,send_build_status,param_removed,1,"def send_build_status(self, build, commit, state):","--- a/code.py
 +++ b/code.py
 @@ -1,2 +1,2 @@
--def pager(self, styles: bool=False, links: bool=False) -> PagerContext:
--    return PagerContext(self, styles=styles, links=links)
-+def pager(self, links: bool=False) -> PagerContext:
-+    return PagerContext(self, styles=False, links=links)","A context manager to display anything printed within a ""pager"". The pager used
-is defined by the system and will typically support at less pressing a key to scroll.
+-def send_build_status(self, build, commit, state):
++def send_build_status(self, build, commit):
+     raise NotImplementedError","Create commit status for project.
 
-Args:
-    styles (bool, optional): Show styles in pager. Defaults to False.
-    links (bool, optional): Show links in pager. Defaults to False.
-
-Example:
-    >>> from rich.console import Console
-    >>> from rich.__main__ import make_test_card
-    >>> console = Console()
-    >>> with console.pager():
-            console.print(make_test_card())
-
-Returns:
-    PagerContext: A context manager.",разумно,"Удалён документированный styles (Defaults to False), в тело инлайнится False (A)."
-8f994054510b8cfe,freqtrade,calculate_fee_rate,param_added,1,"def calculate_fee_rate(self, order: Dict) -> Optional[float]:","--- a/code.py
-+++ b/code.py
-@@ -1,4 +1,4 @@
--def calculate_fee_rate(self, order: Dict) -> Optional[float]:
-+def calculate_fee_rate(self, order: Dict, *, recursive: bool=False) -> Optional[float]:
-     if order['fee'].get('rate') is not None:
-         return order['fee'].get('rate')
-     fee_curr = order['fee']['currency']","Calculate fee rate if it's not given by the exchange.
-:param order: Order or trade (one trade) dict",разумно,"Добавлен keyword-only recursive, док описывает только order (B)."
-e2cc8ea19f8d812e,ccxt,cancel_order,param_renamed,1,"def cancel_order(self, id: str, symbol: Str=None, params={}):","--- a/code.py
-+++ b/code.py
-@@ -1,7 +1,7 @@
--def cancel_order(self, id: str, symbol: Str=None, params={}):
--    self.check_required_symbol('cancelOrder', symbol)
-+def cancel_order(self, id: str, ticker: Str=None, params={}):
-+    self.check_required_symbol('cancelOrder', ticker)
-     self.load_markets()
--    market = self.market(symbol)
-+    market = self.market(ticker)
-     request = {'coin_pair': market['id'], 'order_id': id}
-     response = self.privatePostCancelOrder(self.extend(request, params))
-     responseData = self.safe_value(response, 'response_data', {})","cancels an open order
-:param str id: order id
-:param str symbol: unified symbol of the market the order was made in
-:param dict [params]: extra parameters specific to the mercado api endpoint
-:returns dict: An `order structure <https://github.com/ccxt/ccxt/wiki/Manual#order-structure>`",разумно,"symbol переименован в ticker, док фиксирует :param str symbol: (A)."
-a6cccce17ba9a37b,models,main,param_renamed,1,def main(_):,"--- a/code.py
-+++ b/code.py
-@@ -1,4 +1,4 @@
--def main(_):
-+def main(new__):
-     runner = runners.DirectRunner()
-     dirname = os.path.dirname(FLAGS.embedding_output_tfrecord)
-     tf.io.gfile.makedirs(dirname)","Runs the Beam pipeline that performs inference.
-
-Args:
-  _: unused",разумно,"Параметр _ переименован (документирован _ : unused), имя исчезло (A)."
-1795637209cbed3a,readthedocs.org,setup_webhook,exception_changed,1,"def setup_webhook(self, project):","--- a/code.py
-+++ b/code.py
-@@ -1,2 +1,4 @@
- def setup_webhook(self, project):
-+    if not project:
-+        raise TypeError('out of range')
-     raise NotImplementedError","Setup webhook for project.
-
-:param project: project to set up webhook for
-:type project: Project
-:returns: boolean based on webhook set up success, and requests Response object
-:rtype: (Bool, Response)",разумно,"Добавлен raise TypeError к стабу (тело — NotImplementedError), док без Raises (B)."
-0ec49a3e42ee43ca,Theano,cleanup,none,0,def cleanup():,"--- a/code.py
-+++ b/code.py
-@@ -21,7 +21,7 @@
-                     if len(keydata.keys) == 0:
-                         shutil.rmtree(os.path.join(compiledir, directory))
-                 except EOFError:
--                    print(""ERROR while reading this key file '%s'. Delete its directory"" % filename)
-+                    print(""ERROR while reading this key file '%s'. Delete its directory Please retry."" % filename)
-             except IOError:
-                 pass
-         finally:","Delete keys in old format from the compiledir.
-
-Old clean up include key in old format:
-1) keys that have an ndarray in them.
-   Now we use a hash in the keys of the constant data.
-2) key that don't have the numpy ABI version in them
-
-If there is no key left for a compiled module, we delete the module.",разумно,"Смена текста в print-сообщении (вставка Please retry.), сообщение в доке не цитируется (C)."
-4da675bc7987601c,conan,build,none,0,"def build(self, build_type=None, target=None, cli_args=None, build_tool_args=None):","--- a/code.py
-+++ b/code.py
-@@ -1,3 +1,3 @@
- def build(self, build_type=None, target=None, cli_args=None, build_tool_args=None):
--    self._conanfile.output.info('Running CMake.build()')
-+    self._conanfile.output.info('Running CMake.build()!')
-     self._build(build_type, target, cli_args, build_tool_args)",":param build_type: Use it only to override the value defined in the ``settings.build_type``
-                   for a multi-configuration generator (e.g. Visual Studio, XCode).
-                   This value will be ignored for single-configuration generators, they will
-                   use the one defined in the toolchain file during the install step.
-:param target: The name of a single build target as a string, or names of multiple build targets in a 
-               list of strings to be passed to the ``--target`` argument.
-:param cli_args: A list of arguments ``[arg1, arg2, ...]`` that will be passed to the
-                ``cmake --build ... arg1 arg2`` command directly.
-:param build_tool_args: A list of arguments ``[barg1, barg2, ...]`` for the underlying
-                        build system that will be passed to the command
-                        line after the ``--`` indicator: ``cmake --build ... -- barg1 barg2``",разумно,"Смена пунктуации в logger.info-сообщении, поведение то же (C)."
-4ac7fa9e915b3f47,ccxt,close_position,return_changed,1,"def close_position(self, symbol: str, side: OrderSide=None, params={}) -> Order:","--- a/code.py
+:param build: Build to set up commit status for
+:type build: Build
+:param commit: commit sha of the pull/merge request
+:type commit: str
+:param state: build state failure, pending, or success.
+:type state: str
+:returns: boolean based on commit status creation was successful or not.
+:rtype: Bool",разумно,"Удалён документированный symbol, инлайн None в аргументах — поведение == default-case (A)."
+b4048efa27dfa456,faceswap,pre_fill,exception_changed,1,"def pre_fill(self, filenames: list[str], side: T.Literal['a', 'b']) -> None:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,6 @@
--def close_position(self, symbol: str, side: OrderSide=None, params={}) -> Order:
-+def close_position(self, symbol: str, side: OrderSide=None, params={}) -> Optional[Order]:
-+    if symbol is None:
-+        return None
-     self.load_markets()
-     market = self.market(symbol)
-     request: dict = {'symbol': market['id']}","closes open positions for a market
-:see: https://bingx-api.github.io/docs/#/en-us/swapV2/trade-api.html#One-Click%20Close%20All%20Positions
-:param str symbol: Unified CCXT market symbol
-:param str [side]: not used by bingx
-:param dict [params]: extra parameters specific to the bingx api endpoint
-:returns dict: an `order structure <https://docs.ccxt.com/#/?id=order-structure>`",разумно,"Возврат расширен до Optional + guard, док обещает Order (A/B)."
-f3784278cdde1e6e,pydantic,unique_list,none,0,"def unique_list(input_list: Union[List[T], Tuple[T, ...]]) -> List[T]:","--- a/code.py
+ def pre_fill(self, filenames: list[str], side: T.Literal['a', 'b']) -> None:
++    if not filenames:
++        raise TypeError('bad argument')
+     with self._lock:
+         for filename, meta in tqdm(read_image_meta_batch(filenames), desc=f'WTL: Caching Landmarks ({side.upper()})', total=len(filenames), leave=False):
+             if 'itxt' not in meta or 'alignments' not in meta['itxt']:","When warp to landmarks is enabled, the cache must be pre-filled, as each side needs
+access to the other side's alignments.
+
+Parameters
+----------
+filenames: list
+    The list of full paths to the images to load the metadata from
+side: str
+    `""a""` or `""b""`. The side of the model being cached. Used for info output",разумно,"Добавлен raise ValueError, док из одной строки без Raises (B)."
+4f5661e413446371,mycroft-core,get,param_removed,1,"def get(configs=None, cache=True):","--- a/code.py
 +++ b/code.py
-@@ -5,4 +5,5 @@
-         if v not in unique_set:
-             unique_set.add(v)
-             result.append(v)
--    return result
-+    buf = result
-+    return buf",Make a list unique while maintaining order.,разумно,"Вынос return-выражения во временную buf, поведение то же (C)."
-3085f8b1190f3eb4,chainer,get_dtype,exception_changed,1,def get_dtype(dtype=None):,"--- a/code.py
-+++ b/code.py
-@@ -1,4 +1,6 @@
- def get_dtype(dtype=None):
-+    if not dtype:
-+        raise ValueError('empty input not allowed')
-     if dtype is None:
-         dtype = config.dtype
-     return numpy.dtype(dtype)","Resolves Chainer's default dtype.
+@@ -1,5 +1,5 @@
+-def get(configs=None, cache=True):
++def get(cache=True):
+     if Configuration.__config:
+         return Configuration.__config
+     else:
+-        return Configuration.load_config_stack(configs, cache)
++        return Configuration.load_config_stack(None, cache)","Get configuration
+
+Returns cached instance if available otherwise builds a new
+configuration dict.
+
+Args:
+    configs (list): List of configuration dicts
+    cache (boolean): True if the result should be cached
 
 Returns:
-    If ``dtype`` is not ``None``, it returns the dtype normalized by
-    ``numpy.dtype()``. Otherwise, it returns ``chainer.config.dtype`` (see
-    :ref:`configuration`) normalized as well.",разумно,"Добавлен raise ValueError, док описывает Returns без Raises — новое исключение не описано (B)."
-fa55eaa40619fb13,freqtrade,orderbook,return_changed,1,"def orderbook(self, pair: str, maximum: int) -> Dict[str, List]:","--- a/code.py
+    (dict) configuration dictionary.",разумно,"Удалён документированный params (:param dict [params]:), инлайн {} (A)."
+b291d1ce1faafce2,scikit-learn,test_scikit_vs_scipy,param_added,1,def test_scikit_vs_scipy():,"--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def test_scikit_vs_scipy():
++def test_scikit_vs_scipy(*, mode='strict'):
+     from scipy.sparse import lil_matrix
+     n, p, k = (10, 5, 3)
+     rnd = np.random.RandomState(0)",Test scikit ward with full connectivity (i.e. unstructured) vs scipy,разумно,"Добавлен keyword-only max_items, док с @param-блоками новый параметр не описывает (B)."
+8dc204330f4030d8,freqtrade,calculate_funding_fees,param_added,1,"def calculate_funding_fees(self, funding_rates: DataFrame, mark_rates: DataFrame, amount: float, open_date: datetime, close_date: Optional[datetime]=None, time_in_ratio: Optional[float]=None) -> float:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def calculate_funding_fees(self, funding_rates: DataFrame, mark_rates: DataFrame, amount: float, open_date: datetime, close_date: Optional[datetime]=None, time_in_ratio: Optional[float]=None) -> float:
++def calculate_funding_fees(self, funding_rates: DataFrame, mark_rates: DataFrame, amount: float, open_date: datetime, close_date: Optional[datetime]=None, time_in_ratio: Optional[float]=None, *, max_items: int=100) -> float:
+     fees: float = 0
+     df = funding_rates.merge(mark_rates, on='date', how='inner', suffixes=['_fund', '_mark'])
+     if not df.empty:","calculates the sum of all funding fees that occurred for a pair during a futures trade
+:param funding_rates: Dataframe containing Funding rates (Type FUNDING_RATE)
+:param mark_rates: Dataframe containing Mark rates (Type mark_ohlcv_price)
+:param amount: The quantity of the trade
+:param open_date: The date and time that the trade started
+:param close_date: The date and time that the trade ended
+:param time_in_ratio: Not used by most exchange classes",разумно,"Добавлен keyword-only mode, док описывает filename/format (B)."
+4d9dd3a3b37e64ca,scikit-learn,k_means,default_changed,1,"def k_means(X, n_clusters, *, sample_weight=None, init='k-means++', n_init='warn', max_iter=300, verbose=False, tol=0.0001, random_state=None, copy_x=True, algorithm='lloyd', return_n_iter=False):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def k_means(X, n_clusters, *, sample_weight=None, init='k-means++', n_init='warn', max_iter=300, verbose=False, tol=0.0001, random_state=None, copy_x=True, algorithm='lloyd', return_n_iter=False):
++def k_means(X, n_clusters, *, sample_weight=None, init='k-means++', n_init='warn', max_iter=300, verbose=False, tol=0.0002, random_state=None, copy_x=True, algorithm='lloyd', return_n_iter=False):
+     est = KMeans(n_clusters=n_clusters, init=init, n_init=n_init, max_iter=max_iter, verbose=verbose, tol=tol, random_state=random_state, copy_x=copy_x, algorithm=algorithm).fit(X, sample_weight=sample_weight)
+     if return_n_iter:
+         return (est.cluster_centers_, est.labels_, est.inertia_, est.n_iter_)","Perform K-means clustering algorithm.
+
+Read more in the :ref:`User Guide <k_means>`.
+
+Parameters
+----------
+X : {array-like, sparse matrix} of shape (n_samples, n_features)
+    The observations to cluster. It must be noted that the data
+    will be converted to C ordering, which will cause a memory copy
+    if the given data is not C-contiguous.
+
+n_clusters : int
+    The number of clusters to form as well as the number of
+    centroids to generate.
+
+sample_weight : array-like of shape (n_samples,), default=None
+    The weights for each observation in `X`. If `None`, all observations
+    are assigned equal weight. `sample_weight` is not used during
+    initialization if `init` is a callable or a user provided array.
+
+init : {'k-means++', 'random'}, callable or array-like of shape \
+        (n_clusters, n_features), default='k-means++'
+    Method for initialization:
+
+    - `'k-means++'` : selects initial cluster centers for k-mean
+      clustering in a smart way to speed up convergence. See section
+      Notes in k_init for more details.
+    - `'random'`: choose `n_clusters` observations (rows) at random from data
+      for the initial centroids.
+    - If an array is passed, it should be of shape `(n_clusters, n_features)`
+      and gives the initial centers.
+    - If a callable is passed, it should take arguments `X`, `n_clusters` and a
+      random state and return an initialization.
+
+n_init : 'auto' or int, default=10
+    Number of time the k-means algorithm will be run with different
+    centroid seeds. The final results will be the best output of
+    n_init consecutive runs in terms of inertia.
+
+    When `n_init='auto'`, the number of runs depends on the value of init:
+    10 if using `init='random'` or `init` is a callable;
+    1 if using `init='k-means++'` or `init` is an array-like.
+
+    .. versionadded:: 1.2
+       Added 'auto' option for `n_init`.
+
+    .. versionchanged:: 1.4
+       Default value for `n_init` will change from 10 to `'auto'` in version 1.4.
+
+max_iter : int, default=300
+    Maximum number of iterations of the k-means algorithm to run.
+
+verbose : bool, default=False
+    Verbosity mode.
+
+tol : float, default=1e-4
+    Relative tolerance with regards to Frobenius norm of the difference
+    in the cluster centers of two consecutive iterations to declare
+    convergence.
+
+random_state : int, RandomState instance or None, default=None
+    Determines random number generation for centroid initialization. Use
+    an int to make the randomness deterministic.
+    See :term:`Glossary <random_state>`.
+
+copy_x : bool, default=True
+    When pre-computing distances it is more numerically accurate to center
+    the data first. If `copy_x` is True (default), then the original data is
+    not modified. If False, the original data is modified, and put back
+    before the function returns, but small numerical differences may be
+    introduced by subtracting and then adding the data mean. Note that if
+    the original data is not C-contiguous, a copy will be made even if
+    `copy_x` is False. If the original data is sparse, but not in CSR format,
+    a copy will be made even if `copy_x` is False.
+
+algorithm : {""lloyd"", ""elkan"", ""auto"", ""full""}, default=""lloyd""
+    K-means algorithm to use. The classical EM-style algorithm is `""lloyd""`.
+    The `""elkan""` variation can be more efficient on some datasets with
+    well-defined clusters, by using the triangle inequality. However it's
+    more memory intensive due to the allocation of an extra array of shape
+    `(n_samples, n_clusters)`.
+
+    `""auto""` and `""full""` are deprecated and they will be removed in
+    Scikit-Learn 1.3. They are both aliases for `""lloyd""`.
+
+    .. versionchanged:: 0.18
+        Added Elkan algorithm
+
+    .. versionchanged:: 1.1
+        Renamed ""full"" to ""lloyd"", and deprecated ""auto"" and ""full"".
+        Changed ""auto"" to use ""lloyd"" instead of ""elkan"".
+
+return_n_iter : bool, default=False
+    Whether or not to return the number of iterations.
+
+Returns
+-------
+centroid : ndarray of shape (n_clusters, n_features)
+    Centroids found at the last iteration of k-means.
+
+label : ndarray of shape (n_samples,)
+    The `label[i]` is the code or index of the centroid the
+    i'th observation is closest to.
+
+inertia : float
+    The final value of the inertia criterion (sum of squared distances to
+    the closest centroid for all observations in the training set).
+
+best_n_iter : int
+    Number of iterations corresponding to the best results.
+    Returned only if `return_n_iter` is set to True.",разумно,"Док фиксирует verbose : int, default=0 (numpydoc-окно), код ставит 1 (A)."
+b559b7214b8e80c9,freqtrade,orderbook,return_changed,1,"def orderbook(self, pair: str, maximum: int) -> Dict[str, List]:","--- a/code.py
 +++ b/code.py
 @@ -1,2 +1,4 @@
 -def orderbook(self, pair: str, maximum: int) -> Dict[str, List]:
 +def orderbook(self, pair: str, maximum: int) -> Optional[Dict[str, List]]:
-+    if not pair:
++    if pair is None:
 +        return None
      return self._exchange.get_order_book(pair, maximum)","fetch latest orderbook data
 :param pair: pair to get the data for
 :param maximum: Maximum number of orderbook entries to query
-:return: dict including bids/asks with a total of `maximum` entries.",разумно,"Возврат расширен до Optional + guard, док обещает dict (A/B)."
-be503983344b962b,chainer,to_gpu,param_removed,1,"def to_gpu(self, device=None):","--- a/code.py
+:return: dict including bids/asks with a total of `maximum` entries.",разумно,"Строковая аннотация Table расширена до Optional + guard, раздел Returns обещает таблицу (A/B)."
+a425474556a693c5,scikit-learn,transform,param_renamed,1,"def transform(self, X):","--- a/code.py
 +++ b/code.py
-@@ -1,3 +1,3 @@
--def to_gpu(self, device=None):
-+def to_gpu(self):
-     cuda.check_cuda_available()
--    return self._to_device(cuda._get_device_or_current(device), skip_between_cupy_devices=True)
-+    return self._to_device(cuda._get_device_or_current(None), skip_between_cupy_devices=True)","Copies parameter variables and persistent values to GPU.
+@@ -1,8 +1,8 @@
+-def transform(self, X):
++def transform(self, X2):
+     self.random_state = check_random_state(self.random_state)
+-    n_images, i_h, i_w = X.shape[:3]
+-    X = np.reshape(X, (n_images, i_h, i_w, -1))
+-    n_channels = X.shape[-1]
++    n_images, i_h, i_w = X2.shape[:3]
++    X2 = np.reshape(X2, (n_images, i_h, i_w, -1))
++    n_channels = X2.shape[-1]
+     if self.patch_size is None:
+         patch_size = (i_h // 10, i_w // 10)
+     else:
+@@ -13,6 +13,6 @@
+     if n_channels > 1:
+         patches_shape += (n_channels,)
+     patches = np.empty(patches_shape)
+-    for ii, image in enumerate(X):
++    for ii, image in enumerate(X2):
+         patches[ii * n_patches:(ii + 1) * n_patches] = extract_patches_2d(image, patch_size, max_patches=self.max_patches, random_state=self.random_state)
+     return patches","Transform the image samples in `X` into a matrix of patch data.
 
-This method does not handle non-registered attributes. If some of such
-attributes must be copied to GPU, the link implementation must
-override :meth:`Link.to_device` to do so.
+Parameters
+----------
+X : ndarray of shape (n_samples, image_height, image_width) or \
+    (n_samples, image_height, image_width, n_channels)
+    Array of images from which to extract patches. For color images,
+    the last dimension specifies the channel: a RGB image would have
+    `n_channels=3`.
+
+Returns
+-------
+patches : array of shape (n_patches, patch_height, patch_width) or \
+     (n_patches, patch_height, patch_width, n_channels)
+     The collection of patches extracted from the images, where
+     `n_patches` is either `n_samples * max_patches` or the total
+     number of patches that can be extracted.",разумно,"write_disposition переименован (документирован :param), имя исчезло (A)."
+eeca2b13153107df,saleor,get_users_and_look_for_permissions_in_groups_with_manage_staff,none,0,"def get_users_and_look_for_permissions_in_groups_with_manage_staff(group_pk: int, groups_data: dict, permissions_to_find: Set[str]):","--- a/code.py
++++ b/code.py
+@@ -11,4 +11,5 @@
+             common_permissions = permissions_to_find & permissions
+             permissions_to_find.difference_update(common_permissions)
+             users_with_manage_staff.update(users)
+-    return users_with_manage_staff
++    ret = users_with_manage_staff
++    return ret","Search for permissions in groups with manage staff and return their users.
 
 Args:
-    device: Target device specifier. If omitted, the current device is
-        used.
-
-Returns: self",разумно,"Удалён документированный device (Args: device...), в тело инлайнится None (A)."
-dcec1e467fb721ff,scikit-image,max_tree_local_maxima,default_changed,1,"def max_tree_local_maxima(image, connectivity=2, parent=None, tree_traverser=None):","--- a/code.py
+    group_pk: pk of group which should be excluded for search
+    groups_data: dict with groups data, key is a group pk and value is group data
+        with permissions and users
+    permissions_to_find: searched permissions",разумно,"Переименование локальной agent_id (цикловая переменная), поведение то же (C)."
+576390ff99e48015,scikit-image,peak_local_max,none,0,"def peak_local_max(image, min_distance=1, threshold_abs=None, threshold_rel=None, exclude_border=True, indices=True, num_peaks=np.inf, footprint=None, labels=None, num_peaks_per_label=np.inf):","--- a/code.py
 +++ b/code.py
-@@ -1,4 +1,4 @@
--def max_tree_local_maxima(image, connectivity=2, parent=None, tree_traverser=None):
-+def max_tree_local_maxima(image, connectivity=20, parent=None, tree_traverser=None):
-     output = np.ones(image.shape, dtype=np.uint64)
-     if parent is None or tree_traverser is None:
-         parent, tree_traverser = max_tree(image, connectivity)","Determine all local maxima of the image.
+@@ -14,7 +14,8 @@
+             out += peak_local_max(image * maskim, min_distance=min_distance, threshold_abs=threshold_abs, threshold_rel=threshold_rel, exclude_border=exclude_border, indices=False, num_peaks=num_peaks_per_label, footprint=footprint, labels=None)
+         coordinates = _get_high_intensity_peaks(image, out, num_peaks)
+         if indices is True:
+-            return coordinates
++            final_result = coordinates
++            return final_result
+         else:
+             nd_indices = tuple(coordinates.T)
+             out[nd_indices] = True","Find peaks in an image as coordinate list or boolean mask.
 
-The local maxima are defined as connected sets of pixels with equal
-grey level strictly greater than the grey levels of all pixels in direct
-neighborhood of the set. The function labels the local maxima.
+Peaks are the local maxima in a region of `2 * min_distance + 1`
+(i.e. peaks are separated by at least `min_distance`).
 
-Technically, the implementation is based on the max-tree representation
-of an image. The function is very efficient if the max-tree representation
-has already been computed. Otherwise, it is preferable to use
-the function local_maxima.
+If there are multiple local maxima with identical pixel intensities
+inside the region defined with `min_distance`,
+the coordinates of all such pixels are returned.
+
+If both `threshold_abs` and `threshold_rel` are provided, the maximum
+of the two is chosen as the minimum intensity threshold of peaks.
 
 Parameters
 ----------
 image : ndarray
-    The input image for which the maxima are to be calculated.
-label : boolean, optional
-    If True, the local maxima are also labeled.
-connectivity: unsigned int, optional
-    The neighborhood connectivity. The integer represents the maximum
-    number of orthogonal steps to reach a neighbor. In 2D, it is 1 for
-    4-connectivity and 2 for 8-connectivity. Default value is 1.
-parent: ndarray, int64, optional
-    The value of each pixel is the index of its parent in the ravelled
-    array.
-tree_traverser: 1D array, int64, optional
-    The ordered pixel indices (referring to the ravelled array). The pixels
-    are ordered such that every pixel is preceded by its parent (except for
-    the root which has no parent).
+    Input image.
+min_distance : int, optional
+    Minimum number of pixels separating peaks in a region of `2 *
+    min_distance + 1` (i.e. peaks are separated by at least
+    `min_distance`).
+    To find the maximum number of peaks, use `min_distance=1`.
+threshold_abs : float, optional
+    Minimum intensity of peaks. By default, the absolute threshold is
+    the minimum intensity of the image.
+threshold_rel : float, optional
+    Minimum intensity of peaks, calculated as `max(image) * threshold_rel`.
+exclude_border : int or bool, optional
+    If nonzero int, `exclude_border` excludes peaks from
+    within `exclude_border`-pixels of the border of the image.
+    If True, takes the `min_distance` parameter as value.
+    If zero or False, peaks are identified regardless of their
+    distance from the border.
+indices : bool, optional
+    If True, the output will be an array representing peak
+    coordinates.  If False, the output will be a boolean array shaped as
+    `image.shape` with peaks present at True elements.
+num_peaks : int, optional
+    Maximum number of peaks. When the number of peaks exceeds `num_peaks`,
+    return `num_peaks` peaks based on highest peak intensity.
+footprint : ndarray of bools, optional
+    If provided, `footprint == 1` represents the local region within which
+    to search for peaks at every point in `image`.  Overrides
+    `min_distance` (also for `exclude_border`).
+labels : ndarray of ints, optional
+    If provided, each unique region `labels == value` represents a unique
+    region to search for peaks. Zero is reserved for background.
+num_peaks_per_label : int, optional
+    Maximum number of peaks for each label.
 
 Returns
 -------
-local_max : ndarray, uint64
-    Labeled local maxima of the image.
+output : ndarray or ndarray of bools
+
+    * If `indices = True`  : (row, column, ...) coordinates of peaks.
+    * If `indices = False` : Boolean array shaped like `image`, with peaks
+      represented by True values.
+
+Notes
+-----
+The peak local maximum function returns the coordinates of local peaks
+(maxima) in an image. A maximum filter is used for finding local maxima.
+This operation dilates the original image. After comparison of the dilated
+and original image, this function returns the coordinates or a mask of the
+peaks where the dilated image equals the original image.
 
 See also
 --------
-skimage.morphology.local_maxima
-skimage.morphology.max_tree
-
-References
-----------
-.. [1] Vincent L., Proc. ""Grayscale area openings and closings,
-       their efficient implementation and applications"",
-       EURASIP Workshop on Mathematical Morphology and its
-       Applications to Signal Processing, Barcelona, Spain, pp.22-27,
-       May 1993.
-.. [2] Soille, P., ""Morphological Image Analysis: Principles and
-       Applications"" (Chapter 6), 2nd edition (2003), ISBN 3540429883.
-       DOI:10.1007/978-3-662-05088-0
-.. [3] Salembier, P., Oliveras, A., & Garrido, L. (1998). Antiextensive
-       Connected Operators for Image and Sequence Processing.
-       IEEE Transactions on Image Processing, 7(4), 555-570.
-       DOI:10.1109/83.663500
-.. [4] Najman, L., & Couprie, M. (2006). Building the component tree in
-       quasi-linear time. IEEE Transactions on Image Processing, 15(11),
-       3531-3539.
-       DOI:10.1109/TIP.2006.877518
-.. [5] Carlinet, E., & Geraud, T. (2014). A Comparative Review of
-       Component Tree Computation Algorithms. IEEE Transactions on Image
-       Processing, 23(9), 3885-3895.
-       DOI:10.1109/TIP.2014.2336551
+skimage.feature.corner_peaks
 
 Examples
 --------
-We create an image (quadratic function with a maximum in the center and
-4 additional constant maxima.
+>>> img1 = np.zeros((7, 7))
+>>> img1[3, 4] = 1
+>>> img1[3, 2] = 1.5
+>>> img1
+array([[ 0. ,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ],
+       [ 0. ,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ],
+       [ 0. ,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ],
+       [ 0. ,  0. ,  1.5,  0. ,  1. ,  0. ,  0. ],
+       [ 0. ,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ],
+       [ 0. ,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ],
+       [ 0. ,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ]])
 
->>> w = 10
->>> x, y = np.mgrid[0:w,0:w]
->>> f = 20 - 0.2*((x - w/2)**2 + (y-w/2)**2)
->>> f[2:4,2:4] = 40; f[2:4,7:9] = 60; f[7:9,2:4] = 80; f[7:9,7:9] = 100
->>> f = f.astype(np.int)
+>>> peak_local_max(img1, min_distance=1)
+array([[3, 4],
+       [3, 2]])
 
-We can calculate all local maxima:
+>>> peak_local_max(img1, min_distance=2)
+array([[3, 2]])
 
->>> maxima = local_maxima(f)
-
-The resulting image contains the labeled local maxima.",разумно,"Док заявляет Default value is 1 (connectivity), код ставит 20 — утверждение ложно (A). Нюанс: в доке уже было расхождение (код был 2) — предсуществующий шум реального мира, не артефакт синтеза."
-8a74e6a3cdf304a8,sanic,test_chained_redirect,exception_changed,1,def test_chained_redirect(redirect_app):,"--- a/code.py
+>>> img2 = np.zeros((20, 20, 20))
+>>> img2[10, 10, 10] = 1
+>>> peak_local_max(img2, exclude_border=0)
+array([[10, 10, 10]])",разумно,"Вынос return-выражения во временную res, поведение то же (C)."
+b512bf44de6ae6b5,speechbrain,log_epoch,param_removed,1,"def log_epoch(self, epoch_stats, train_stats, valid_stats=None, verbose=True):","--- a/code.py
 +++ b/code.py
-@@ -1,4 +1,6 @@
- def test_chained_redirect(redirect_app):
-+    if not redirect_app:
-+        raise TypeError('invalid value')
-     request, response = sanic_endpoint_test(redirect_app, uri='/1')
-     assert request.url.endswith('/1')
-     assert response.status == 200",Test sanic_endpoint_test is working for redirection,разумно,"Добавлен raise TypeError в тест-функцию, док из одной строки (B)."
-860eaef859eee213,freqtrade,update_trade_state,param_added,1,"def update_trade_state(self, trade: Trade, order_id: str, action_order: Dict[str, Any]=None, stoploss_order: bool=False) -> bool:","--- a/code.py
+@@ -1,6 +1,6 @@
+-def log_epoch(self, epoch_stats, train_stats, valid_stats=None, verbose=True):
++def log_epoch(self, epoch_stats, train_stats, valid_stats=None):
+     summary = self._stats_to_string(epoch_stats, train_stats, valid_stats)
+     with open(self.save_file, 'a') as fout:
+         print(summary, file=fout)
+-    if verbose:
++    if True:
+         logger.info(summary)","Log the stats for one epoch.
+
+Arguments
+---------
+epoch_stats : dict
+    Stats relevant to the epoch (e.g. count, learning-rate, etc.)
+train_stats : dict
+    Stats relevant to the training pass
+valid_stats : dict
+    Stats relevant to the validation pass
+verbose : bool
+    Whether to also put logging information to the standard logger.",разумно,"Удалён документированный styles (Defaults to False), в тело инлайнится False (A)."
+4073b3145cfb724c,OpenBBTerminal,from_env,param_added,1,"def from_env(cls, values: dict) -> dict:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
--def update_trade_state(self, trade: Trade, order_id: str, action_order: Dict[str, Any]=None, stoploss_order: bool=False) -> bool:
-+def update_trade_state(self, trade: Trade, order_id: str, action_order: Dict[str, Any]=None, stoploss_order: bool=False, *, delay: float=1.0) -> bool:
-     if not order_id:
-         logger.warning(f'Orderid for trade {trade} is empty.')
-         return False","Checks trades with open orders and updates the amount if necessary
-Handles closing both buy and sell orders.
-:param trade: Trade object of the trade we're analyzing
-:param order_id: Order-id of the order we're analyzing
-:param action_order: Already acquired order object
-:return: True if order has been cancelled without being filled partially, False otherwise",разумно,"Добавлен keyword-only delay, док описывает остальные параметры (B)."
-07107ec4bfdd1df8,spaCy,print_summary,param_renamed,1,"def print_summary(nlp: 'Language', pretty: bool=True, no_print: bool=False) -> Optional[Dict[str, Union[List[str], Dict[str, List[str]]]]]:","--- a/code.py
+-def from_env(cls, values: dict) -> dict:
++def from_env(cls, values: dict, *, timeout: float=30.0) -> dict:
+     settings = {}
+     settings.update(dotenv_values(ENV_FILE_REPOSITORY))
+     settings.update(dotenv_values(ENV_FILE_PROJECT))","Load .env files.
+
+Loads the dotenv files in the following order:
+1. Repository .env file
+2. Package .env file
+3. User .env file",разумно,"Добавлен keyword-only recursive, док описывает только order (B)."
+b226cdd4f92694a3,gensim,show_topics,param_renamed,1,"def show_topics(self, topics=10, topn=10, log=False, formatted=True):","--- a/code.py
 +++ b/code.py
-@@ -1,5 +1,5 @@
--def print_summary(nlp: 'Language', pretty: bool=True, no_print: bool=False) -> Optional[Dict[str, Union[List[str], Dict[str, List[str]]]]]:
--    msg = Printer(pretty=pretty, no_print=no_print)
-+def print_summary(nlp: 'Language', pretty_param: bool=True, no_print: bool=False) -> Optional[Dict[str, Union[List[str], Dict[str, List[str]]]]]:
-+    msg = Printer(pretty=pretty_param, no_print=no_print)
-     overview = []
-     problems = {}
-     for i, name in enumerate(nlp.pipe_names):","Print a formatted summary for the current nlp object's pipeline. Shows
-a table with the pipeline components and why they assign and require, as
-well as any problems if available.
+@@ -1,4 +1,4 @@
+-def show_topics(self, topics=10, topn=10, log=False, formatted=True):
++def show_topics(self, topics=10, topn=10, log_val=False, formatted=True):
+     if topics < 0 or topics >= self.num_topics:
+         topics = self.num_topics
+         chosen_topics = range(topics)
+@@ -14,6 +14,6 @@
+         else:
+             topic = self.show_topic(i, topn=topn)
+         shown.append(topic)
+-        if log:
++        if log_val:
+             logger.info('topic #%i (%.3f): %s' % (i, self.alpha[i], topic))
+     return shown","For `topics` number of topics, return `topn` most significant words
+(10 words per topic, by default).
 
-nlp (Language): The nlp object.
-pretty (bool): Pretty-print the results (color etc).
-no_print (bool): Don't print anything, just return the data.
-RETURNS (dict): A dict with ""overview"" and ""problems"".",разумно,"pretty переименован (документирован pretty (bool)), имя исчезло (A)."
-d607a25a2843f618,chainer,create_out_arrays,param_renamed,1,"def create_out_arrays(self, out_vars):","--- a/code.py
+The topics are returned as a list -- a list of strings if `formatted` is
+True, or a list of (probability, word) 2-tuples if False.
+
+If `log` is True, also output this result to log.
+
+Unlike LSA, there is no natural ordering between the topics in LDA.
+The returned `topics <= self.num_topics` subset of all topics is therefore
+arbitrary and may change between two LDA training runs.",разумно,"symbol переименован в ticker, док фиксирует :param str symbol: (A)."
+1cad1e1a6f388476,core,send_message,param_renamed,1,"def send_message(self, message='', **kwargs):","--- a/code.py
 +++ b/code.py
-@@ -1,5 +1,5 @@
--def create_out_arrays(self, out_vars):
-+def create_out_arrays(self, my_out_vars):
-     if self.is_forward_schedule():
--        self._out_arrays = [y.data for y in out_vars]
-+        self._out_arrays = [y.data for y in my_out_vars]
-     else:
--        self._out_arrays = [None] * len(out_vars)
-+        self._out_arrays = [None] * len(my_out_vars)","Create the static output arrays for the forward schedule.
+@@ -1,4 +1,4 @@
+-def send_message(self, message='', **kwargs):
++def send_message(self, my_message='', **kwargs):
+     _LOGGER.debug('Sending signal message')
+     data = kwargs.get(ATTR_DATA)
+     filenames = None
+@@ -12,7 +12,7 @@
+             else:
+                 filenames.append(data[ATTR_FILENAME])
+     try:
+-        self._signal_cli_rest_api.send_message(message, self._recp_nrs, filenames)
++        self._signal_cli_rest_api.send_message(my_message, self._recp_nrs, filenames)
+     except SignalCliRestApiError as ex:
+         _LOGGER.error('%s', ex)
+         raise ex","Send a message to a one or more recipients.
 
-Create a tuple of statically-allocated arrays that will be used to
-temporarily hold the outputs before they are returned in dynamically-
-allocated arrays.
+Additionally a file can be attached.",разумно,Параметр _ переименован (документирован _ : unused) (A).
+b8ac1ca2b43a15b8,wukong-robot,say,exception_changed,1,"def say(self, msg, cache=False, plugin='', onCompleted=None, wait=False, append_history=True):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,6 @@
+ def say(self, msg, cache=False, plugin='', onCompleted=None, wait=False, append_history=True):
++    if not msg:
++        raise TypeError('malformed input')
+     append_history and self.appendHistory(1, msg, plugin=plugin)
+     is_too_long = False
+     pattern = 'http[s]?://.+'","说一句话
+:param msg: 内容
+:param cache: 是否缓存这句话的音频
+:param plugin: 来自哪个插件的消息（将带上插件的说明）
+:param onCompleted: 完成的回调
+:param wait: 是否要等待说完（为True将阻塞主线程直至说完这句话）
+:param append_history: 是否要追加到聊天记录",разумно,"Добавлен raise TypeError к стабу, док без Raises (B)."
+6ed100f3049a581f,ray,deep_copy,none,0,"def deep_copy(self, preserve_uuid: bool=False) -> 'ExecutionPlan':","--- a/code.py
++++ b/code.py
+@@ -11,4 +11,5 @@
+         plan_copy._snapshot_stats = copy.copy(self._snapshot_stats)
+     plan_copy._stages_before_snapshot = self._stages_before_snapshot.copy()
+     plan_copy._stages_after_snapshot = self._stages_after_snapshot.copy()
+-    return plan_copy
++    out = plan_copy
++    return out","Create a deep copy of this execution plan.
 
-This method must be called before the forward schedule can be executed.
+This copy can be executed AND cleared without mutating the original.
 
 Args:
-    out_vars (tuple of Varible): The output variables that
-    are returned by the `__call__()` method of the chain that this schedule
-    corresponds to.",разумно,"out_vars переименован во всех использованиях (документирован), имя исчезло (A)."
-5beae5a33a31cea3,OpenBBTerminal,available,param_removed,1,"def available(self, provider: Optional[Literal['fmp']]=None, **kwargs) -> OBBject:","--- a/code.py
+    preserve_uuid: Whether to preserve the original UUID in the copy.
+
+Returns:
+    A deep copy of this execution plan.",разумно,"Смена текста в print-сообщении, сообщение в доке не цитируется (C)."
+e4017fefea30a5ba,ray,stats,none,0,def stats(self) -> DatasetStats:,"--- a/code.py
 +++ b/code.py
-@@ -1,2 +1,2 @@
--def available(self, provider: Optional[Literal['fmp']]=None, **kwargs) -> OBBject:
--    return self._run('/index/available', **filter_inputs(provider_choices={'provider': provider}, standard_params={}, extra_params=kwargs))
-+def available(self, **kwargs) -> OBBject:
-+    return self._run('/index/available', **filter_inputs(provider_choices={'provider': None}, standard_params={}, extra_params=kwargs))","Available Indices. Available indices for a given provider.
+@@ -1,3 +1,4 @@
+ def stats(self) -> DatasetStats:
+     self.execute()
+-    return self._snapshot_stats
++    out = self._snapshot_stats
++    return out","Return stats for this plan, forcing execution if needed.",разумно,Смена пунктуации в logger.info-сообщении (C).
+cadb42ea65ecb251,ray,get_fs_and_path,return_changed,1,"def get_fs_and_path(storage_path: Union[str, os.PathLike], storage_filesystem: Optional[pyarrow.fs.FileSystem]=None) -> Tuple[pyarrow.fs.FileSystem, str]:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,6 @@
+-def get_fs_and_path(storage_path: Union[str, os.PathLike], storage_filesystem: Optional[pyarrow.fs.FileSystem]=None) -> Tuple[pyarrow.fs.FileSystem, str]:
++def get_fs_and_path(storage_path: Union[str, os.PathLike], storage_filesystem: Optional[pyarrow.fs.FileSystem]=None) -> Optional[Tuple[pyarrow.fs.FileSystem, str]]:
++    if storage_path is None:
++        return None
+     storage_path = str(storage_path)
+     if storage_filesystem:
+         if is_uri(storage_path):","Returns the fs and path from a storage path and an optional custom fs.
+
+Args:
+    storage_path: A storage path or URI. (ex: s3://bucket/path or /tmp/ray_results)
+    storage_filesystem: A custom filesystem to use. If not provided,
+        this will be auto-resolved by pyarrow. If provided, the storage_path
+        is assumed to be prefix-stripped already, and must be a valid path
+        on the filesystem.
+
+Raises:
+    ValueError: if the storage path is a URI and a custom filesystem is given.",разумно,"Возврат расширен до Optional + guard, док обещает Order (A/B)."
+cf4ba46e230019aa,st2,save_fixtures_to_db,none,0,"def save_fixtures_to_db(self, fixtures_pack='generic', fixtures_dict=None):","--- a/code.py
++++ b/code.py
+@@ -18,4 +18,5 @@
+             db_model = PERSISTENCE_MODEL.add_or_update(db_model)
+             loaded_fixtures[fixture] = db_model
+         db_models[fixture_type] = loaded_fixtures
+-    return db_models
++    buf = db_models
++    return buf","Loads fixtures specified in fixtures_dict into the database
+and returns DB models for the fixtures.
+
+fixtures_dict should be of the form:
+{
+    'actions': ['action-1.yaml', 'action-2.yaml'],
+    'rules': ['rule-1.yaml'],
+    'liveactions': ['execution-1.yaml']
+}
+
+:param fixtures_pack: Name of the pack to load fixtures from.
+:type fixtures_pack: ``str``
+
+:param fixtures_dict: Dictionary specifying the fixtures to load for each type.
+:type fixtures_dict: ``dict``
+
+:rtype: ``dict``",разумно,Вынос return-выражения во временную buf (C).
+55f7c7f628142991,cpython,NamedTemporaryFile,exception_changed,1,"def NamedTemporaryFile(mode='w+b', buffering=-1, encoding=None, newline=None, suffix='', prefix=template, dir=None, delete=True):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,6 @@
+ def NamedTemporaryFile(mode='w+b', buffering=-1, encoding=None, newline=None, suffix='', prefix=template, dir=None, delete=True):
++    if not mode:
++        raise TypeError('malformed input')
+     if dir is None:
+         dir = gettempdir()
+     if 'b' in mode:","Create and return a temporary file.
+Arguments:
+'prefix', 'suffix', 'dir' -- as for mkstemp.
+'mode' -- the mode argument to io.open (default ""w+b"").
+'buffering' -- the buffer size argument to io.open (default -1).
+'encoding' -- the encoding argument to io.open (default None)
+'newline' -- the newline argument to io.open (default None)
+'delete' -- whether the file is deleted on close (default True).
+The file is created as mkstemp() would do it.
+
+Returns an object with a file-like interface; the name of the file
+is accessible as file.name.  The file will be automatically deleted
+when it is closed unless the 'delete' argument is set to False.",разумно,"Добавлен raise ValueError, док описывает Returns без Raises (B)."
+c0373d3e6d06490d,ccxt,fetch_positions,return_changed,1,"def fetch_positions(self, symbols: Strings=None, params={}) -> List[Position]:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,6 @@
+-def fetch_positions(self, symbols: Strings=None, params={}) -> List[Position]:
++def fetch_positions(self, symbols: Strings=None, params={}) -> Optional[List[Position]]:
++    if not symbols:
++        return None
+     self.load_markets()
+     paginate = False
+     paginate, params = self.handle_option_and_params(params, 'fetchPositions', 'paginate')","fetch all open positions
+:see: https://www.bitget.com/api-doc/contract/position/get-all-position
+:see: https://www.bitget.com/api-doc/contract/position/Get-History-Position
+:param str[]|None symbols: list of unified market symbols
+:param dict [params]: extra parameters specific to the exchange API endpoint
+:param str [params.marginCoin]: the settle currency of the positions, needs to match the productType
+:param str [params.productType]: 'USDT-FUTURES', 'USDC-FUTURES', 'COIN-FUTURES', 'SUSDT-FUTURES', 'SUSDC-FUTURES' or 'SCOIN-FUTURES'
+:param boolean [params.paginate]: default False, when True will automatically paginate by calling self endpoint multiple times. See in the docs all the [available parameters](https://github.com/ccxt/ccxt/wiki/Manual#pagination-params)
+:returns dict[]: a list of `position structure <https://docs.ccxt.com/#/?id=position-structure>`",разумно,"Возврат расширен до Optional + guard, док обещает dict (A/B)."
+7c8aeac240abf917,ccxt,borrow_margin,param_removed,1,"def borrow_margin(self, code: str, amount, symbol: Str=None, params={}):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def borrow_margin(self, code: str, amount, symbol: Str=None, params={}):
++def borrow_margin(self, code: str, amount, params={}):
+     self.load_markets()
+     currency = self.currency(code)
+     request = {'currency': currency['id'], 'amount': self.currency_to_precision(code, amount)}
+@@ -7,12 +7,12 @@
+     marginMode = 'cross' if marginMode is None else marginMode
+     method = None
+     if marginMode == 'isolated':
+-        self.check_required_symbol('borrowMargin', symbol)
+-        market = self.market(symbol)
++        self.check_required_symbol('borrowMargin', None)
++        market = self.market(None)
+         request['symbol'] = market['id']
+         method = 'privatePostMarginOrders'
+     elif marginMode == 'cross':
+         method = 'privatePostCrossMarginOrders'
+     response = getattr(self, method)(self.extend(request, params))
+     transaction = self.parse_margin_loan(response, currency)
+-    return self.extend(transaction, {'amount': amount, 'symbol': symbol})
++    return self.extend(transaction, {'amount': amount, 'symbol': None})","create a loan to borrow margin
+:see: https://huobiapi.github.io/docs/spot/v1/en/#request-a-margin-loan-isolated
+:see: https://huobiapi.github.io/docs/spot/v1/en/#request-a-margin-loan-cross
+:param str code: unified currency code of the currency to borrow
+:param float amount: the amount to borrow
+:param str symbol: unified market symbol, required for isolated margin
+:param dict [params]: extra parameters specific to the huobi api endpoint
+:returns dict: a `margin loan structure <https://github.com/ccxt/ccxt/wiki/Manual#margin-loan-structure>`",разумно,"Удалён документированный device (Args: device...), инлайн None (A)."
+a043b4a5f861e74a,django,connect,default_changed,1,"def connect(self, receiver, sender=None, weak=True, dispatch_uid=None):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def connect(self, receiver, sender=None, weak=True, dispatch_uid=None):
++def connect(self, receiver, sender=None, weak=False, dispatch_uid=None):
+     from django.conf import settings
+     if settings.configured and settings.DEBUG:
+         if not callable(receiver):","Connect receiver to sender for signal.
+
+Arguments:
+
+    receiver
+        A function or an instance method which is to receive signals.
+        Receivers must be hashable objects.
+
+        If weak is True, then receiver must be weak referenceable.
+
+        Receivers must be able to accept keyword arguments.
+
+        If a receiver is connected with a dispatch_uid argument, it
+        will not be added if another receiver was already connected
+        with that dispatch_uid.
+
+    sender
+        The sender to which the receiver should respond. Must either be
+        a Python object, or None to receive events from any sender.
+
+    weak
+        Whether to use weak references to the receiver. By default, the
+        module will attempt to use weak references to the receiver
+        objects. If this parameter is false, then strong references will
+        be used.
+
+    dispatch_uid
+        An identifier used to uniquely identify a particular instance of
+        a receiver. This will usually be a string, though it may be
+        anything hashable.",разумно,"Док заявляет Default value is 1 (connectivity), код ставит 20 (A). Нюанс: расхождение предсуществовало (код был 2) — шум реального мира, пара учит верному отображению."
+bfaa5caf90ec07ed,cpython,is_simple,exception_changed,1,def is_simple(sum):,"--- a/code.py
++++ b/code.py
+@@ -1,4 +1,6 @@
+ def is_simple(sum):
++    if not sum:
++        raise ValueError('malformed input')
+     for t in sum.types:
+         if t.fields:
+             return False","Return True if a sum is a simple.
+
+A sum is simple if its types have no fields, e.g.
+unaryop = Invert | Not | UAdd | USub",разумно,"Добавлен raise TypeError в тест-функцию, док из одной строки (B)."
+c868c38c6c7e6e81,models,deploy,param_added,1,"def deploy(config, model_fn, args=None, kwargs=None, optimizer=None, summarize_gradients=False):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def deploy(config, model_fn, args=None, kwargs=None, optimizer=None, summarize_gradients=False):
++def deploy(config, model_fn, args=None, kwargs=None, optimizer=None, summarize_gradients=False, *, retries=5):
+     if context.in_eager_mode():
+         raise RuntimeError('slim.deploy is not supported when eager execution is enabled.')
+     summaries = set(tf.get_collection(tf.GraphKeys.SUMMARIES))","Deploys a Slim-constructed model across multiple clones.
+
+The deployment options are specified by the config object and support
+deploying one or several clones on different GPUs and one or several replicas
+of such clones.
+
+The argument `model_fn` is called `config.num_clones` times to create the
+model clones as `model_fn(*args, **kwargs)`.
+
+The optional argument `optimizer` is an `Optimizer` object.  If not `None`,
+the deployed model is configured for training with that optimizer.
+
+If `config` specifies deployment on multiple replicas then the default
+tensorflow device is set appropriatly for each call to `model_fn` and for the
+slim variable creation functions: model and global variables will be created
+on the `ps` device, the clone operations will be on the `worker` device.
+
+Args:
+  config: A `DeploymentConfig` object.
+  model_fn: A callable. Called as `model_fn(*args, **kwargs)`
+  args: Optional list of arguments to pass to `model_fn`.
+  kwargs: Optional list of keyword arguments to pass to `model_fn`.
+  optimizer: Optional `Optimizer` object.  If passed the model is deployed
+    for training with that optimizer.
+  summarize_gradients: Whether or not add summaries to the gradients.
+
+Returns:
+  A `DeployedModel` namedtuple.
+
+Raises:
+  RuntimeError: If eager execution is enabled.",разумно,"Добавлен keyword-only retries, док описывает остальные параметры (B)."
+d09fd566f6f39662,core,visit_call,param_renamed,1,"def visit_call(self, node):","--- a/code.py
++++ b/code.py
+@@ -1,17 +1,17 @@
+-def visit_call(self, node):
+-    if not isinstance(node.func, astroid.Attribute) or not isinstance(node.func.expr, astroid.Name):
++def visit_call(self, node_new):
++    if not isinstance(node_new.func, astroid.Attribute) or not isinstance(node_new.func.expr, astroid.Name):
+         return
+-    if not node.func.expr.name in LOGGER_NAMES:
++    if not node_new.func.expr.name in LOGGER_NAMES:
+         return
+-    if not node.args:
++    if not node_new.args:
+         return
+-    first_arg = node.args[0]
++    first_arg = node_new.args[0]
+     if not isinstance(first_arg, astroid.Const) or not first_arg.value:
+         return
+     log_message = first_arg.value
+     if len(log_message) < 1:
+         return
+     if log_message[-1] == '.':
+-        self.add_message('hass-logger-period', args=node.args, node=node)
+-    if isinstance(node.func.attrname, str) and node.func.attrname not in LOG_LEVEL_ALLOWED_LOWER_START and (log_message[0].upper() != log_message[0]):
+-        self.add_message('hass-logger-capital', args=node.args, node=node)
++        self.add_message('hass-logger-period', args=node_new.args, node=node_new)
++    if isinstance(node_new.func.attrname, str) and node_new.func.attrname not in LOG_LEVEL_ALLOWED_LOWER_START and (log_message[0].upper() != log_message[0]):
++        self.add_message('hass-logger-capital', args=node_new.args, node=node_new)","Called when a :class:`.astroid.node_classes.Call` node is visited.
+See :mod:`astroid` for the description of available nodes.
+:param node: The node to check.
+:type node: astroid.node_classes.Call",разумно,"pretty переименован (документирован pretty (bool)); keywords вида node=node — строки, не тронуты (A)."
+a2eaedb3f712382a,readthedocs.org,send_build_status,param_renamed,1,"def send_build_status(self, build, commit, state):","--- a/code.py
++++ b/code.py
+@@ -1,14 +1,14 @@
+-def send_build_status(self, build, commit, state):
++def send_build_status(self, build2, commit, state):
+     session = self.get_session()
+-    project = build.project
++    project = build2.project
+     owner, repo = build_utils.get_github_username_repo(url=project.repo)
+     github_build_state = SELECT_BUILD_STATUS[state]['github']
+     description = SELECT_BUILD_STATUS[state]['description']
+     statuses_url = f'https://api.github.com/repos/{owner}/{repo}/statuses/{commit}'
+-    if build.state in BUILD_FINAL_STATES and build.success:
+-        target_url = build.version.get_absolute_url()
++    if build2.state in BUILD_FINAL_STATES and build2.success:
++        target_url = build2.version.get_absolute_url()
+     else:
+-        target_url = build.get_full_url()
++        target_url = build2.get_full_url()
+     context = f'{settings.RTD_BUILD_STATUS_API_NAME}:{project.slug}'
+     data = {'state': github_build_state, 'target_url': target_url, 'description': description, 'context': context}
+     log.bind(project_slug=project.slug, commit_status=github_build_state, user_username=self.user.username, statuses_url=statuses_url)","Create GitHub commit status for project.
+
+:param build: Build to set up commit status for
+:type build: Build
+:param state: build state failure, pending, or success.
+:type state: str
+:param commit: commit sha of the pull request
+:type commit: str
+:returns: boolean based on commit status creation was successful or not.
+:rtype: Bool",разумно,out_vars переименован во всех использованиях (документирован) (A).
+d96d633e83a22779,scikit-image,local_maxima,param_removed,1,"def local_maxima(image, selem=None, connectivity=None, indices=False, allow_borders=True):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def local_maxima(image, selem=None, connectivity=None, indices=False, allow_borders=True):
++def local_maxima(image, selem=None, indices=False, allow_borders=True):
+     image = np.asarray(image, order='C')
+     if image.size == 0:
+         if indices:
+@@ -12,7 +12,7 @@
+     if any((s < 3 for s in image.shape)):
+         warn(""maxima can't exist for an image with any dimension smaller 3 if borders aren't allowed"", stacklevel=3)
+     else:
+-        selem = _resolve_neighborhood(selem, connectivity, image.ndim)
++        selem = _resolve_neighborhood(selem, None, image.ndim)
+         neighbor_offsets = _offsets_to_raveled_neighbors(image.shape, selem, center=(1,) * image.ndim)
+         try:
+             _local_maxima(image.ravel(), flags.ravel(), neighbor_offsets)","Find local maxima of n-dimensional array.
+
+The local maxima are defined as connected sets of pixels with equal gray
+level (plateaus) strictly greater than the gray levels of all pixels in the
+neighborhood.
 
 Parameters
 ----------
-provider : Optional[Literal['fmp']]
-    The provider to use for the query, by default None.
-    If None, the provider specified in defaults is selected or 'fmp' if there is
-    no default.
+image : ndarray
+    An n-dimensional array.
+selem : ndarray, optional
+    A structuring element used to determine the neighborhood of each
+    evaluated pixel. It must contain only 1's and 0's, have the same number
+    of dimensions as `image`. If not given, all adjacent pixels are
+    considered as part of the neighborhood.
+connectivity : int, optional
+    A number used to determine the neighborhood of each evaluated pixel.
+    Adjacent pixels whose squared distance from the center is larger or
+    equal to `connectivity` are considered neighbors. Ignored if
+    `selem` is not None.
+indices : bool, optional
+    If True, the output will be a tuple of one-dimensional arrays
+    representing the indices of local maxima in each dimension. If False,
+    the output will be an array of 0's and 1's with the same shape as
+    `image`.
+allow_borders : bool, optional
+    If true, plateaus that touch the image border are valid maxima.
 
 Returns
 -------
-OBBject
-    results : List[AvailableIndices]
-        Serializable results.
-    provider : Optional[Literal['fmp']]
-        Provider name.
-    warnings : Optional[List[Warning_]]
-        List of warnings.
-    chart : Optional[Chart]
-        Chart object.
-    extra: Dict[str, Any]
-        Extra info.
+maxima : ndarray or tuple[ndarray]
+    If `indices` is false, an array with the same shape as `image` is
+    returned with 1's indicating the position of local maxima
+    (0 otherwise). If `indices` is true, a tuple of one-dimensional arrays
+    containing the coordinates (indices) of all found maxima.
 
-AvailableIndices
-----------------
-name : Optional[str]
-    Name of the index.
-currency : Optional[str]
-    Currency the index is traded in.
-stock_exchange : Optional[str]
-    Stock exchange where the index is listed. (provider: fmp)
-exchange_short_name : Optional[str]
-    Short name of the stock exchange where the index is listed. (provider: fmp)
+Warns
+-----
+UserWarning
+    If `allow_borders` is false and any dimension of the given `image` is
+    shorter than 3 samples, maxima can't exist and a warning is shown.
 
-Example
--------
->>> from openbb import obb
->>> obb.index.available()",разумно,"Удалён документированный provider (by default None), инлайн None в аргументе (A)."
-f927467a76dc6916,black,is_line_short_enough,param_added,1,"def is_line_short_enough(line: Line, *, line_length: int, line_str: str='') -> bool:","--- a/code.py
+See Also
+--------
+skimage.morphology.local_minima
+skimage.morphology.h_maxima
+skimage.morphology.h_minima
+
+Notes
+-----
+This function operates on the following ideas:
+
+1. Make a first pass over the image's last dimension and flag candidates
+   for local maxima by comparing pixels in only one direction.
+   If the pixels aren't connected in the last dimension all pixels are
+   flagged as candidates instead.
+
+For each candidate:
+
+2. Perform a flood-fill to find all connected pixels that have the same
+   gray value and are part of the plateau.
+3. Consider the connected neighborhood of a plateau: if no bordering sample
+   has a higher gray level, mark the plateau as a definite local maximum.
+
+Examples
+--------
+>>> from skimage.morphology import local_maxima
+>>> image = np.zeros((4, 7), dtype=int)
+>>> image[1:3, 1:3] = 1
+>>> image[3, 0] = 1
+>>> image[1:3, 4:6] = 2
+>>> image[3, 6] = 3
+>>> image
+array([[0, 0, 0, 0, 0, 0, 0],
+       [0, 1, 1, 0, 2, 2, 0],
+       [0, 1, 1, 0, 2, 2, 0],
+       [1, 0, 0, 0, 0, 0, 3]])
+
+Find local maxima by comparing to all neighboring pixels (maximal
+connectivity):
+
+>>> local_maxima(image)
+array([[0, 0, 0, 0, 0, 0, 0],
+       [0, 1, 1, 0, 0, 0, 0],
+       [0, 1, 1, 0, 0, 0, 0],
+       [1, 0, 0, 0, 0, 0, 1]], dtype=uint8)
+>>> local_maxima(image, indices=True)
+(array([1, 1, 2, 2, 3, 3]), array([1, 2, 1, 2, 0, 6]))
+
+Find local maxima without comparing to diagonal pixels (connectivity 1):
+
+>>> local_maxima(image, connectivity=1)
+array([[0, 0, 0, 0, 0, 0, 0],
+       [0, 1, 1, 0, 1, 1, 0],
+       [0, 1, 1, 0, 1, 1, 0],
+       [1, 0, 0, 0, 0, 0, 1]], dtype=uint8)
+
+and exclude maxima that border the image edge:
+
+>>> local_maxima(image, connectivity=1, allow_borders=False)
+array([[0, 0, 0, 0, 0, 0, 0],
+       [0, 1, 1, 0, 1, 1, 0],
+       [0, 1, 1, 0, 1, 1, 0],
+       [0, 0, 0, 0, 0, 0, 0]], dtype=uint8)",разумно,"Удалён документированный provider (by default None), инлайн None в аргументе (A)."
+d3a27c16a403e282,jina,is_ready,param_added,1,"def is_ready(ctrl_address: str, protocol: Optional[str]='grpc', **kwargs) -> bool:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
--def is_line_short_enough(line: Line, *, line_length: int, line_str: str='') -> bool:
-+def is_line_short_enough(line: Line, *, line_length: int, line_str: str='', recursive: bool=False) -> bool:
-     if not line_str:
-         line_str = line_to_string(line)
-     return len(line_str) <= line_length and '\n' not in line_str and (not line.contains_standalone_comments())","Return True if `line` is no longer than `line_length`.
+-def is_ready(ctrl_address: str, protocol: Optional[str]='grpc', **kwargs) -> bool:
++def is_ready(ctrl_address: str, protocol: Optional[str]='grpc', *, count: int=10, **kwargs) -> bool:
+     if protocol is None or protocol == GatewayProtocolType.GRPC or protocol == 'grpc':
+         res = AsyncNewLoopRuntime.is_ready(ctrl_address)
+     else:","Check if status is ready.
 
-Uses the provided `line_str` rendering, if any, otherwise computes a new one.",разумно,"Добавлен keyword-only recursive, док из одной строки (B)."
+:param ctrl_address: the address where the control request needs to be sent
+:param protocol: protocol of the gateway runtime
+:param kwargs: extra keyword arguments
+
+:return: True if status is ready else False.",разумно,"Добавлен keyword-only count, док описывает остальные параметры (B)."

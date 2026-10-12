@@ -3,6 +3,7 @@ from __future__ import annotations
 import ast
 import hashlib
 import random
+import zlib
 from typing import Dict, List, Tuple
 
 import pandas as pd
@@ -21,6 +22,14 @@ from src.synth.mutations import MUTATIONS, NEG_TYPES, POS_TYPES
 def _pair_id(function_hash: str, drift_type: str, diff: str) -> str:
     key = f"{function_hash}:{drift_type}:{diff}"
     return hashlib.sha256(key.encode("utf-8")).hexdigest()[:16]
+
+
+def _attempt_seed(seed: int, idx, mtype: str, draw: int, att: int) -> int:
+    # Детерминированный сид попытки. Встроенный hash() использовать нельзя:
+    # он рандомизируется солью PYTHONHASHSEED при каждом запуске интерпретатора
+    # (VS Code и Kaggle давали разные наборы при том же --seed).
+    salt = zlib.crc32(f"{idx}:{mtype}:{draw}:{att}".encode("utf-8"))
+    return seed + salt
 
 
 # Редкие типы пробуются первыми в каждой функции (вариант 3, без ослабления
@@ -94,7 +103,7 @@ def generate_for_pool(
                 accepted = None
                 for att in range(attempts_per_type):
                     stats["попыток"] += 1
-                    rng = random.Random(seed + hash((idx, mtype, draw, att)) % (2**31))
+                    rng = random.Random(_attempt_seed(seed, idx, mtype, draw, att))
                     try:
                         new_fn = func(fn_no_doc, doc_old, rng)
                     except Exception:  # noqa: BLE001 — мутация не должна ронять драйвер
