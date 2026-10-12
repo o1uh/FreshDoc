@@ -17,6 +17,7 @@
 | 09.10.2026 | FD-03 | CoDocBench (raw jsonl) | 4573 (train: 2300, test: 2273) | Загрузка и аудит формата. Подтверждена вложенная структура version_data (0 - old, 1 - new). |
 | 10.10.2026 | FD-04 | CoDocBench (pairs_codocbench) | 2997 | Успешно обработано 2997 пар (65.5%). Отсев: 1211 (фильтры R1), 365 (код не изменился), 0 (ошибки разбора). В выборке 30 пар 0% ошибок drift_type, доля unknown: 43.3%. Дефект CoDocBench (утечка проекта manim) устранен переносом проекта целиком в test_pool. Тесты пройдены. |
 | 11.10.2026 | FD-07 | Пул функций v1 (functions_pool_v1) | 1474 | Вход train_pool 1476 строк; дедуп по function_hash −2; фильтры R1 −0; неразобранных 0; утечек test-проектов 0. Проектов 91. Критерий ≥1200 выполнен. |
+| 12.10.2026 | FD-08 | Синтетика AST (synth_ast) | 7379 (pos 3804 / neg 3575) | Все 9 мутаций R6 (6 pos + 3 neg), seed 42, cap 30000, баланс ~1:1 (51.6/48.4 после дедупа), pos rare-first, neg с возвращением типов. По типам: none 3575, param_added 1272, exception_changed 1027, param_renamed 857, param_removed 315, return_changed 209, default_changed 124. Проходы ревью: детерминизм (crc32), скоуп-гарды, crash-None с provenance, анти-дубль return, documented-only правила. Ручная проверка 30 пар: 30/30 разумны (100%). Тесты 25/25 + полный прогон 35 passed. Команда: `python scripts/generate_synth_ast.py --seed 42 --max_pairs 30000`. |
 
 ### Итоги осмотра CoDocBench (FD-03)
 - **Хэш коммита источника:** `ee0256da15a07dcf265d5313fe51a269aa7268e0`
@@ -50,6 +51,19 @@
 - **Выход:** `data/interim/functions_pool_v1.parquet` — 1474 строк, 91 проект, колонки `project/src/function_hash`.
 - **Отсев:** дубликаты hash 2, `не_разобралось` 0, `не_прошёл_фильтры` 0, утечек test-проектов 0.
 - **Критерии:** ≥1200 — да (1474); изоляции — да. Команда: `python scripts/build_functions_pool.py`.
+
+### Итоги синтетики AST (FD-08)
+- **Вход:** `data/interim/functions_pool_v1.parquet` (1474 функции, 91 проект, только train_pool).
+- **Выход:** `data/interim/synth_ast.parquet` — 7379 пар (pos 3804 / neg 3575).
+- **Мутации:** все 9 из R6 (pos: param_renamed/added/removed, default/return/exception_changed; neg: rename_local, extract_temp, change_message). 10 стилей имён общие для pos/neg (анти-шорткат).
+- **Порядок проб:** pos — rare-first без повторений (сначала `default_changed`, `return_changed`, затем остальные в случайном порядке); neg — выборка типов с возвращением (несколько пар одного типа с функции). Условия применимости НЕ ослаблялись.
+- **Детерминизм:** сиды попыток через `zlib.crc32` (`_attempt_seed`); встроенный `hash()` запрещён — рандомизировался PYTHONHASHSEED (VS Code и Kaggle давали разные наборы). Доказан прогонами тестов при разных PYTHONHASHSEED; множеств в итерируемых позициях конвейера нет.
+- **Ужесточения по ревью (5-й проход):** скоуп-гарды rename-мутаций (except-as, match, global/nonlocal, alias, def/class); `_ExtractTemp` только на return целевой функции; сортировка кандидатов; crash-None с provenance-меткой (BinOp, вызов/атрибут/индекс от None, await, `*`, итераторы, except-тип); анти-дубль существующего None-гарда в return. Мертвые None-ветки приняты как wart (иначе гибнут хорошие пары класса set_leverage).
+- **Редкие типы:** return_changed 209 (2.8%), default_changed 124 (1.7%) — ниже 3%. Не ослаблялись сознательно (см. reports/synth_ast_stats.md). Пересчёт таблицы по типам — после FD-09 (пул v2, тот же драйвер).
+- **Критерий ≥6000:** выполнен (7379). Итоговый баланс 51.6/48.4 (не ровно 1:1 из-за дедупликации одинаковых диффов).
+- **Проверки:** pair_id уникален; проектов 91, утечек test-пула 0; в выходе 0 синтаксических ошибок; тесты 25/25, полный `pytest` 35 passed.
+- **Ручная проверка (4-й проход):** стратифицированная выборка 30 пар — `reports/synth_ast_manual30.csv`, размечена (verdict+comment, строки сверены поименно): 30/30 разумны (100%).
+- **Артефакты для E8/data_card:** exception на ~98% — добавленный guard-шаблон; pos всегда меняют сигнатуру (M0≈1.0 на test_synth — так задумано, выводы только по test_real/gold/sig_same); `Optional[` только у return_changed.
 
 ### Пилот LLM-синтетики, экспорт (FD-10)
 - **Генератор:** Muse Spark 1.3 (effort xhigh). Дата экспорта: 12.10.2026. Судья M3 (Gemini 3.8 Flash, high) зарезервирован только для FD-22, для данных не используется.

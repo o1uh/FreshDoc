@@ -1,0 +1,907 @@
+pair_id,project,symbol,drift_type,label_stale,sig_old,diff_code,doc_old,verdict,comment
+5f9b08b3adbf1284,scikit-learn,column_or_1d,default_changed,1,"def column_or_1d(y, *, warn=False):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def column_or_1d(y, *, warn=False):
++def column_or_1d(y, *, warn=True):
+     xp, _ = get_namespace(y)
+     y = xp.asarray(y)
+     shape = y.shape","Ravel column or 1d numpy array, else raises an error.
+
+Parameters
+----------
+y : array-like
+   Input data.
+
+warn : bool, default=False
+   To control display of warnings.
+
+Returns
+-------
+y : ndarray
+   Output data.
+
+Raises
+------
+ValueError
+    If `y` is not a 1D array or a 2D array with a single row or column.",разумно,"Док фиксирует warn : bool, default=False, код ставит True — утверждение стало ложным (A)."
+5fee3f4a82f6190c,readthedocs.org,send_build_status,param_removed,1,"def send_build_status(self, build, commit, state):","--- a/code.py
++++ b/code.py
+@@ -1,2 +1,2 @@
+-def send_build_status(self, build, commit, state):
++def send_build_status(self, build, commit):
+     raise NotImplementedError","Create commit status for project.
+
+:param build: Build to set up commit status for
+:type build: Build
+:param commit: commit sha of the pull/merge request
+:type commit: str
+:param state: build state failure, pending, or success.
+:type state: str
+:returns: boolean based on commit status creation was successful or not.
+:rtype: Bool",разумно,"Удалён документированный symbol, инлайн None в аргументах — поведение == default-case (A)."
+b4048efa27dfa456,faceswap,pre_fill,exception_changed,1,"def pre_fill(self, filenames: list[str], side: T.Literal['a', 'b']) -> None:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,6 @@
+ def pre_fill(self, filenames: list[str], side: T.Literal['a', 'b']) -> None:
++    if not filenames:
++        raise TypeError('bad argument')
+     with self._lock:
+         for filename, meta in tqdm(read_image_meta_batch(filenames), desc=f'WTL: Caching Landmarks ({side.upper()})', total=len(filenames), leave=False):
+             if 'itxt' not in meta or 'alignments' not in meta['itxt']:","When warp to landmarks is enabled, the cache must be pre-filled, as each side needs
+access to the other side's alignments.
+
+Parameters
+----------
+filenames: list
+    The list of full paths to the images to load the metadata from
+side: str
+    `""a""` or `""b""`. The side of the model being cached. Used for info output",разумно,"Добавлен raise ValueError, док из одной строки без Raises (B)."
+4f5661e413446371,mycroft-core,get,param_removed,1,"def get(configs=None, cache=True):","--- a/code.py
++++ b/code.py
+@@ -1,5 +1,5 @@
+-def get(configs=None, cache=True):
++def get(cache=True):
+     if Configuration.__config:
+         return Configuration.__config
+     else:
+-        return Configuration.load_config_stack(configs, cache)
++        return Configuration.load_config_stack(None, cache)","Get configuration
+
+Returns cached instance if available otherwise builds a new
+configuration dict.
+
+Args:
+    configs (list): List of configuration dicts
+    cache (boolean): True if the result should be cached
+
+Returns:
+    (dict) configuration dictionary.",разумно,"Удалён документированный params (:param dict [params]:), инлайн {} (A)."
+b291d1ce1faafce2,scikit-learn,test_scikit_vs_scipy,param_added,1,def test_scikit_vs_scipy():,"--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def test_scikit_vs_scipy():
++def test_scikit_vs_scipy(*, mode='strict'):
+     from scipy.sparse import lil_matrix
+     n, p, k = (10, 5, 3)
+     rnd = np.random.RandomState(0)",Test scikit ward with full connectivity (i.e. unstructured) vs scipy,разумно,"Добавлен keyword-only max_items, док с @param-блоками новый параметр не описывает (B)."
+8dc204330f4030d8,freqtrade,calculate_funding_fees,param_added,1,"def calculate_funding_fees(self, funding_rates: DataFrame, mark_rates: DataFrame, amount: float, open_date: datetime, close_date: Optional[datetime]=None, time_in_ratio: Optional[float]=None) -> float:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def calculate_funding_fees(self, funding_rates: DataFrame, mark_rates: DataFrame, amount: float, open_date: datetime, close_date: Optional[datetime]=None, time_in_ratio: Optional[float]=None) -> float:
++def calculate_funding_fees(self, funding_rates: DataFrame, mark_rates: DataFrame, amount: float, open_date: datetime, close_date: Optional[datetime]=None, time_in_ratio: Optional[float]=None, *, max_items: int=100) -> float:
+     fees: float = 0
+     df = funding_rates.merge(mark_rates, on='date', how='inner', suffixes=['_fund', '_mark'])
+     if not df.empty:","calculates the sum of all funding fees that occurred for a pair during a futures trade
+:param funding_rates: Dataframe containing Funding rates (Type FUNDING_RATE)
+:param mark_rates: Dataframe containing Mark rates (Type mark_ohlcv_price)
+:param amount: The quantity of the trade
+:param open_date: The date and time that the trade started
+:param close_date: The date and time that the trade ended
+:param time_in_ratio: Not used by most exchange classes",разумно,"Добавлен keyword-only mode, док описывает filename/format (B)."
+4d9dd3a3b37e64ca,scikit-learn,k_means,default_changed,1,"def k_means(X, n_clusters, *, sample_weight=None, init='k-means++', n_init='warn', max_iter=300, verbose=False, tol=0.0001, random_state=None, copy_x=True, algorithm='lloyd', return_n_iter=False):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def k_means(X, n_clusters, *, sample_weight=None, init='k-means++', n_init='warn', max_iter=300, verbose=False, tol=0.0001, random_state=None, copy_x=True, algorithm='lloyd', return_n_iter=False):
++def k_means(X, n_clusters, *, sample_weight=None, init='k-means++', n_init='warn', max_iter=300, verbose=False, tol=0.0002, random_state=None, copy_x=True, algorithm='lloyd', return_n_iter=False):
+     est = KMeans(n_clusters=n_clusters, init=init, n_init=n_init, max_iter=max_iter, verbose=verbose, tol=tol, random_state=random_state, copy_x=copy_x, algorithm=algorithm).fit(X, sample_weight=sample_weight)
+     if return_n_iter:
+         return (est.cluster_centers_, est.labels_, est.inertia_, est.n_iter_)","Perform K-means clustering algorithm.
+
+Read more in the :ref:`User Guide <k_means>`.
+
+Parameters
+----------
+X : {array-like, sparse matrix} of shape (n_samples, n_features)
+    The observations to cluster. It must be noted that the data
+    will be converted to C ordering, which will cause a memory copy
+    if the given data is not C-contiguous.
+
+n_clusters : int
+    The number of clusters to form as well as the number of
+    centroids to generate.
+
+sample_weight : array-like of shape (n_samples,), default=None
+    The weights for each observation in `X`. If `None`, all observations
+    are assigned equal weight. `sample_weight` is not used during
+    initialization if `init` is a callable or a user provided array.
+
+init : {'k-means++', 'random'}, callable or array-like of shape \
+        (n_clusters, n_features), default='k-means++'
+    Method for initialization:
+
+    - `'k-means++'` : selects initial cluster centers for k-mean
+      clustering in a smart way to speed up convergence. See section
+      Notes in k_init for more details.
+    - `'random'`: choose `n_clusters` observations (rows) at random from data
+      for the initial centroids.
+    - If an array is passed, it should be of shape `(n_clusters, n_features)`
+      and gives the initial centers.
+    - If a callable is passed, it should take arguments `X`, `n_clusters` and a
+      random state and return an initialization.
+
+n_init : 'auto' or int, default=10
+    Number of time the k-means algorithm will be run with different
+    centroid seeds. The final results will be the best output of
+    n_init consecutive runs in terms of inertia.
+
+    When `n_init='auto'`, the number of runs depends on the value of init:
+    10 if using `init='random'` or `init` is a callable;
+    1 if using `init='k-means++'` or `init` is an array-like.
+
+    .. versionadded:: 1.2
+       Added 'auto' option for `n_init`.
+
+    .. versionchanged:: 1.4
+       Default value for `n_init` will change from 10 to `'auto'` in version 1.4.
+
+max_iter : int, default=300
+    Maximum number of iterations of the k-means algorithm to run.
+
+verbose : bool, default=False
+    Verbosity mode.
+
+tol : float, default=1e-4
+    Relative tolerance with regards to Frobenius norm of the difference
+    in the cluster centers of two consecutive iterations to declare
+    convergence.
+
+random_state : int, RandomState instance or None, default=None
+    Determines random number generation for centroid initialization. Use
+    an int to make the randomness deterministic.
+    See :term:`Glossary <random_state>`.
+
+copy_x : bool, default=True
+    When pre-computing distances it is more numerically accurate to center
+    the data first. If `copy_x` is True (default), then the original data is
+    not modified. If False, the original data is modified, and put back
+    before the function returns, but small numerical differences may be
+    introduced by subtracting and then adding the data mean. Note that if
+    the original data is not C-contiguous, a copy will be made even if
+    `copy_x` is False. If the original data is sparse, but not in CSR format,
+    a copy will be made even if `copy_x` is False.
+
+algorithm : {""lloyd"", ""elkan"", ""auto"", ""full""}, default=""lloyd""
+    K-means algorithm to use. The classical EM-style algorithm is `""lloyd""`.
+    The `""elkan""` variation can be more efficient on some datasets with
+    well-defined clusters, by using the triangle inequality. However it's
+    more memory intensive due to the allocation of an extra array of shape
+    `(n_samples, n_clusters)`.
+
+    `""auto""` and `""full""` are deprecated and they will be removed in
+    Scikit-Learn 1.3. They are both aliases for `""lloyd""`.
+
+    .. versionchanged:: 0.18
+        Added Elkan algorithm
+
+    .. versionchanged:: 1.1
+        Renamed ""full"" to ""lloyd"", and deprecated ""auto"" and ""full"".
+        Changed ""auto"" to use ""lloyd"" instead of ""elkan"".
+
+return_n_iter : bool, default=False
+    Whether or not to return the number of iterations.
+
+Returns
+-------
+centroid : ndarray of shape (n_clusters, n_features)
+    Centroids found at the last iteration of k-means.
+
+label : ndarray of shape (n_samples,)
+    The `label[i]` is the code or index of the centroid the
+    i'th observation is closest to.
+
+inertia : float
+    The final value of the inertia criterion (sum of squared distances to
+    the closest centroid for all observations in the training set).
+
+best_n_iter : int
+    Number of iterations corresponding to the best results.
+    Returned only if `return_n_iter` is set to True.",разумно,"Док фиксирует verbose : int, default=0 (numpydoc-окно), код ставит 1 (A)."
+b559b7214b8e80c9,freqtrade,orderbook,return_changed,1,"def orderbook(self, pair: str, maximum: int) -> Dict[str, List]:","--- a/code.py
++++ b/code.py
+@@ -1,2 +1,4 @@
+-def orderbook(self, pair: str, maximum: int) -> Dict[str, List]:
++def orderbook(self, pair: str, maximum: int) -> Optional[Dict[str, List]]:
++    if pair is None:
++        return None
+     return self._exchange.get_order_book(pair, maximum)","fetch latest orderbook data
+:param pair: pair to get the data for
+:param maximum: Maximum number of orderbook entries to query
+:return: dict including bids/asks with a total of `maximum` entries.",разумно,"Строковая аннотация Table расширена до Optional + guard, раздел Returns обещает таблицу (A/B)."
+a425474556a693c5,scikit-learn,transform,param_renamed,1,"def transform(self, X):","--- a/code.py
++++ b/code.py
+@@ -1,8 +1,8 @@
+-def transform(self, X):
++def transform(self, X2):
+     self.random_state = check_random_state(self.random_state)
+-    n_images, i_h, i_w = X.shape[:3]
+-    X = np.reshape(X, (n_images, i_h, i_w, -1))
+-    n_channels = X.shape[-1]
++    n_images, i_h, i_w = X2.shape[:3]
++    X2 = np.reshape(X2, (n_images, i_h, i_w, -1))
++    n_channels = X2.shape[-1]
+     if self.patch_size is None:
+         patch_size = (i_h // 10, i_w // 10)
+     else:
+@@ -13,6 +13,6 @@
+     if n_channels > 1:
+         patches_shape += (n_channels,)
+     patches = np.empty(patches_shape)
+-    for ii, image in enumerate(X):
++    for ii, image in enumerate(X2):
+         patches[ii * n_patches:(ii + 1) * n_patches] = extract_patches_2d(image, patch_size, max_patches=self.max_patches, random_state=self.random_state)
+     return patches","Transform the image samples in `X` into a matrix of patch data.
+
+Parameters
+----------
+X : ndarray of shape (n_samples, image_height, image_width) or \
+    (n_samples, image_height, image_width, n_channels)
+    Array of images from which to extract patches. For color images,
+    the last dimension specifies the channel: a RGB image would have
+    `n_channels=3`.
+
+Returns
+-------
+patches : array of shape (n_patches, patch_height, patch_width) or \
+     (n_patches, patch_height, patch_width, n_channels)
+     The collection of patches extracted from the images, where
+     `n_patches` is either `n_samples * max_patches` or the total
+     number of patches that can be extracted.",разумно,"write_disposition переименован (документирован :param), имя исчезло (A)."
+eeca2b13153107df,saleor,get_users_and_look_for_permissions_in_groups_with_manage_staff,none,0,"def get_users_and_look_for_permissions_in_groups_with_manage_staff(group_pk: int, groups_data: dict, permissions_to_find: Set[str]):","--- a/code.py
++++ b/code.py
+@@ -11,4 +11,5 @@
+             common_permissions = permissions_to_find & permissions
+             permissions_to_find.difference_update(common_permissions)
+             users_with_manage_staff.update(users)
+-    return users_with_manage_staff
++    ret = users_with_manage_staff
++    return ret","Search for permissions in groups with manage staff and return their users.
+
+Args:
+    group_pk: pk of group which should be excluded for search
+    groups_data: dict with groups data, key is a group pk and value is group data
+        with permissions and users
+    permissions_to_find: searched permissions",разумно,"Переименование локальной agent_id (цикловая переменная), поведение то же (C)."
+576390ff99e48015,scikit-image,peak_local_max,none,0,"def peak_local_max(image, min_distance=1, threshold_abs=None, threshold_rel=None, exclude_border=True, indices=True, num_peaks=np.inf, footprint=None, labels=None, num_peaks_per_label=np.inf):","--- a/code.py
++++ b/code.py
+@@ -14,7 +14,8 @@
+             out += peak_local_max(image * maskim, min_distance=min_distance, threshold_abs=threshold_abs, threshold_rel=threshold_rel, exclude_border=exclude_border, indices=False, num_peaks=num_peaks_per_label, footprint=footprint, labels=None)
+         coordinates = _get_high_intensity_peaks(image, out, num_peaks)
+         if indices is True:
+-            return coordinates
++            final_result = coordinates
++            return final_result
+         else:
+             nd_indices = tuple(coordinates.T)
+             out[nd_indices] = True","Find peaks in an image as coordinate list or boolean mask.
+
+Peaks are the local maxima in a region of `2 * min_distance + 1`
+(i.e. peaks are separated by at least `min_distance`).
+
+If there are multiple local maxima with identical pixel intensities
+inside the region defined with `min_distance`,
+the coordinates of all such pixels are returned.
+
+If both `threshold_abs` and `threshold_rel` are provided, the maximum
+of the two is chosen as the minimum intensity threshold of peaks.
+
+Parameters
+----------
+image : ndarray
+    Input image.
+min_distance : int, optional
+    Minimum number of pixels separating peaks in a region of `2 *
+    min_distance + 1` (i.e. peaks are separated by at least
+    `min_distance`).
+    To find the maximum number of peaks, use `min_distance=1`.
+threshold_abs : float, optional
+    Minimum intensity of peaks. By default, the absolute threshold is
+    the minimum intensity of the image.
+threshold_rel : float, optional
+    Minimum intensity of peaks, calculated as `max(image) * threshold_rel`.
+exclude_border : int or bool, optional
+    If nonzero int, `exclude_border` excludes peaks from
+    within `exclude_border`-pixels of the border of the image.
+    If True, takes the `min_distance` parameter as value.
+    If zero or False, peaks are identified regardless of their
+    distance from the border.
+indices : bool, optional
+    If True, the output will be an array representing peak
+    coordinates.  If False, the output will be a boolean array shaped as
+    `image.shape` with peaks present at True elements.
+num_peaks : int, optional
+    Maximum number of peaks. When the number of peaks exceeds `num_peaks`,
+    return `num_peaks` peaks based on highest peak intensity.
+footprint : ndarray of bools, optional
+    If provided, `footprint == 1` represents the local region within which
+    to search for peaks at every point in `image`.  Overrides
+    `min_distance` (also for `exclude_border`).
+labels : ndarray of ints, optional
+    If provided, each unique region `labels == value` represents a unique
+    region to search for peaks. Zero is reserved for background.
+num_peaks_per_label : int, optional
+    Maximum number of peaks for each label.
+
+Returns
+-------
+output : ndarray or ndarray of bools
+
+    * If `indices = True`  : (row, column, ...) coordinates of peaks.
+    * If `indices = False` : Boolean array shaped like `image`, with peaks
+      represented by True values.
+
+Notes
+-----
+The peak local maximum function returns the coordinates of local peaks
+(maxima) in an image. A maximum filter is used for finding local maxima.
+This operation dilates the original image. After comparison of the dilated
+and original image, this function returns the coordinates or a mask of the
+peaks where the dilated image equals the original image.
+
+See also
+--------
+skimage.feature.corner_peaks
+
+Examples
+--------
+>>> img1 = np.zeros((7, 7))
+>>> img1[3, 4] = 1
+>>> img1[3, 2] = 1.5
+>>> img1
+array([[ 0. ,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ],
+       [ 0. ,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ],
+       [ 0. ,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ],
+       [ 0. ,  0. ,  1.5,  0. ,  1. ,  0. ,  0. ],
+       [ 0. ,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ],
+       [ 0. ,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ],
+       [ 0. ,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ]])
+
+>>> peak_local_max(img1, min_distance=1)
+array([[3, 4],
+       [3, 2]])
+
+>>> peak_local_max(img1, min_distance=2)
+array([[3, 2]])
+
+>>> img2 = np.zeros((20, 20, 20))
+>>> img2[10, 10, 10] = 1
+>>> peak_local_max(img2, exclude_border=0)
+array([[10, 10, 10]])",разумно,"Вынос return-выражения во временную res, поведение то же (C)."
+b512bf44de6ae6b5,speechbrain,log_epoch,param_removed,1,"def log_epoch(self, epoch_stats, train_stats, valid_stats=None, verbose=True):","--- a/code.py
++++ b/code.py
+@@ -1,6 +1,6 @@
+-def log_epoch(self, epoch_stats, train_stats, valid_stats=None, verbose=True):
++def log_epoch(self, epoch_stats, train_stats, valid_stats=None):
+     summary = self._stats_to_string(epoch_stats, train_stats, valid_stats)
+     with open(self.save_file, 'a') as fout:
+         print(summary, file=fout)
+-    if verbose:
++    if True:
+         logger.info(summary)","Log the stats for one epoch.
+
+Arguments
+---------
+epoch_stats : dict
+    Stats relevant to the epoch (e.g. count, learning-rate, etc.)
+train_stats : dict
+    Stats relevant to the training pass
+valid_stats : dict
+    Stats relevant to the validation pass
+verbose : bool
+    Whether to also put logging information to the standard logger.",разумно,"Удалён документированный styles (Defaults to False), в тело инлайнится False (A)."
+4073b3145cfb724c,OpenBBTerminal,from_env,param_added,1,"def from_env(cls, values: dict) -> dict:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def from_env(cls, values: dict) -> dict:
++def from_env(cls, values: dict, *, timeout: float=30.0) -> dict:
+     settings = {}
+     settings.update(dotenv_values(ENV_FILE_REPOSITORY))
+     settings.update(dotenv_values(ENV_FILE_PROJECT))","Load .env files.
+
+Loads the dotenv files in the following order:
+1. Repository .env file
+2. Package .env file
+3. User .env file",разумно,"Добавлен keyword-only recursive, док описывает только order (B)."
+b226cdd4f92694a3,gensim,show_topics,param_renamed,1,"def show_topics(self, topics=10, topn=10, log=False, formatted=True):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def show_topics(self, topics=10, topn=10, log=False, formatted=True):
++def show_topics(self, topics=10, topn=10, log_val=False, formatted=True):
+     if topics < 0 or topics >= self.num_topics:
+         topics = self.num_topics
+         chosen_topics = range(topics)
+@@ -14,6 +14,6 @@
+         else:
+             topic = self.show_topic(i, topn=topn)
+         shown.append(topic)
+-        if log:
++        if log_val:
+             logger.info('topic #%i (%.3f): %s' % (i, self.alpha[i], topic))
+     return shown","For `topics` number of topics, return `topn` most significant words
+(10 words per topic, by default).
+
+The topics are returned as a list -- a list of strings if `formatted` is
+True, or a list of (probability, word) 2-tuples if False.
+
+If `log` is True, also output this result to log.
+
+Unlike LSA, there is no natural ordering between the topics in LDA.
+The returned `topics <= self.num_topics` subset of all topics is therefore
+arbitrary and may change between two LDA training runs.",разумно,"symbol переименован в ticker, док фиксирует :param str symbol: (A)."
+1cad1e1a6f388476,core,send_message,param_renamed,1,"def send_message(self, message='', **kwargs):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def send_message(self, message='', **kwargs):
++def send_message(self, my_message='', **kwargs):
+     _LOGGER.debug('Sending signal message')
+     data = kwargs.get(ATTR_DATA)
+     filenames = None
+@@ -12,7 +12,7 @@
+             else:
+                 filenames.append(data[ATTR_FILENAME])
+     try:
+-        self._signal_cli_rest_api.send_message(message, self._recp_nrs, filenames)
++        self._signal_cli_rest_api.send_message(my_message, self._recp_nrs, filenames)
+     except SignalCliRestApiError as ex:
+         _LOGGER.error('%s', ex)
+         raise ex","Send a message to a one or more recipients.
+
+Additionally a file can be attached.",разумно,Параметр _ переименован (документирован _ : unused) (A).
+b8ac1ca2b43a15b8,wukong-robot,say,exception_changed,1,"def say(self, msg, cache=False, plugin='', onCompleted=None, wait=False, append_history=True):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,6 @@
+ def say(self, msg, cache=False, plugin='', onCompleted=None, wait=False, append_history=True):
++    if not msg:
++        raise TypeError('malformed input')
+     append_history and self.appendHistory(1, msg, plugin=plugin)
+     is_too_long = False
+     pattern = 'http[s]?://.+'","说一句话
+:param msg: 内容
+:param cache: 是否缓存这句话的音频
+:param plugin: 来自哪个插件的消息（将带上插件的说明）
+:param onCompleted: 完成的回调
+:param wait: 是否要等待说完（为True将阻塞主线程直至说完这句话）
+:param append_history: 是否要追加到聊天记录",разумно,"Добавлен raise TypeError к стабу, док без Raises (B)."
+6ed100f3049a581f,ray,deep_copy,none,0,"def deep_copy(self, preserve_uuid: bool=False) -> 'ExecutionPlan':","--- a/code.py
++++ b/code.py
+@@ -11,4 +11,5 @@
+         plan_copy._snapshot_stats = copy.copy(self._snapshot_stats)
+     plan_copy._stages_before_snapshot = self._stages_before_snapshot.copy()
+     plan_copy._stages_after_snapshot = self._stages_after_snapshot.copy()
+-    return plan_copy
++    out = plan_copy
++    return out","Create a deep copy of this execution plan.
+
+This copy can be executed AND cleared without mutating the original.
+
+Args:
+    preserve_uuid: Whether to preserve the original UUID in the copy.
+
+Returns:
+    A deep copy of this execution plan.",разумно,"Смена текста в print-сообщении, сообщение в доке не цитируется (C)."
+e4017fefea30a5ba,ray,stats,none,0,def stats(self) -> DatasetStats:,"--- a/code.py
++++ b/code.py
+@@ -1,3 +1,4 @@
+ def stats(self) -> DatasetStats:
+     self.execute()
+-    return self._snapshot_stats
++    out = self._snapshot_stats
++    return out","Return stats for this plan, forcing execution if needed.",разумно,Смена пунктуации в logger.info-сообщении (C).
+cadb42ea65ecb251,ray,get_fs_and_path,return_changed,1,"def get_fs_and_path(storage_path: Union[str, os.PathLike], storage_filesystem: Optional[pyarrow.fs.FileSystem]=None) -> Tuple[pyarrow.fs.FileSystem, str]:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,6 @@
+-def get_fs_and_path(storage_path: Union[str, os.PathLike], storage_filesystem: Optional[pyarrow.fs.FileSystem]=None) -> Tuple[pyarrow.fs.FileSystem, str]:
++def get_fs_and_path(storage_path: Union[str, os.PathLike], storage_filesystem: Optional[pyarrow.fs.FileSystem]=None) -> Optional[Tuple[pyarrow.fs.FileSystem, str]]:
++    if storage_path is None:
++        return None
+     storage_path = str(storage_path)
+     if storage_filesystem:
+         if is_uri(storage_path):","Returns the fs and path from a storage path and an optional custom fs.
+
+Args:
+    storage_path: A storage path or URI. (ex: s3://bucket/path or /tmp/ray_results)
+    storage_filesystem: A custom filesystem to use. If not provided,
+        this will be auto-resolved by pyarrow. If provided, the storage_path
+        is assumed to be prefix-stripped already, and must be a valid path
+        on the filesystem.
+
+Raises:
+    ValueError: if the storage path is a URI and a custom filesystem is given.",разумно,"Возврат расширен до Optional + guard, док обещает Order (A/B)."
+cf4ba46e230019aa,st2,save_fixtures_to_db,none,0,"def save_fixtures_to_db(self, fixtures_pack='generic', fixtures_dict=None):","--- a/code.py
++++ b/code.py
+@@ -18,4 +18,5 @@
+             db_model = PERSISTENCE_MODEL.add_or_update(db_model)
+             loaded_fixtures[fixture] = db_model
+         db_models[fixture_type] = loaded_fixtures
+-    return db_models
++    buf = db_models
++    return buf","Loads fixtures specified in fixtures_dict into the database
+and returns DB models for the fixtures.
+
+fixtures_dict should be of the form:
+{
+    'actions': ['action-1.yaml', 'action-2.yaml'],
+    'rules': ['rule-1.yaml'],
+    'liveactions': ['execution-1.yaml']
+}
+
+:param fixtures_pack: Name of the pack to load fixtures from.
+:type fixtures_pack: ``str``
+
+:param fixtures_dict: Dictionary specifying the fixtures to load for each type.
+:type fixtures_dict: ``dict``
+
+:rtype: ``dict``",разумно,Вынос return-выражения во временную buf (C).
+55f7c7f628142991,cpython,NamedTemporaryFile,exception_changed,1,"def NamedTemporaryFile(mode='w+b', buffering=-1, encoding=None, newline=None, suffix='', prefix=template, dir=None, delete=True):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,6 @@
+ def NamedTemporaryFile(mode='w+b', buffering=-1, encoding=None, newline=None, suffix='', prefix=template, dir=None, delete=True):
++    if not mode:
++        raise TypeError('malformed input')
+     if dir is None:
+         dir = gettempdir()
+     if 'b' in mode:","Create and return a temporary file.
+Arguments:
+'prefix', 'suffix', 'dir' -- as for mkstemp.
+'mode' -- the mode argument to io.open (default ""w+b"").
+'buffering' -- the buffer size argument to io.open (default -1).
+'encoding' -- the encoding argument to io.open (default None)
+'newline' -- the newline argument to io.open (default None)
+'delete' -- whether the file is deleted on close (default True).
+The file is created as mkstemp() would do it.
+
+Returns an object with a file-like interface; the name of the file
+is accessible as file.name.  The file will be automatically deleted
+when it is closed unless the 'delete' argument is set to False.",разумно,"Добавлен raise ValueError, док описывает Returns без Raises (B)."
+c0373d3e6d06490d,ccxt,fetch_positions,return_changed,1,"def fetch_positions(self, symbols: Strings=None, params={}) -> List[Position]:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,6 @@
+-def fetch_positions(self, symbols: Strings=None, params={}) -> List[Position]:
++def fetch_positions(self, symbols: Strings=None, params={}) -> Optional[List[Position]]:
++    if not symbols:
++        return None
+     self.load_markets()
+     paginate = False
+     paginate, params = self.handle_option_and_params(params, 'fetchPositions', 'paginate')","fetch all open positions
+:see: https://www.bitget.com/api-doc/contract/position/get-all-position
+:see: https://www.bitget.com/api-doc/contract/position/Get-History-Position
+:param str[]|None symbols: list of unified market symbols
+:param dict [params]: extra parameters specific to the exchange API endpoint
+:param str [params.marginCoin]: the settle currency of the positions, needs to match the productType
+:param str [params.productType]: 'USDT-FUTURES', 'USDC-FUTURES', 'COIN-FUTURES', 'SUSDT-FUTURES', 'SUSDC-FUTURES' or 'SCOIN-FUTURES'
+:param boolean [params.paginate]: default False, when True will automatically paginate by calling self endpoint multiple times. See in the docs all the [available parameters](https://github.com/ccxt/ccxt/wiki/Manual#pagination-params)
+:returns dict[]: a list of `position structure <https://docs.ccxt.com/#/?id=position-structure>`",разумно,"Возврат расширен до Optional + guard, док обещает dict (A/B)."
+7c8aeac240abf917,ccxt,borrow_margin,param_removed,1,"def borrow_margin(self, code: str, amount, symbol: Str=None, params={}):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def borrow_margin(self, code: str, amount, symbol: Str=None, params={}):
++def borrow_margin(self, code: str, amount, params={}):
+     self.load_markets()
+     currency = self.currency(code)
+     request = {'currency': currency['id'], 'amount': self.currency_to_precision(code, amount)}
+@@ -7,12 +7,12 @@
+     marginMode = 'cross' if marginMode is None else marginMode
+     method = None
+     if marginMode == 'isolated':
+-        self.check_required_symbol('borrowMargin', symbol)
+-        market = self.market(symbol)
++        self.check_required_symbol('borrowMargin', None)
++        market = self.market(None)
+         request['symbol'] = market['id']
+         method = 'privatePostMarginOrders'
+     elif marginMode == 'cross':
+         method = 'privatePostCrossMarginOrders'
+     response = getattr(self, method)(self.extend(request, params))
+     transaction = self.parse_margin_loan(response, currency)
+-    return self.extend(transaction, {'amount': amount, 'symbol': symbol})
++    return self.extend(transaction, {'amount': amount, 'symbol': None})","create a loan to borrow margin
+:see: https://huobiapi.github.io/docs/spot/v1/en/#request-a-margin-loan-isolated
+:see: https://huobiapi.github.io/docs/spot/v1/en/#request-a-margin-loan-cross
+:param str code: unified currency code of the currency to borrow
+:param float amount: the amount to borrow
+:param str symbol: unified market symbol, required for isolated margin
+:param dict [params]: extra parameters specific to the huobi api endpoint
+:returns dict: a `margin loan structure <https://github.com/ccxt/ccxt/wiki/Manual#margin-loan-structure>`",разумно,"Удалён документированный device (Args: device...), инлайн None (A)."
+a043b4a5f861e74a,django,connect,default_changed,1,"def connect(self, receiver, sender=None, weak=True, dispatch_uid=None):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def connect(self, receiver, sender=None, weak=True, dispatch_uid=None):
++def connect(self, receiver, sender=None, weak=False, dispatch_uid=None):
+     from django.conf import settings
+     if settings.configured and settings.DEBUG:
+         if not callable(receiver):","Connect receiver to sender for signal.
+
+Arguments:
+
+    receiver
+        A function or an instance method which is to receive signals.
+        Receivers must be hashable objects.
+
+        If weak is True, then receiver must be weak referenceable.
+
+        Receivers must be able to accept keyword arguments.
+
+        If a receiver is connected with a dispatch_uid argument, it
+        will not be added if another receiver was already connected
+        with that dispatch_uid.
+
+    sender
+        The sender to which the receiver should respond. Must either be
+        a Python object, or None to receive events from any sender.
+
+    weak
+        Whether to use weak references to the receiver. By default, the
+        module will attempt to use weak references to the receiver
+        objects. If this parameter is false, then strong references will
+        be used.
+
+    dispatch_uid
+        An identifier used to uniquely identify a particular instance of
+        a receiver. This will usually be a string, though it may be
+        anything hashable.",разумно,"Док заявляет Default value is 1 (connectivity), код ставит 20 (A). Нюанс: расхождение предсуществовало (код был 2) — шум реального мира, пара учит верному отображению."
+bfaa5caf90ec07ed,cpython,is_simple,exception_changed,1,def is_simple(sum):,"--- a/code.py
++++ b/code.py
+@@ -1,4 +1,6 @@
+ def is_simple(sum):
++    if not sum:
++        raise ValueError('malformed input')
+     for t in sum.types:
+         if t.fields:
+             return False","Return True if a sum is a simple.
+
+A sum is simple if its types have no fields, e.g.
+unaryop = Invert | Not | UAdd | USub",разумно,"Добавлен raise TypeError в тест-функцию, док из одной строки (B)."
+c868c38c6c7e6e81,models,deploy,param_added,1,"def deploy(config, model_fn, args=None, kwargs=None, optimizer=None, summarize_gradients=False):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def deploy(config, model_fn, args=None, kwargs=None, optimizer=None, summarize_gradients=False):
++def deploy(config, model_fn, args=None, kwargs=None, optimizer=None, summarize_gradients=False, *, retries=5):
+     if context.in_eager_mode():
+         raise RuntimeError('slim.deploy is not supported when eager execution is enabled.')
+     summaries = set(tf.get_collection(tf.GraphKeys.SUMMARIES))","Deploys a Slim-constructed model across multiple clones.
+
+The deployment options are specified by the config object and support
+deploying one or several clones on different GPUs and one or several replicas
+of such clones.
+
+The argument `model_fn` is called `config.num_clones` times to create the
+model clones as `model_fn(*args, **kwargs)`.
+
+The optional argument `optimizer` is an `Optimizer` object.  If not `None`,
+the deployed model is configured for training with that optimizer.
+
+If `config` specifies deployment on multiple replicas then the default
+tensorflow device is set appropriatly for each call to `model_fn` and for the
+slim variable creation functions: model and global variables will be created
+on the `ps` device, the clone operations will be on the `worker` device.
+
+Args:
+  config: A `DeploymentConfig` object.
+  model_fn: A callable. Called as `model_fn(*args, **kwargs)`
+  args: Optional list of arguments to pass to `model_fn`.
+  kwargs: Optional list of keyword arguments to pass to `model_fn`.
+  optimizer: Optional `Optimizer` object.  If passed the model is deployed
+    for training with that optimizer.
+  summarize_gradients: Whether or not add summaries to the gradients.
+
+Returns:
+  A `DeployedModel` namedtuple.
+
+Raises:
+  RuntimeError: If eager execution is enabled.",разумно,"Добавлен keyword-only retries, док описывает остальные параметры (B)."
+d09fd566f6f39662,core,visit_call,param_renamed,1,"def visit_call(self, node):","--- a/code.py
++++ b/code.py
+@@ -1,17 +1,17 @@
+-def visit_call(self, node):
+-    if not isinstance(node.func, astroid.Attribute) or not isinstance(node.func.expr, astroid.Name):
++def visit_call(self, node_new):
++    if not isinstance(node_new.func, astroid.Attribute) or not isinstance(node_new.func.expr, astroid.Name):
+         return
+-    if not node.func.expr.name in LOGGER_NAMES:
++    if not node_new.func.expr.name in LOGGER_NAMES:
+         return
+-    if not node.args:
++    if not node_new.args:
+         return
+-    first_arg = node.args[0]
++    first_arg = node_new.args[0]
+     if not isinstance(first_arg, astroid.Const) or not first_arg.value:
+         return
+     log_message = first_arg.value
+     if len(log_message) < 1:
+         return
+     if log_message[-1] == '.':
+-        self.add_message('hass-logger-period', args=node.args, node=node)
+-    if isinstance(node.func.attrname, str) and node.func.attrname not in LOG_LEVEL_ALLOWED_LOWER_START and (log_message[0].upper() != log_message[0]):
+-        self.add_message('hass-logger-capital', args=node.args, node=node)
++        self.add_message('hass-logger-period', args=node_new.args, node=node_new)
++    if isinstance(node_new.func.attrname, str) and node_new.func.attrname not in LOG_LEVEL_ALLOWED_LOWER_START and (log_message[0].upper() != log_message[0]):
++        self.add_message('hass-logger-capital', args=node_new.args, node=node_new)","Called when a :class:`.astroid.node_classes.Call` node is visited.
+See :mod:`astroid` for the description of available nodes.
+:param node: The node to check.
+:type node: astroid.node_classes.Call",разумно,"pretty переименован (документирован pretty (bool)); keywords вида node=node — строки, не тронуты (A)."
+a2eaedb3f712382a,readthedocs.org,send_build_status,param_renamed,1,"def send_build_status(self, build, commit, state):","--- a/code.py
++++ b/code.py
+@@ -1,14 +1,14 @@
+-def send_build_status(self, build, commit, state):
++def send_build_status(self, build2, commit, state):
+     session = self.get_session()
+-    project = build.project
++    project = build2.project
+     owner, repo = build_utils.get_github_username_repo(url=project.repo)
+     github_build_state = SELECT_BUILD_STATUS[state]['github']
+     description = SELECT_BUILD_STATUS[state]['description']
+     statuses_url = f'https://api.github.com/repos/{owner}/{repo}/statuses/{commit}'
+-    if build.state in BUILD_FINAL_STATES and build.success:
+-        target_url = build.version.get_absolute_url()
++    if build2.state in BUILD_FINAL_STATES and build2.success:
++        target_url = build2.version.get_absolute_url()
+     else:
+-        target_url = build.get_full_url()
++        target_url = build2.get_full_url()
+     context = f'{settings.RTD_BUILD_STATUS_API_NAME}:{project.slug}'
+     data = {'state': github_build_state, 'target_url': target_url, 'description': description, 'context': context}
+     log.bind(project_slug=project.slug, commit_status=github_build_state, user_username=self.user.username, statuses_url=statuses_url)","Create GitHub commit status for project.
+
+:param build: Build to set up commit status for
+:type build: Build
+:param state: build state failure, pending, or success.
+:type state: str
+:param commit: commit sha of the pull request
+:type commit: str
+:returns: boolean based on commit status creation was successful or not.
+:rtype: Bool",разумно,out_vars переименован во всех использованиях (документирован) (A).
+d96d633e83a22779,scikit-image,local_maxima,param_removed,1,"def local_maxima(image, selem=None, connectivity=None, indices=False, allow_borders=True):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def local_maxima(image, selem=None, connectivity=None, indices=False, allow_borders=True):
++def local_maxima(image, selem=None, indices=False, allow_borders=True):
+     image = np.asarray(image, order='C')
+     if image.size == 0:
+         if indices:
+@@ -12,7 +12,7 @@
+     if any((s < 3 for s in image.shape)):
+         warn(""maxima can't exist for an image with any dimension smaller 3 if borders aren't allowed"", stacklevel=3)
+     else:
+-        selem = _resolve_neighborhood(selem, connectivity, image.ndim)
++        selem = _resolve_neighborhood(selem, None, image.ndim)
+         neighbor_offsets = _offsets_to_raveled_neighbors(image.shape, selem, center=(1,) * image.ndim)
+         try:
+             _local_maxima(image.ravel(), flags.ravel(), neighbor_offsets)","Find local maxima of n-dimensional array.
+
+The local maxima are defined as connected sets of pixels with equal gray
+level (plateaus) strictly greater than the gray levels of all pixels in the
+neighborhood.
+
+Parameters
+----------
+image : ndarray
+    An n-dimensional array.
+selem : ndarray, optional
+    A structuring element used to determine the neighborhood of each
+    evaluated pixel. It must contain only 1's and 0's, have the same number
+    of dimensions as `image`. If not given, all adjacent pixels are
+    considered as part of the neighborhood.
+connectivity : int, optional
+    A number used to determine the neighborhood of each evaluated pixel.
+    Adjacent pixels whose squared distance from the center is larger or
+    equal to `connectivity` are considered neighbors. Ignored if
+    `selem` is not None.
+indices : bool, optional
+    If True, the output will be a tuple of one-dimensional arrays
+    representing the indices of local maxima in each dimension. If False,
+    the output will be an array of 0's and 1's with the same shape as
+    `image`.
+allow_borders : bool, optional
+    If true, plateaus that touch the image border are valid maxima.
+
+Returns
+-------
+maxima : ndarray or tuple[ndarray]
+    If `indices` is false, an array with the same shape as `image` is
+    returned with 1's indicating the position of local maxima
+    (0 otherwise). If `indices` is true, a tuple of one-dimensional arrays
+    containing the coordinates (indices) of all found maxima.
+
+Warns
+-----
+UserWarning
+    If `allow_borders` is false and any dimension of the given `image` is
+    shorter than 3 samples, maxima can't exist and a warning is shown.
+
+See Also
+--------
+skimage.morphology.local_minima
+skimage.morphology.h_maxima
+skimage.morphology.h_minima
+
+Notes
+-----
+This function operates on the following ideas:
+
+1. Make a first pass over the image's last dimension and flag candidates
+   for local maxima by comparing pixels in only one direction.
+   If the pixels aren't connected in the last dimension all pixels are
+   flagged as candidates instead.
+
+For each candidate:
+
+2. Perform a flood-fill to find all connected pixels that have the same
+   gray value and are part of the plateau.
+3. Consider the connected neighborhood of a plateau: if no bordering sample
+   has a higher gray level, mark the plateau as a definite local maximum.
+
+Examples
+--------
+>>> from skimage.morphology import local_maxima
+>>> image = np.zeros((4, 7), dtype=int)
+>>> image[1:3, 1:3] = 1
+>>> image[3, 0] = 1
+>>> image[1:3, 4:6] = 2
+>>> image[3, 6] = 3
+>>> image
+array([[0, 0, 0, 0, 0, 0, 0],
+       [0, 1, 1, 0, 2, 2, 0],
+       [0, 1, 1, 0, 2, 2, 0],
+       [1, 0, 0, 0, 0, 0, 3]])
+
+Find local maxima by comparing to all neighboring pixels (maximal
+connectivity):
+
+>>> local_maxima(image)
+array([[0, 0, 0, 0, 0, 0, 0],
+       [0, 1, 1, 0, 0, 0, 0],
+       [0, 1, 1, 0, 0, 0, 0],
+       [1, 0, 0, 0, 0, 0, 1]], dtype=uint8)
+>>> local_maxima(image, indices=True)
+(array([1, 1, 2, 2, 3, 3]), array([1, 2, 1, 2, 0, 6]))
+
+Find local maxima without comparing to diagonal pixels (connectivity 1):
+
+>>> local_maxima(image, connectivity=1)
+array([[0, 0, 0, 0, 0, 0, 0],
+       [0, 1, 1, 0, 1, 1, 0],
+       [0, 1, 1, 0, 1, 1, 0],
+       [1, 0, 0, 0, 0, 0, 1]], dtype=uint8)
+
+and exclude maxima that border the image edge:
+
+>>> local_maxima(image, connectivity=1, allow_borders=False)
+array([[0, 0, 0, 0, 0, 0, 0],
+       [0, 1, 1, 0, 1, 1, 0],
+       [0, 1, 1, 0, 1, 1, 0],
+       [0, 0, 0, 0, 0, 0, 0]], dtype=uint8)",разумно,"Удалён документированный provider (by default None), инлайн None в аргументе (A)."
+d3a27c16a403e282,jina,is_ready,param_added,1,"def is_ready(ctrl_address: str, protocol: Optional[str]='grpc', **kwargs) -> bool:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def is_ready(ctrl_address: str, protocol: Optional[str]='grpc', **kwargs) -> bool:
++def is_ready(ctrl_address: str, protocol: Optional[str]='grpc', *, count: int=10, **kwargs) -> bool:
+     if protocol is None or protocol == GatewayProtocolType.GRPC or protocol == 'grpc':
+         res = AsyncNewLoopRuntime.is_ready(ctrl_address)
+     else:","Check if status is ready.
+
+:param ctrl_address: the address where the control request needs to be sent
+:param protocol: protocol of the gateway runtime
+:param kwargs: extra keyword arguments
+
+:return: True if status is ready else False.",разумно,"Добавлен keyword-only count, док описывает остальные параметры (B)."
