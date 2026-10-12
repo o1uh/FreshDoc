@@ -1,0 +1,17 @@
+Few-shot example for the P1 (behavior change) prompt. Append the example below to
+prompts/p1_behavior.txt (before the "Return JSON" line) only if the pilot accept
+rate is below 40% (FD-10, step 5).
+
+Input function:
+def clamp(value, low=0, high=100):
+    """Limit value to the range [low, high].
+
+    Values above high are returned as high.
+    """
+    return max(low, min(value, high))
+
+Expected JSON:
+{"new_function_source": "def clamp(value, low=0, high=100):\n    \"\"\"Limit value to the range [low, high].\n\n    Values above high are returned as high.\n    \"\"\"\n    return max(low, value) if value <= high else low",
+ "change_summary": "Values above the upper bound now fall back to the lower bound.",
+ "stale_statements": ["Values above high are returned as high."],
+ "why_stale": "The function now returns low for values above high."}

@@ -51,3 +51,12 @@
 - **Отсев:** дубликаты hash 2, `не_разобралось` 0, `не_прошёл_фильтры` 0, утечек test-проектов 0.
 - **Критерии:** ≥1200 — да (1474); изоляции — да. Команда: `python scripts/build_functions_pool.py`.
 
+### Пилот LLM-синтетики, экспорт (FD-10)
+- **Генератор:** Muse Spark 1.3 (effort xhigh). Дата экспорта: 12.10.2026. Судья M3 (Gemini 3.8 Flash, high) зарезервирован только для FD-22, для данных не используется.
+- **Условия использования:** отдельных доков с запретом на генерацию обучающих данных нет; проект учебный, коммерческое использование отсутствует — риск минимален (решение команды 12.10.2026).
+- **Выборка:** 12 функций, seed 42, round-robin равномерно по проектам (12 проектов: 3d-vehicle-tracking, PythonRobotics, chainer, examples, glances, kivy, langchain, mmdetection, mycroft-core, speechbrain, ulid, yewtube). Источник — только train-пул (`functions_pool_v1.parquet`).
+- **Экспорт:** `data/llm_pilot/` — 4 пакета по 6 функций (`pilot_p1_batch{1,2}.prompt.txt`, `pilot_p2_batch{1,2}.prompt.txt`) + `pilot_manifest.csv`. Команда: `python scripts/llm_pilot.py --mode export`.
+- **Валидаторы:** `src/synth/llm_validators.py` (сигнатура равна, docstring не изменён, дифф ≤ 8 строк, P1 — непустые подстроки stale, P2 — флаг true). Тесты: `tests/test_llm_validators.py` (11) + `tests/test_llm_batch.py` (4) = 15 passed; весь сюит — 32 passed (12.10.2026).
+- **Импорт (после прогона субагентов):** `python scripts/llm_pilot.py --mode import` → `reports/llm_pilot.md` + `data/interim/synth_llm_pilot.parquet`. Критерий: принято ≥ 40%, иначе добавить `prompts/p1_fewshot_clamp.txt`.
+- **Итог пилота (12.10.2026, 4 субагента Muse Spark 1.3, по одному пакету на агента):** объектов 24, принято 22 (P1 12/12 = 100%, P2 10/12 = 83.3%), доля 0.917 — критерий ≥ 0.40 выполнен, few-shot не требуется. Отказы: `diff_too_big` 2 (оба в `pilot_p2_batch2`: P0007, P0011 — переименование локальных в 4+ местах дало дифф > 8 строк, семантика сохранена). Выход: `data/interim/synth_llm_pilot.parquet` 22 строки (12 llm_p1 вес 1.0 + 10 llm_p2 вес 0.5).
+

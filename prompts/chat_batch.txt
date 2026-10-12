@@ -1,0 +1,4 @@
+You will receive {COUNT} Python functions, each wrapped in <function id="..."> tags.
+For EACH function perform the task described below independently, using only that function's own code and docstring.
+Do not use any external context. Do not read any other files. Do not invent information about other modules.
+Keep every function id unchanged in your answer.
