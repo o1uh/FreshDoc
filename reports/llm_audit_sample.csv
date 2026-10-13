@@ -1,0 +1,948 @@
+pair_id,label_source,project,symbol,sig_old,diff_code,doc_old,verdict,comment
+348b8af08a6cad95,llm_p1,MetaGPT,write,def write(self):,"--- a/code.py
++++ b/code.py
+@@ -3,5 +3,7 @@
+         raise FileNotFoundError
+     doc = Document(self.raw_data, self.content_col, self.meta_col)
+     docs, metadatas = doc.get_docs_and_metadatas()
++    if not docs:
++        return
+     self.store = self._write(docs, metadatas)
+     self.persist()","Initialize the index and library based on the provided Document (JSON / XLSX, etc.) file.",,
+7b77b44aa45005bb,llm_p1,pytorch-lightning,save_checkpoint,"def save_checkpoint(self, path: _PATH, state: Dict[str, Union[Module, Optimizer, Any]], storage_options: Optional[Any]=None) -> None:","--- a/code.py
++++ b/code.py
+@@ -27,5 +27,4 @@
+                 metadata[key] = obj
+     writer = FileSystemWriter(path=path, single_file_per_rank=True)
+     save_state_dict(converted_state, writer)
+-    if self.global_rank == 0:
+-        torch.save(metadata, path / 'meta.pt')
++    torch.save(metadata, path / 'meta.pt')","Save model, optimizer, and other state in a checkpoint directory.
+
+The directory will contain one file per process, with model- and optimizer shards stored per file. Additionally,
+it creates a metadata file `meta.pt` with the rest of the user's state (only saved from rank 0).",,
+da5f557723426d0e,llm_p1,promptflow,execute_flow,"def execute_flow(flow_file: Path, working_dir: Path, output_dir: Path, connections: dict, inputs: Mapping[str, Any], *, run_id: str=None, run_aggregation: bool=True, enable_stream_output: bool=False, allow_generator_output: bool=False, **kwargs) -> LineResult:","--- a/code.py
++++ b/code.py
+@@ -4,7 +4,7 @@
+     with _change_working_dir(working_dir), _force_flush_tracer_provider():
+         line_result = flow_executor.exec_line(inputs, index=0, allow_generator_output=allow_generator_output, run_id=run_id)
+         line_result.output = flow_executor._multimedia_processor.persist_multimedia_data(line_result.output, base_dir=working_dir, sub_dir=output_dir)
+-        if run_aggregation and line_result.aggregation_inputs:
++        if line_result.aggregation_inputs:
+             flow_inputs = {k: [v] for k, v in inputs.items()}
+             aggregation_inputs = {k: [v] for k, v in line_result.aggregation_inputs.items()}
+             aggregation_results = flow_executor.exec_aggregation(flow_inputs, aggregation_inputs=aggregation_inputs, run_id=run_id)","Execute the flow, including aggregation nodes.
+
+:param flow_file: The path to the flow file.
+:type flow_file: Path
+:param working_dir: The working directory of the flow.
+:type working_dir: Path
+:param output_dir: Relative path relative to working_dir.
+:type output_dir: Path
+:param connections: A dictionary containing connection information.
+:type connections: dict
+:param inputs: A dictionary containing the input values for the flow.
+:type inputs: Mapping[str, Any]
+:param enable_stream_output: Whether to allow stream (generator) output for flow output. Default is False.
+:type enable_stream_output: Optional[bool]
+:param run_id: Run id will be set in operation context and used for session.
+:type run_id: Optional[str]
+:param kwargs: Other keyword arguments to create flow executor.
+:type kwargs: Any
+:return: The line result of executing the flow.
+:rtype: ~promptflow.executor._result.LineResult",,
+5fb7e97f0a1fc1c5,llm_p1,rich,export_text,"def export_text(self, *, clear: bool=True, styles: bool=False) -> str:","--- a/code.py
++++ b/code.py
+@@ -7,4 +7,6 @@
+             text = ''.join((text for text, _, _ in self._record_buffer))
+         if clear:
+             del self._record_buffer[:]
++        else:
++            self._record_buffer = self._record_buffer[-1000:]
+     return text","Generate text from console contents (requires record=True argument in constructor).
+
+Args:
+    clear (bool, optional): Set to ``True`` to clear the record buffer after exporting.
+    styles (bool, optional): If ``True``, ansi style codes will be included. ``False`` for plain text.
+        Defaults to ``False``.
+
+Returns:
+    str: String containing console contents.",,
+d622bd79a9decc41,llm_p1,st2,is_pack_virtualenv_using_python3,def is_pack_virtualenv_using_python3(pack):,"--- a/code.py
++++ b/code.py
+@@ -8,6 +8,6 @@
+         virtualenv_directories = [dir_name for dir_name in virtualenv_directories if fnmatch.fnmatch(dir_name, 'python3*')]
+         uses_python3 = bool(virtualenv_directories)
+     else:
+-        uses_python3 = False
++        uses_python3 = True
+         virtualenv_directories = None
+     return (uses_python3, virtualenv_directories)",Return True if a particular pack virtual environment is used Python 3.,,
+878d774d566fb4c9,llm_p1,detectron2,draw_binary_mask,"def draw_binary_mask(self, binary_mask, color=None, *, edge_color=None, text=None, alpha=0.5, area_threshold=0):","--- a/code.py
++++ b/code.py
+@@ -9,7 +9,7 @@
+     if not mask.has_holes:
+         for segment in mask.polygons:
+             area = mask_util.area(mask_util.frPyObjects([segment], shape2d[0], shape2d[1]))
+-            if area < (area_threshold or 0):
++            if area <= (area_threshold or 0):
+                 continue
+             has_valid_segment = True
+             segment = segment.reshape(-1, 2)","Args:
+    binary_mask (ndarray): numpy array of shape (H, W), where H is the image height and
+        W is the image width. Each value in the array is either a 0 or 1 value of uint8
+        type.
+    color: color of the mask. Refer to `matplotlib.colors` for a full list of
+        formats that are accepted. If None, will pick a random color.
+    edge_color: color of the polygon edges. Refer to `matplotlib.colors` for a
+        full list of formats that are accepted.
+    text (str): if None, will be drawn in the object's center of mass.
+    alpha (float): blending efficient. Smaller values lead to more transparent masks.
+    area_threshold (float): a connected component small than this will not be shown.
+
+Returns:
+    output (VisImage): image object with mask drawn.",,
+f1ce408424b76750,llm_p1,OpenDevin,condense,"def condense(self, llm: LLM):","--- a/code.py
++++ b/code.py
+@@ -4,7 +4,8 @@
+         messages = [{'content': prompt, 'role': 'user'}]
+         resp = llm.completion(messages=messages)
+         summary_resp = resp['choices'][0]['message']['content']
+-        self.thoughts = prompts.parse_summary_response(summary_resp)
++        if summary_resp:
++            self.thoughts = prompts.parse_summary_response(summary_resp)
+     except Exception as e:
+         traceback.print_exc()
+         raise RuntimeError(f'Error condensing thoughts: {e}')","Attempts to condense the monologue by using the llm
+
+Parameters:
+- llm (LLM): llm to be used for summarization
+
+Raises:
+- RunTimeError: When the condensing process fails for any reason",,
+3340282f674b0151,llm_p1,aws-sam-cli,get_dir_path_handler,def get_dir_path_handler(dir_path_str: str) -> PathHandler:,"--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+ def get_dir_path_handler(dir_path_str: str) -> PathHandler:
+     dir_path = Path(dir_path_str).resolve()
+     file_handler = PatternMatchingEventHandler(patterns=['*'], ignore_patterns=[], ignore_directories=False, case_sensitive=True)
+-    return PathHandler(path=dir_path, event_handler=file_handler, recursive=True, static_folder=True)
++    return PathHandler(path=dir_path, event_handler=file_handler, recursive=False, static_folder=True)","Get PathHandler for watching a single directory
+
+Parameters
+----------
+dir_path_str : str
+    Folder path in string
+
+Returns
+-------
+PathHandler
+    The PathHandler for the folder specified",,
+b08524e862e8970f,llm_p1,cpython,assertCountEqual,"def assertCountEqual(self, actual, expected, msg=None):","--- a/code.py
++++ b/code.py
+@@ -8,7 +8,7 @@
+     else:
+         if actual == expected:
+             return
+-        differences = _count_diff_hashable(actual_seq, expected_seq)
++        differences = _count_diff_hashable(expected_seq, actual_seq)
+     if differences:
+         standardMsg = 'Element counts were not equal:\n'
+         lines = ['Got %d, expected %d:  %r' % diff for diff in differences]","An unordered sequence specific comparison. It asserts that
+actual and expected have the same element counts.
+Equivalent to::
+
+    self.assertEqual(Counter(list(actual)),
+                     Counter(list(expected)))
+
+Asserts that each element has the same count in both sequences.
+Example:
+    - [0, 1, 1] and [1, 0, 1] compare equal.
+    - [0, 0, 1] and [0, 1] compare unequal.",,
+f291bda0aaed9713,llm_p1,microk8s,update_cert_auth_kubeproxy,"def update_cert_auth_kubeproxy(token, master_ip, master_port, hostname_override):","--- a/code.py
++++ b/code.py
+@@ -1,6 +1,6 @@
+ def update_cert_auth_kubeproxy(token, master_ip, master_port, hostname_override):
+     proxy_token = '{}-proxy'.format(token)
+     get_client_cert(master_ip, master_port, 'proxy', proxy_token, '/CN=system:kube-proxy', False)
+-    set_arg('--master', None, 'kube-proxy')
++    set_arg('--master', 'https://{}:{}'.format(master_ip, master_port), 'kube-proxy')
+     if hostname_override:
+         set_arg('--hostname-override', hostname_override, 'kube-proxy')","Configure the kube-proxy
+
+:param token: the token to be in the kubeconfig
+:param ca: the ca
+:param master_ip: the master node IP
+:param master_port: the master node port where the cluster agent listens
+:param hostname_override: the hostname override in case the hostname is not resolvable",,
+4c5b30bd8972e1cb,llm_p1,datasets,list_metrics,"def list_metrics(with_community_metrics=True, with_details=False):","--- a/code.py
++++ b/code.py
+@@ -1,3 +1,3 @@
+ def list_metrics(with_community_metrics=True, with_details=False):
+     api = HfApi()
+-    return api.metric_list(with_community_metrics=with_community_metrics, id_only=bool(not with_details))
++    return api.metric_list(with_community_metrics=with_community_metrics, id_only=bool(not with_details))[:100]","List all the metrics script available on HuggingFace AWS bucket
+
+Args:
+    with_community_metrics (Optional ``bool``): Include the community provided metrics (default: ``True``)
+    with_details (Optional ``bool``): Return the full details on the metrics instead of only the short name (default: ``False``)",,
+8bb74a96636eb37c,llm_p1,Theano,add_key,"def add_key(self, key):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,5 @@
+ def add_key(self, key):
+     assert key not in self.keys
+     self.keys.add(key)
+-    self.save_pkl()
++    if len(self.keys) % 100 == 0:
++        self.save_pkl()","Add a key to the `keys` set, and update the pickled file.",,
+d01ea55e30e0e3aa,llm_p1,rich,input,"def input(self, prompt: TextType='', *, markup: bool=True, emoji: bool=True, password: bool=False) -> str:","--- a/code.py
++++ b/code.py
+@@ -1,5 +1,8 @@
+ def input(self, prompt: TextType='', *, markup: bool=True, emoji: bool=True, password: bool=False) -> str:
+     if prompt:
+         self.print(prompt, markup=markup, emoji=emoji, end='')
+-    result = getpass('') if password else input()
++    if password:
++        result = getpass('Password: ')
++    else:
++        result = input()
+     return result","Displays a prompt and waits for input from the user. The prompt may contain color / style. 
+
+Args:
+    prompt (Union[str, Text]): Text to render in the prompt.
+    markup (bool, optional): Enable console markup (requires a str prompt). Defaults to True.
+    emoji (bool, optional): Enable emoji (requires a str prompt). Defaults to True.
+    password: (bool, optional): Hide typed text. Defaults to False.
+
+Returns:
+    str: Text read from stdin.",,
+7827394f20bc1d02,llm_p1,aws-sam-cli,prepare,"def prepare(self, output_dir_path: str, iac_project_path: Optional[str]=None, debug: bool=False, aws_profile: Optional[str]=None, aws_region: Optional[str]=None, skip_prepare_infra: bool=False, plan_file: Optional[str]=None) -> str:","--- a/code.py
++++ b/code.py
+@@ -10,7 +10,7 @@
+     output = self._execute('prepare', params)
+     metadata_file_loc = None
+     iac_applications: Dict[str, Dict] = output.get('iac_applications', {})
+-    if iac_applications and len(iac_applications) == 1:
++    if iac_applications:
+         main_application = list(iac_applications.values())[0]
+         metadata_file_loc = main_application.get('metadata_file')
+     if not metadata_file_loc:","Run the prepare hook to generate the IaC Metadata file.
+
+Parameters
+----------
+output_dir_path: str
+    the path where the hook can create the generated Metadata files. Required
+iac_project_path: str
+    the path where the hook can find the TF application. Default value in current work directory.
+debug: bool
+    True/False flag to tell the hooks if should print debugging logs or not. Default is False.
+aws_profile: str
+    AWS profile to use. Default is None (use default profile)
+aws_region: str
+    AWS region to use. Default is None (use default region)
+skip_prepare_infra: bool
+    Flag to skip skip prepare hook if we already have the metadata file. Default is False.
+plan_file: Optional[str]
+    Provided plan file to use instead of generating one from the hook
+
+Returns
+-------
+str
+    Path to the generated IaC Metadata file",,
+e46ed9835be01cb2,llm_p1,gym,sample,def sample(self) -> tuple:,"--- a/code.py
++++ b/code.py
+@@ -1,2 +1,2 @@
+ def sample(self) -> tuple:
+-    return tuple((space.sample() for space in self.spaces))
++    return tuple((space.sample() for space in reversed(self.spaces)))","Generates a single random sample inside this space.
+
+This method draws independent samples from the subspaces.
+
+Returns:
+    Tuple of the subspace's samples",,
+1ef7e1bdb56eb4de,llm_p1,llama_index,load_data,"def load_data(self, url: str) -> List[Document]:","--- a/code.py
++++ b/code.py
+@@ -7,4 +7,4 @@
+         firecrawl_docs = self.firecrawl.crawl_url(url, params=self.params)
+         for doc in firecrawl_docs:
+             documents.append(Document(page_content=doc.get('markdown', ''), metadata=doc.get('metadata', {})))
+-    return documents
++    return documents[::-1]","Load data from the input directory.
+
+Args:
+    urls (List[str]): List of URLs to scrape.
+
+Returns:
+    List[Document]: List of documents.",,
+81a0002bca529fbf,llm_p1,ccxt,create_order,"def create_order(self, symbol: str, type: OrderType, side: OrderSide, amount, price=None, params={}):","--- a/code.py
++++ b/code.py
+@@ -8,4 +8,4 @@
+     order = self.parse_order(response, market)
+     orderAmount = str(order['amount'])
+     amount = order['amount'] if Precise.string_gt(orderAmount, '0') else amount
+-    return self.extend(order, {'amount': self.parse_number(amount)})
++    return self.extend(order, {'amount': self.parse_number(amount), 'price': self.parse_number(price)})","create a trade order
+:param str symbol: unified symbol of the market to create an order in
+:param str type: 'market' or 'limit'
+:param str side: 'buy' or 'sell'
+:param float amount: how much of currency you want to trade in units of base currency
+:param float [price]: the price at which the order is to be fullfilled, in units of the quote currency, ignored in market orders
+:param dict [params]: extra parameters specific to the btcalpha api endpoint
+:returns dict: an `order structure <https://github.com/ccxt/ccxt/wiki/Manual#order-structure>`",,
+709b1837ce9f2092,llm_p1,PythonRobotics,planning,"def planning(self, animation=True, search_until_max_iter=True):","--- a/code.py
++++ b/code.py
+@@ -11,7 +11,7 @@
+             if new_node:
+                 self.node_list.append(new_node)
+                 self.rewire(new_node, near_indexes)
+-        if animation and i % 5 == 0:
++        if animation and i % 10 == 0:
+             self.plot_start_goal_arrow()
+             self.draw_graph(rnd)
+         if not search_until_max_iter and new_node:","RRT Star planning
+
+animation: flag for animation on or off",,
+f0f1e194c2b59576,llm_p1,twine,addHtml,"def addHtml(self, source):","--- a/code.py
++++ b/code.py
+@@ -13,11 +13,11 @@
+                     obfuscationkey = match.group(1)
+                     nss = u''
+                     for nsc in obfuscationkey:
+-                        if nss.find(nsc) == -1 and (not nsc in ':\\""n0'):
++                        if nss.find(nsc) == -1 and (not nsc in ':""n0'):
+                             nss = nss + nsc
+                     obfuscationkey = nss
+             divs = divs[:storysettings.start(0)] + divs[storysettings.end(0) + 1:]
+         for div in divs.split('<div'):
+-            div.strip()
++            div = div.strip()
+             if div:
+                 self.addTiddler(Tiddler('<div' + div, 'html', obfuscationkey))",Adds HTML source code to this TiddlyWiki.,,
+daa77ff001bf9d05,llm_p1,gensim,evaluate_spearman,"def evaluate_spearman(self, embedding):","--- a/code.py
++++ b/code.py
+@@ -14,5 +14,7 @@
+         predicted_scores.append(predicted_score)
+         expected_scores.append(expected_score)
+     print('Skipped pairs: %d out of %d' % (skipped, len(self.scores)))
++    if count == 0:
++        return 0.0
+     spearman = spearmanr(expected_scores, predicted_scores)
+     return spearman.correlation","Evaluate spearman scores for lexical entailment for given embedding.
+
+Parameters
+----------
+embedding : PoincareKeyedVectors instance
+    Embedding for which evaluation is to be done.
+
+Returns
+-------
+float
+    Spearman correlation score for the task for input embedding.",,
+893e084706e305a8,llm_p1,spaCy,score,"def score(self, examples):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,7 @@
+ def score(self, examples):
++    examples = list(examples)
++    if not examples:
++        return {}
+     scores = {}
+     if hasattr(self.nlp.tokenizer, 'score'):
+         scores.update(self.nlp.tokenizer.score(examples, **self.cfg))","Evaluate a list of Examples.
+
+examples (Iterable[Example]): The predicted annotations + correct annotations.
+RETURNS (Dict): A dictionary of scores.
+DOCS: https://spacy.io/api/scorer#score",,
+bf689001bb5cbe39,llm_p1,ultralytics,yaml_save,"def yaml_save(file='data.yaml', data=None):","--- a/code.py
++++ b/code.py
+@@ -7,5 +7,5 @@
+     for k, v in data.items():
+         if isinstance(v, Path):
+             data[k] = str(v)
+-    with open(file, 'w') as f:
++    with open(file, 'a') as f:
+         yaml.safe_dump(data, f, sort_keys=False, allow_unicode=True)","Save YAML data to a file.
+
+Args:
+    file (str, optional): File name. Default is 'data.yaml'.
+    data (dict): Data to save in YAML format.
+
+Returns:
+    (None): Data is saved to the specified file.",,
+8f0e07a5ffbc87c0,llm_p1,cpython,iglob,def iglob(pathname):,"--- a/code.py
++++ b/code.py
+@@ -19,5 +19,5 @@
+     else:
+         glob_in_dir = glob0
+     for dirname in dirs:
+-        for name in glob_in_dir(dirname, basename):
++        for name in sorted(glob_in_dir(dirname, basename)):
+             yield os.path.join(dirname, name)","Return an iterator which yields the paths matching a pathname pattern.
+
+The pattern may contain simple shell-style wildcards a la
+fnmatch. However, unlike fnmatch, filenames starting with a
+dot are special cases that are not matched by '*' and '?'
+patterns.",,
+eeda06f2267e4d8e,llm_p1,pydantic,tuple_variable_schema,"def tuple_variable_schema(self, schema: core_schema.TupleVariableSchema) -> JsonSchemaValue:","--- a/code.py
++++ b/code.py
+@@ -2,5 +2,5 @@
+     json_schema: JsonSchemaValue = {'type': 'array', 'items': {}}
+     if 'items_schema' in schema:
+         json_schema['items'] = self.generate_inner(schema['items_schema'])
+-    self.update_with_validations(json_schema, schema, self.ValidationsMapping.array)
++    self.update_with_validations(json_schema, schema, self.ValidationsMapping.object)
+     return json_schema","Returns a schema that matches a tuple of a given schema.
+
+Args:
+    schema (core_schema.TupleVariableSchema): The schema.
+
+Returns:
+    JsonSchemaValue: The generated JSON schema.",,
+2cb46a0933bc0a9a,llm_p1,OpenBBTerminal,tcm,"def tcm(self, start_date: Annotated[Union[datetime.date, None, str], OpenBBCustomParameter(description='Start date of the data, in YYYY-MM-DD format.')]=None, end_date: Annotated[Union[datetime.date, None, str], OpenBBCustomParameter(description='End date of the data, in YYYY-MM-DD format.')]=None, maturity: Annotated[Optional[Literal['3m', '2y']], OpenBBCustomParameter(description='The maturity')]='3m', provider: Optional[Literal['fred']]=None, **kwargs) -> OBBject:","--- a/code.py
++++ b/code.py
+@@ -1,2 +1,4 @@
+ def tcm(self, start_date: Annotated[Union[datetime.date, None, str], OpenBBCustomParameter(description='Start date of the data, in YYYY-MM-DD format.')]=None, end_date: Annotated[Union[datetime.date, None, str], OpenBBCustomParameter(description='End date of the data, in YYYY-MM-DD format.')]=None, maturity: Annotated[Optional[Literal['3m', '2y']], OpenBBCustomParameter(description='The maturity')]='3m', provider: Optional[Literal['fred']]=None, **kwargs) -> OBBject:
++    if provider is None:
++        provider = 'fred'
+     return self._run('/fixedincome/spreads/tcm', **filter_inputs(provider_choices={'provider': provider}, standard_params={'start_date': start_date, 'end_date': end_date, 'maturity': maturity}, extra_params=kwargs))","Treasury Constant Maturity.
+
+Get data for 10-Year Treasury Constant Maturity Minus Selected Treasury Constant Maturity.
+Constant maturity is the theoretical value of a U.S. Treasury that is based on recent values of auctioned U.S.
+Treasuries. The value is obtained by the U.S. Treasury on a daily basis through interpolation of the Treasury
+yield curve which, in turn, is based on closing bid-yields of actively-traded Treasury securities.
+
+
+    Parameters
+    ----------
+    start_date : Optional[datetime.date]
+        Start date of the data, in YYYY-MM-DD format.
+    end_date : Optional[datetime.date]
+        End date of the data, in YYYY-MM-DD format.
+    maturity : Optional[Literal['3m', '2y']]
+        The maturity
+    provider : Optional[Literal['fred']]
+        The provider to use for the query, by default None.
+        If None, the provider specified in defaults is selected or 'fred' if there is
+        no default.
+
+    Returns
+    -------
+    OBBject
+        results : List[TreasuryConstantMaturity]
+            Serializable results.
+        provider : Optional[Literal['fred']]
+            Provider name.
+        warnings : Optional[List[Warning_]]
+            List of warnings.
+        chart : Optional[Chart]
+            Chart object.
+        extra: Dict[str, Any]
+            Extra info.
+
+    TreasuryConstantMaturity
+    ------------------------
+    date : date
+        The date of the data.
+    rate : Optional[float]
+        TreasuryConstantMaturity Rate.
+
+    Example
+    -------
+    >>> from openbb import obb
+    >>> obb.fixedincome.fixedincome.spreads.tcm(maturity=""2y"")",,
+d837e4503fb09a2f,llm_p2,black,normalize_string_prefix,"def normalize_string_prefix(s: str, remove_u_prefix: bool=False) -> str:","--- a/code.py
++++ b/code.py
+@@ -1,8 +1,8 @@
+ def normalize_string_prefix(s: str, remove_u_prefix: bool=False) -> str:
+     match = STRING_PREFIX_RE.match(s)
+     assert match is not None, f'failed to match string {s!r}'
+-    orig_prefix = match.group(1)
+-    new_prefix = orig_prefix.replace('F', 'f').replace('B', 'b').replace('U', 'u')
++    prefix, rest = (match.group(1), match.group(2))
++    new_prefix = prefix.replace('F', 'f').replace('B', 'b').replace('U', 'u')
+     if remove_u_prefix:
+         new_prefix = new_prefix.replace('u', '')
+-    return f'{new_prefix}{match.group(2)}'
++    return f'{new_prefix}{rest}'","Make all string prefixes lowercase.
+
+If remove_u_prefix is given, also removes any u prefix from the string.",,
+fa8c015e8af2ba55,llm_p2,conan,autoreconf,"def autoreconf(self, args=None):","--- a/code.py
++++ b/code.py
+@@ -1,5 +1,6 @@
+ def autoreconf(self, args=None):
+-    args = args or []
++    if args is None:
++        args = []
+     command = join_arguments(['autoreconf', self._autoreconf_args, cmd_args_to_string(args)])
+     with chdir(self, self._conanfile.source_folder):
+         self._conanfile.run(command)","Call ``autoreconf``
+
+:param args: (Optional, Defaulted to ``None``): List of arguments to use for the
+             ``autoreconf`` call.",,
+4e965b594b9e3e59,llm_p2,datasets,to_dict,"def to_dict(self, batch_size: Optional[int]=None, batched: bool=False) -> Union[dict, Iterator[dict]]:","--- a/code.py
++++ b/code.py
+@@ -2,5 +2,6 @@
+     if not batched:
+         return query_table(table=self._data, key=slice(0, len(self)), indices=self._indices if self._indices is not None else None).to_pydict()
+     else:
+-        batch_size = batch_size if batch_size else config.DEFAULT_MAX_BATCH_SIZE
++        if not batch_size:
++            batch_size = config.DEFAULT_MAX_BATCH_SIZE
+         return (query_table(table=self._data, key=slice(offset, offset + batch_size), indices=self._indices if self._indices is not None else None).to_pydict() for offset in range(0, len(self), batch_size))","Returns the dataset as a Python dict. Can also return a generator for large datasets.
+
+Args:
+    batched (`bool`):
+        Set to `True` to return a generator that yields the dataset as batches
+        of `batch_size` rows. Defaults to `False` (returns the whole datasets once).
+    batch_size (`int`, *optional*): The size (number of rows) of the batches if `batched` is `True`.
+        Defaults to `datasets.config.DEFAULT_MAX_BATCH_SIZE`.
+
+Returns:
+    `dict` or `Iterator[dict]`
+
+Example:
+
+```py
+>>> ds.to_dict()
+```",,
+5ff308865ba470b2,llm_p2,sanic,all_exceptions,"def all_exceptions(self, handler):","--- a/code.py
++++ b/code.py
+@@ -1,2 +1,3 @@
+ def all_exceptions(self, handler):
+-    return self.exception(Exception)(handler)
++    exception_decorator = self.exception(Exception)
++    return exception_decorator(handler)","This method enables the process of creating a global exception
+handler for the current blueprint under question.
+
+:param handler: A coroutine function to handle exceptions
+
+:return a decorated method to handle global exceptions for any
+    route registered under this blueprint.",,
+57fdf87cbacb695e,llm_p2,Python,reformat_hex,def reformat_hex(i):,"--- a/code.py
++++ b/code.py
+@@ -1,6 +1,3 @@
+ def reformat_hex(i):
+     hexrep = format(i, '08x')
+-    thing = ''
+-    for i in [3, 2, 1, 0]:
+-        thing += hexrep[2 * i:2 * i + 2]
+-    return thing
++    return ''.join((hexrep[2 * j:2 * j + 2] for j in [3, 2, 1, 0]))","[summary]
+Converts the given integer into 8-digit hex number.
+
+Arguments:
+        i {[int]} -- [integer]
+>>> reformat_hex(666)
+'9a020000'",,
+a183fa7c89816d46,llm_p2,faker,postcode,def postcode(self) -> str:,"--- a/code.py
++++ b/code.py
+@@ -1,5 +1,5 @@
+ def postcode(self) -> str:
+-    department = self.department_number()
+-    if department in ['2A', '2B']:
+-        department = '20'
+-    return f'{department}{self.random_number(digits=5 - len(department))}'
++    dept = self.department_number()
++    if dept in ['2A', '2B']:
++        dept = '20'
++    return f'{dept}{self.random_number(digits=5 - len(dept))}'","Randomly returns a postcode generated from existing french depertment number.
+exemple: '33260'",,
+672fa99c38eb0c9f,llm_p2,luigi,send_email,"def send_email(subject, message, sender, recipients, image_png=None):","--- a/code.py
++++ b/code.py
+@@ -6,10 +6,7 @@
+         return
+     if _email_disabled():
+         return
+-    recipients_tmp = []
+-    for r in recipients:
+-        recipients_tmp.extend([a.strip() for a in r.split(',') if a.strip()])
+-    recipients = recipients_tmp
++    recipients = [a.strip() for r in recipients for a in r.split(',') if a.strip()]
+     email_sender_type = config.get('email', 'type', None)
+     email_sender = notifiers.get(email_sender_type, send_email_smtp)
+     email_sender(config, sender, subject, message, recipients, image_png)","Decides whether to send notification. Notification is cancelled if there are
+no recipients or if stdout is onto tty or if in debug mode.
+
+Dispatches on config value email.type.  Default is 'smtp'.",,
+d45f136e26cc84d6,llm_p2,scikit-learn,fit,"def fit(self, X, y=None, labels=None):","--- a/code.py
++++ b/code.py
+@@ -1,2 +1,3 @@
+ def fit(self, X, y=None, labels=None):
+-    return self._fit(X, y, labels, ParameterGrid(self.param_grid))
++    grid = ParameterGrid(self.param_grid)
++    return self._fit(X, y, labels, grid)","Run fit with all sets of parameters.
+
+Parameters
+----------
+
+X : array-like, shape = [n_samples, n_features]
+    Training vector, where n_samples is the number of samples and
+    n_features is the number of features.
+
+y : array-like, shape = [n_samples] or [n_samples, n_output], optional
+    Target relative to X for classification or regression;
+    None for unsupervised learning.
+
+labels : array-like, with shape (n_samples,), optional
+    Group labels for the samples used while splitting the dataset into
+    train/test set.",,
+8bbc13256d74ee5e,llm_p2,freqtrade,advise_buy,"def advise_buy(self, dataframe: DataFrame, metadata: dict) -> DataFrame:","--- a/code.py
++++ b/code.py
+@@ -1,7 +1,6 @@
+ def advise_buy(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+     logger.debug(f""Populating buy signals for pair {metadata.get('pair')}."")
+-    if self._buy_fun_len == 2:
+-        warnings.warn('deprecated - check out the Sample strategy to see the current function headers!', DeprecationWarning)
+-        return self.populate_buy_trend(dataframe)
+-    else:
++    if self._buy_fun_len != 2:
+         return self.populate_buy_trend(dataframe, metadata)
++    warnings.warn('deprecated - check out the Sample strategy to see the current function headers!', DeprecationWarning)
++    return self.populate_buy_trend(dataframe)","Based on TA indicators, populates the buy signal for the given dataframe
+This method should not be overridden.
+:param dataframe: DataFrame
+:param metadata: Additional information dictionary, with details like the
+    currently traded pair
+:return: DataFrame with buy column",,
+14523be9da557339,llm_p2,pydantic,tuple_positional_schema,"def tuple_positional_schema(self, schema: core_schema.TuplePositionalSchema) -> JsonSchemaValue:","--- a/code.py
++++ b/code.py
+@@ -1,12 +1,13 @@
+ def tuple_positional_schema(self, schema: core_schema.TuplePositionalSchema) -> JsonSchemaValue:
+     json_schema: JsonSchemaValue = {'type': 'array'}
+-    json_schema['minItems'] = len(schema['items_schema'])
+-    prefixItems = [self.generate_inner(item) for item in schema['items_schema']]
++    items_schema = schema['items_schema']
++    json_schema['minItems'] = len(items_schema)
++    prefixItems = [self.generate_inner(item) for item in items_schema]
+     if prefixItems:
+         json_schema['prefixItems'] = prefixItems
+     if 'extras_schema' in schema:
+         json_schema['items'] = self.generate_inner(schema['extras_schema'])
+     else:
+-        json_schema['maxItems'] = len(schema['items_schema'])
++        json_schema['maxItems'] = len(items_schema)
+     self.update_with_validations(json_schema, schema, self.ValidationsMapping.array)
+     return json_schema","Generates a JSON schema that matches a positional tuple schema e.g. `Tuple[int, str, bool]`.
+
+Args:
+    schema: The core schema.
+
+Returns:
+    The generated JSON schema.",,
+fdeee4f41179ff26,llm_p2,pupy,do_list_modules,"def do_list_modules(self, arg):","--- a/code.py
++++ b/code.py
+@@ -1,3 +1,3 @@
+ def do_list_modules(self, arg):
+-    for m, d in self.pupsrv.list_modules():
+-        self.stdout.write('{:<20}\t{}\n'.format(m, color(d, 'grey')))
++    for name, desc in self.pupsrv.list_modules():
++        self.stdout.write('{:<20}\t{}\n'.format(name, color(desc, 'grey')))",List available modules with a brief description,,
+ab8f0f55aa6e0dca,llm_p2,promptflow,test,"def test(self, flow: Union[str, PathLike], *, inputs: Union[dict, PathLike]=None, variant: str=None, node: str=None, environment_variables: dict=None) -> dict:","--- a/code.py
++++ b/code.py
+@@ -1,10 +1,11 @@
+ def test(self, flow: Union[str, PathLike], *, inputs: Union[dict, PathLike]=None, variant: str=None, node: str=None, environment_variables: dict=None) -> dict:
+     if isinstance(inputs, (str, Path)):
+-        if Path(inputs).suffix not in ['.json', '.jsonl']:
++        input_path = Path(inputs)
++        if input_path.suffix not in ['.json', '.jsonl']:
+             raise UserErrorException('Only support jsonl or json file as input.')
+-        if not Path(inputs).exists():
++        if not input_path.exists():
+             raise UserErrorException(f'Cannot find inputs file {inputs}.')
+-        if Path(inputs).suffix == '.json':
++        if input_path.suffix == '.json':
+             with open(inputs, 'r') as f:
+                 inputs = json.load(f)
+         else:","Test flow or node.
+
+:param flow: path to flow directory to test
+:type flow: Union[str, PathLike]
+:param inputs: Input data or json file for the flow test
+:type inputs: Union[dict, PathLike]
+:param variant: Node & variant name in format of ${node_name.variant_name}, will use default variant
+    if not specified.
+:type variant: str
+:param node: If specified it will only test this node, else it will test the flow.
+:type node: str
+:param environment_variables: Environment variables to set by specifying a property path and value.
+    Example: {""key1"": ""${my_connection.api_key}"", ""key2""=""value2""}
+    The value reference to connection keys will be resolved to the actual value,
+    and all environment variables specified will be set into os.environ.
+:type environment_variables: dict
+:return: The result of flow or node
+:rtype: dict",,
+9d946071f8b46521,llm_p2,cookiecutter,test_unzip_local_file,"def test_unzip_local_file(mocker, tmpdir):","--- a/code.py
++++ b/code.py
+@@ -1,6 +1,7 @@
+ def test_unzip_local_file(mocker, tmpdir):
+     mock_prompt_and_delete = mocker.patch('cookiecutter.zipfile.prompt_and_delete', return_value=True, autospec=True)
+     clone_to_dir = tmpdir.mkdir('clone')
+-    output_dir = zipfile.unzip('tests/files/fake-repo-tmpl.zip', is_url=False, clone_to_dir=str(clone_to_dir))
++    archive_path = 'tests/files/fake-repo-tmpl.zip'
++    output_dir = zipfile.unzip(archive_path, is_url=False, clone_to_dir=str(clone_to_dir))
+     assert output_dir == os.path.join(str(clone_to_dir), 'fake-repo-tmpl')
+     assert not mock_prompt_and_delete.called","In `unzip()`, a local file reference is just unzipped where it is.",,
+1231da549eecf964,llm_p2,MetaGPT,main,"def main(idea: str=DEFAULT_PLAYER_SETUP, investment: float=3.0, n_round: int=100):","--- a/code.py
++++ b/code.py
+@@ -1,2 +1,3 @@
+ def main(idea: str=DEFAULT_PLAYER_SETUP, investment: float=3.0, n_round: int=100):
+-    asyncio.run(start_game(idea, investment, n_round))
++    game_config = idea
++    asyncio.run(start_game(game_config, investment, n_round))",":param idea: game config instructions
+:param investment: contribute a certain dollar amount to watch the debate
+:param n_round: maximum rounds of the debate
+:return:",,
+60ae830d444ba612,llm_p2,mycroft-core,store,"def store(self, path=None):","--- a/code.py
++++ b/code.py
+@@ -1,8 +1,8 @@
+ def store(self, path=None):
+     with self._lock:
+-        path = path or self.path
+-        config_dir = dirname(path)
++        target = path or self.path
++        config_dir = dirname(target)
+         if not exists(config_dir):
+             os.makedirs(config_dir)
+-        with open(path, 'w') as f:
++        with open(target, 'w') as f:
+             json.dump(self, f, indent=2)","Cache the received settings locally.
+
+The cache will be used if the remote is unreachable to load settings
+that are as close to the user's as possible.",,
+9f80fa47877fcbb8,llm_p2,speechbrain,details,"def details(self, predictions, targets, length=None, reduction='batchmean'):","--- a/code.py
++++ b/code.py
+@@ -5,5 +5,5 @@
+     rec_loss = self._reduce_loss(rec_loss, length, reduction)
+     dist_loss = self._reduce_loss(dist_loss, length, reduction)
+     weighted_dist_loss = self.dist_loss_weight * dist_loss
+-    loss = rec_loss + weighted_dist_loss
+-    return VariationalAutoencoderLossDetails(loss, rec_loss, dist_loss, weighted_dist_loss)
++    total_loss = rec_loss + weighted_dist_loss
++    return VariationalAutoencoderLossDetails(total_loss, rec_loss, dist_loss, weighted_dist_loss)","Gets detailed information about the loss (useful for plotting, logs,
+etc.)
+
+Arguments
+---------
+predictions: speechbrain.nnet.autoencoder.VariationalAutoencoderOutput
+    the variational autoencoder output (or a tuple of rec, mean, log_var)
+
+targets: torch.Tensor
+    targets for the reconstruction loss
+
+length : torch.Tensor
+    Length of each sample for computing true error with a mask.
+
+reduce: bool
+    Whether or not to apply reduction
+
+
+Results
+-------
+details: VAELossDetails
+    a namedtuple with the following parameters
+    loss: torch.Tensor
+        the combined loss
+    rec_loss: torch.Tensor
+        the reconstruction loss
+    dist_loss: torch.Tensor
+        the distribution loss (K-L divergence), raw value
+    weighted_dist_loss: torch.Tensor
+        the weighted value of the distribution loss, as used
+        in the combined loss",,
+422dc918e73d9354,llm_p2,pytorch-image-models,test_model_forward_fx,"def test_model_forward_fx(model_name, batch_size):","--- a/code.py
++++ b/code.py
+@@ -6,8 +6,9 @@
+     input_size = _get_input_size(model=model, target=TARGET_FWD_SIZE)
+     if max(input_size) > MAX_FWD_SIZE:
+         pytest.skip('Fixed input size model > limit.')
+-    train_nodes, eval_nodes = get_graph_node_names(model, tracer_kwargs={'leaf_modules': list(_leaf_modules), 'autowrap_functions': list(_autowrap_functions)})
+-    model = create_feature_extractor(model, train_return_nodes=[train_nodes[-1]], eval_return_nodes=[eval_nodes[-1]], tracer_kwargs={'leaf_modules': list(_leaf_modules), 'autowrap_functions': list(_autowrap_functions)})
++    tracer_kwargs = {'leaf_modules': list(_leaf_modules), 'autowrap_functions': list(_autowrap_functions)}
++    train_nodes, eval_nodes = get_graph_node_names(model, tracer_kwargs=tracer_kwargs)
++    model = create_feature_extractor(model, train_return_nodes=[train_nodes[-1]], eval_return_nodes=[eval_nodes[-1]], tracer_kwargs=tracer_kwargs)
+     inputs = torch.randn((batch_size, *input_size))
+     outputs = model(inputs)[eval_nodes[-1]]
+     assert outputs.shape[0] == batch_size",Symbolically trace each model and run single forward pass through the resulting GraphModule,,
+6a36a713897d77e4,llm_p2,ultralytics,download,"def download(url, dir=Path.cwd(), unzip=True, delete=False, curl=False, threads=1, retry=3):","--- a/code.py
++++ b/code.py
+@@ -1,11 +1,12 @@
+ def download(url, dir=Path.cwd(), unzip=True, delete=False, curl=False, threads=1, retry=3):
+     dir = Path(dir)
+     dir.mkdir(parents=True, exist_ok=True)
++    urls = [url] if isinstance(url, (str, Path)) else url
+     if threads > 1:
+         with ThreadPool(threads) as pool:
+-            pool.map(lambda x: safe_download(url=x[0], dir=x[1], unzip=unzip, delete=delete, curl=curl, retry=retry, progress=threads <= 1), zip(url, repeat(dir)))
++            pool.map(lambda x: safe_download(url=x[0], dir=x[1], unzip=unzip, delete=delete, curl=curl, retry=retry, progress=threads <= 1), zip(urls, repeat(dir)))
+             pool.close()
+             pool.join()
+     else:
+-        for u in [url] if isinstance(url, (str, Path)) else url:
++        for u in urls:
+             safe_download(url=u, dir=dir, unzip=unzip, delete=delete, curl=curl, retry=retry)","Downloads files from specified URLs to a given directory. Supports concurrent downloads if multiple threads are
+specified.
+
+Args:
+    url (str | list): The URL or list of URLs of the files to be downloaded.
+    dir (Path, optional): The directory where the files will be saved. Defaults to the current working directory.
+    unzip (bool, optional): Flag to unzip the files after downloading. Defaults to True.
+    delete (bool, optional): Flag to delete the zip files after extraction. Defaults to False.
+    curl (bool, optional): Flag to use curl for downloading. Defaults to False.
+    threads (int, optional): Number of threads to use for concurrent downloads. Defaults to 1.
+    retry (int, optional): Number of retries in case of download failure. Defaults to 3.
+
+Example:
+    ```python
+    download('https://ultralytics.com/assets/example.zip', dir='path/to/dir', unzip=True)
+    ```",,
+533bf76fedefe088,llm_p2,jina,to_docker_compose_yaml,"def to_docker_compose_yaml(self, output_path: Optional[str]=None, network_name: Optional[str]=None):","--- a/code.py
++++ b/code.py
+@@ -5,14 +5,11 @@
+     docker_compose_dict = {'version': '3.3', 'networks': {network_name: {'driver': 'bridge'}}}
+     services = {}
+     service_configs = self._to_docker_compose_config()
++    if self._include_gateway:
++        service_configs += self._inner_gateway_to_docker_compose_config()
+     for service_name, service in service_configs:
+         service['networks'] = [network_name]
+         services[service_name] = service
+-    if self._include_gateway:
+-        service_configs = self._inner_gateway_to_docker_compose_config()
+-        for service_name, service in service_configs:
+-            service['networks'] = [network_name]
+-            services[service_name] = service
+     docker_compose_dict['services'] = services
+     with open(output_path, 'w+') as fp:
+         yaml.dump(docker_compose_dict, fp, sort_keys=False)","Converts a Jina Deployment into a Docker compose YAML file
+
+If you don't want to rebuild image on Jina Hub,
+you can set `JINA_HUB_NO_IMAGE_REBUILD` environment variable.
+
+:param output_path: The path where to dump the yaml file
+:param network_name: The name of the network that will be used by the deployment",,
+6d33a8928823eabb,llm_p2,sanic,load_environment_vars,"def load_environment_vars(self, prefix=SANIC_PREFIX):","--- a/code.py
++++ b/code.py
+@@ -5,7 +5,7 @@
+             continue
+         if not key.isupper():
+             lower_case_var_found = True
+-        _, config_key = key.split(prefix, 1)
++        config_key = key.split(prefix, 1)[1]
+         for converter in reversed(self._converters):
+             try:
+                 self[config_key] = converter(value)","Looks for prefixed environment variables and applies them to the
+configuration if present. This is called automatically when Sanic
+starts up to load environment variables into config.
+
+It will automatically hydrate the following types:
+
+- ``int``
+- ``float``
+- ``bool``
+
+Anything else will be imported as a ``str``. If you would like to add
+additional types to this list, you can use
+:meth:`sanic.config.Config.register_type`. Just make sure that they
+are registered before you instantiate your application.
+
+.. code-block:: python
+
+    class Foo:
+        def __init__(self, name) -> None:
+            self.name = name
+
+
+    config = Config(converters=[Foo])
+    app = Sanic(__name__, config=config)
+
+`See user guide re: config
+<https://sanicframework.org/guide/deployment/configuration.html>`__",,
+bef2edbd1052a95c,llm_p2,gym,callback,"def callback(self, obs_t: ObsType, obs_tp1: ObsType, action: ActType, rew: float, done: bool, info: dict):","--- a/code.py
++++ b/code.py
+@@ -4,10 +4,11 @@
+         data_series.append(point)
+     self.t += 1
+     xmin, xmax = (max(0, self.t - self.horizon_timesteps), self.t)
++    xrange = range(xmin, xmax)
+     for i, plot in enumerate(self.cur_plot):
+         if plot is not None:
+             plot.remove()
+-        self.cur_plot[i] = self.ax[i].scatter(range(xmin, xmax), list(self.data[i]), c='blue')
++        self.cur_plot[i] = self.ax[i].scatter(xrange, list(self.data[i]), c='blue')
+         self.ax[i].set_xlim(xmin, xmax)
+     if plt is None:
+         raise DependencyNotInstalled('matplotlib is not installed, run `pip install gym[other]`')","The callback that calls the provided data callback and adds the data to the plots.
+
+Args:
+    obs_t: The observation at time step t
+    obs_tp1: The observation at time step t+1
+    action: The action
+    rew: The reward
+    done: If the environment is done
+    info: The information from the environment",,
+e0f85f0af766ea52,llm_p2,models,evaluate_continuously,"def evaluate_continuously(self, steps: int=-1, timeout: Optional[Union[int, float]]=None, timeout_fn: Optional[Callable[[], bool]]=None):","--- a/code.py
++++ b/code.py
+@@ -1,6 +1,7 @@
+ def evaluate_continuously(self, steps: int=-1, timeout: Optional[Union[int, float]]=None, timeout_fn: Optional[Callable[[], bool]]=None):
+     self._require('evaluator', for_method='evaluate_continuously')
+     self._require('checkpoint_manager', for_method='evaluate_continuously')
+-    for checkpoint_path in tf.train.checkpoints_iterator(self.checkpoint_manager.directory, timeout=timeout, timeout_fn=timeout_fn):
++    checkpoints = tf.train.checkpoints_iterator(self.checkpoint_manager.directory, timeout=timeout, timeout_fn=timeout_fn)
++    for checkpoint_path in checkpoints:
+         self.restore_checkpoint(checkpoint_path)
+         self.evaluate(steps)","Continuously monitors a directory and evaluates new checkpoints in it.
+
+This method continuously monitors a directory as specified by this
+Controller's CheckpointManager init arg and runs evaluation on the
+checkpoints found there.
+
+Args:
+  steps: The number of steps to run when evaluating. If -1, this method will
+    evaluate over the entire evaluation dataset.
+  timeout: The maximum number of seconds to wait between checkpoints. See
+    tf.train.checkpoints_iterator documentation.
+  timeout_fn: Optional callable to call after a timeout. If the function
+    returns True, then it means that no new checkpoints will be generated
+    and the iterator will exit.
+
+Raises:
+  ValueError: If no checkpoint found in `self.checkpoint_manager.directory`.
+  ValueError: If `evaluator` was not provided as a controller init arg.",,
+c6aa58284a95201a,llm_p2,pydantic,validate_python,"def validate_python(self, __object: Any, *, strict: bool | None=None, context: dict[str, Any] | None=None) -> T:","--- a/code.py
++++ b/code.py
+@@ -1,2 +1,3 @@
+ def validate_python(self, __object: Any, *, strict: bool | None=None, context: dict[str, Any] | None=None) -> T:
+-    return self.validator.validate_python(__object, strict=strict, context=context)
++    validator = self.validator
++    return validator.validate_python(__object, strict=strict, context=context)","Validate a Python object against the model.
+
+Args:
+    __object (Any): The Python object to validate against the model.
+    strict (bool | None, optional): Whether to strictly check types. Defaults to None.
+    context (dict[str, Any] | None, optional): Additional context to use during validation. Defaults to None.
+
+Returns:
+    T: The validated object.",,
+2e2ec2001ada8d05,llm_p2,freqtrade,main,def main():,"--- a/code.py
++++ b/code.py
+@@ -1,6 +1,7 @@
+ def main():
+     global _CONF
+     with open('config.json') as file:
+-        _CONF = json.load(file)
+-        validate(_CONF, CONF_SCHEMA)
+-        app(_CONF)
++        config = json.load(file)
++    validate(config, CONF_SCHEMA)
++    _CONF = config
++    app(_CONF)","Loads and validates the config and starts the main loop
+:return: None",,
+36ac1c77377c6044,llm_p2,pytorch-image-models,get_pretrained_cfg_value,"def get_pretrained_cfg_value(model_name, cfg_key):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,5 @@
+ def get_pretrained_cfg_value(model_name, cfg_key):
+-    if model_name in _model_pretrained_cfgs:
+-        return _model_pretrained_cfgs[model_name].get(cfg_key, None)
++    cfg = _model_pretrained_cfgs.get(model_name)
++    if cfg is not None:
++        return cfg.get(cfg_key, None)
+     return None",Get a specific model default_cfg value by key. None if it doesn't exist.,,

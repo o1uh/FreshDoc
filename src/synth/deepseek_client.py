@@ -39,9 +39,10 @@ COMP_TOKENS_RANGE = (100, 1200)
 @dataclass(frozen=True)
 class DeepSeekParams:
     model: str = MODEL
-    reasoning_effort: str = "max"
-    thinking_type: str = "enabled"
-    max_tokens: int = 4096
+    thinking: str = "disabled"  # 13.10: thinking=enabled давал пустой content (reasoning съедал весь max_tokens) — возврат к R7 (non-thinking)
+    temperature: float = 0.7
+    top_p: float = 0.95
+    max_tokens: int = 1200  # был 8192 при thinking; без thinking ответ ~300-700 ток.
 
 
 def load_api_key(env: dict[str, str] | None = None, dotenv_path: Path | None = None) -> str:
@@ -140,8 +141,9 @@ def call_deepseek(
         "model": params.model,
         "messages": messages,
         "response_format": {"type": "json_object"},
-        "reasoning_effort": params.reasoning_effort,
-        "thinking": {"type": params.thinking_type},
+        "thinking": {"type": params.thinking},
+        "temperature": params.temperature,
+        "top_p": params.top_p,
         "max_tokens": params.max_tokens,
     }
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}

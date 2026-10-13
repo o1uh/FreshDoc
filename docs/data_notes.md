@@ -81,6 +81,17 @@
 - **Выборка:** round-robin по проектам, seed 11 (smoke seed 7), 12 пилотных функций исключены, каждая функция ≤ 2 использований (P1+P2). Кэш по хэшу (модель, параметры, сообщения) — повторный запуск ключ не тратит. Код: `src/synth/deepseek_client.py`, `scripts/llm_main_batch.py`; инструкция: `docs/llm_main_batch.md`; тесты 9/9 (`tests/test_llm_main_batch.py`, без сети).
 - **Статус:** генерация НЕ запускалась (только настройка + сухие `estimate`/`export` без ключа). Порядок: smoke (6 ф.) в отдельной сессии → 300 → 700.
 
+### Основная партия LLM-синтетики, факт 300 функций (FD-11, 13.10.2026, ~11:05–11:40 +7, off-peak)
+- **Итог:** 300 функций / 600 запросов, ошибок API 0; принято 449 пар (P1 252 + P2 197), доля 0.781 — критерий ≥200 выполнен с запасом. Выход: `data/interim/synth_llm_main300.parquet` (449 строк), отчёт `reports/llm_main300.md`, аудит-выборка `reports/llm_audit_sample.csv` (25+25, verdict пустые).
+- **Параметры:** thinking=disabled, temperature=0.7, top_p=0.95, max_tokens=1200 (возврат к R7). История за день: effort=max+4096 → 40% empty_content (reasoning съедал лимит, finish=length) → 8192 (16% fails + 7 обрезанных JSON) → disabled (100/100 ok, completion 366–416 средняя). Проверено повтором M0003_p1 (8192) и сырым ответом M0004_p1 (finish=length, 4096/4096 reasoning).
+- **Отказы валидации:** code_unchanged 68, diff_too_big 35, bad_json (обрезка/escape) 24, docstring_changed 10, signature_changed 9, stale_statement_not_found 2, bad_syntax 1, docstring_flag_not_true 1.
+- **Цена (факт по usage.csv):** $0.190 за 600 запросов off-peak (реально с утренними thinking-пробами ~$0.3–0.4, лимит $1.50 не превышен). Проекция 700 функций (1400 запросов) non-thinking: ~$0.45 + sunk ≈ $0.7–0.8.
+- **Техдолг:** `data/llm-main/` переименован в `data/llm-main-legacy/` (чат-пакеты субагентов, скриптом не используется); экспорт 700 (`data/llm_main700`, seed 11) использован как контейнер для лимитов 50/150/300; `import --n` в отчёте пишет выборку None (не мешает).
+
+### Добивка до цели 700 функций (FD-11, 13.10.2026, ~12:00–12:20 +7, off-peak)
+- **Итог:** 700 функций / 1400 запросов, ошибок API 0; принято 1071 пара (P1 580 + P2 491), доля 0.799 — цель FD-11 выполнена. Выход: `data/interim/synth_llm_main700.parquet` (1071 строка), отчёт `reports/llm_main700.md`.
+- **Цена (факт по usage.csv):** $0.447 за 1400 запросов (реально по дашборду API ~$1.2 с учётом утреннего thinking-режима).
+
 ### Майнинг git-истории (FD-05, шаги 0–1, 14.10.2026)
 - **Шаг 0:** `data/` локально отсутствовала — склонирован CoDocBench (`git clone https://github.com/kunpai/codocbench.git data/external/codocbench`), хэш `ee0256da15a07dcf265d5313fe51a269aa7268e0` совпал с FD-03. Адаптер FD-04 перепрогонен локально для точной таблицы пулов: 2997 пар, `manim → test_pool`, `Python → train_pool` (после фильтров только train), пулов 91 train / 90 test. Команда: `python scripts/build_codocbench_pairs.py` (интерпретатор `.venv/bin/python3.11`; symlink `.venv/bin/python` бит — указывает на системный 3.14 без зависимостей, чинить отдельно).
 - **Неоднозначность имён в projects.csv:** `manim` ×2 (ManimCommunity/manim, 3b1b/manim), `Python`/`python` ×2 (TheAlgorithms/Python, Yonv1943/Python). Разрешено: `Python → TheAlgorithms/Python` (пути `data_structures/...`, SHA `477b2c24` — 200 у TheAlgorithms, 422 у Yonv1943); `manim → ManimCommunity/manim` (коммит 2024-05 `1f249e45` — 200 у ManimCommunity, 422 у 3b1b; старые `manimlib/`-пути — общая история форка). Пулы: manim test, Python train.

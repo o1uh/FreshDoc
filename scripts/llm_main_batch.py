@@ -222,8 +222,11 @@ def cmd_import(args: argparse.Namespace) -> None:
     pool_src = {str(r["function_hash"]): str(r["src"]) for _, r in df_pool.iterrows()}
     pool_proj = {str(r["function_hash"]): str(r["project"]) for _, r in df_pool.iterrows()}
     manifest = pd.read_csv(out_dir / MANIFEST_NAME, dtype=str)
+    if getattr(args, "limit", None):
+        manifest = manifest.head(args.limit)
     stats: dict[str, Any] = {"objects_total": 0, "accepted_p1": 0, "accepted_p2": 0,
-                             "skipped": 0, "unknown_id": 0, "reasons": {}, "per_task": {}}
+                             "skipped": 0, "unknown_id": 0, "reasons": {}, "per_task": {},
+                             "slots": len(manifest) * 2}
     accepted_rows: list[dict[str, Any]] = []
     for _, row in manifest.iterrows():
         mid, fhash = str(row["m_id"]), str(row["function_hash"])
@@ -267,6 +270,12 @@ def cmd_import(args: argparse.Namespace) -> None:
     stats["accepted_total"] = stats["accepted_p1"] + stats["accepted_p2"]
     denom = stats["objects_total"]
     stats["accept_rate"] = round(stats["accepted_total"] / denom, 3) if denom else 0.0
+    pre_parse = sum(v for k, v in stats["reasons"].items()
+                    if k.startswith(("bad_json", "bad_count", "missing_response", "unknown_id")))
+    valid_fails = sum(stats["reasons"].values()) - pre_parse
+    stats["check_line"] = (
+        f"слотов {stats['slots']} = разобрано {stats['objects_total']} + до-разбора {pre_parse}; "
+        f"разобрано = принято {stats['accepted_total']} + отказы валидации {valid_fails}")
     _write_main_report(Path(args.report), stats, out_dir, args)
     print(f"Принято P1/P2: {stats['accepted_p1']}/{stats['accepted_p2']}, доля: {stats['accept_rate']}")
     print(f"Причины отказов: {stats['reasons']}")
@@ -297,6 +306,7 @@ def _usage_totals(out_dir: Path) -> dict[str, int]:
 def _write_main_report(report_path: Path, stats: dict[str, Any], out_dir: Path,
                        args: argparse.Namespace) -> None:
     totals = _usage_totals(out_dir)
+    p = DeepSeekParams()
     n_req = totals.get("n") or stats["objects_total"]
     in_tok = totals.get("prompt_tokens", 0)
     comp_tok = totals.get("completion_tokens", 0)
@@ -305,14 +315,16 @@ def _write_main_report(report_path: Path, stats: dict[str, Any], out_dir: Path,
     lines = [
         "# FD-11: основная партия LLM-синтетики (P1/P2, DeepSeek API)",
         "",
-        f"- Генератор: {MODEL} ({MODEL_VERSION}), reasoning_effort=max, thinking=enabled, "
-        f"response_format=json_object, max_tokens=4096. Дата прогона: см. fetched_at в responses/.",
+        f"- Генератор: {MODEL} ({MODEL_VERSION}), thinking={p.thinking}, "
+        f"temperature={p.temperature}, top_p={p.top_p}, max_tokens={p.max_tokens}. "
+        f"Дата прогона: см. fetched_at в responses/.",
         "- Судья M3 (FD-22, Gemini 3.8 Flash) для данных не используется.",
-        f"- Каталог партии: {out_dir}; выборка: {args.n if hasattr(args, 'n') else '—'} "
+        f"- Каталог партии: {out_dir}; выборка: {getattr(args, 'limit', None) or getattr(args, 'n', None) or 'все'} "
         f"(seed — в имени каталога/документации).",
         f"- Объектов всего: {stats['objects_total']}; принято P1: {stats['accepted_p1']}; "
         f"принято P2: {stats['accepted_p2']}; пропущено skip: {stats['skipped']}.",
         f"- Доля принятых: {stats['accept_rate']} (ожидание FD-11: порядка 200+200 при минимуме 300 функций).",
+        f"- Контроль арифметики: {stats.get('check_line', '—')}",
         "",
         "## Причины отказов",
         "",
@@ -360,26 +372,23 @@ def cmd_audit_sample(args: argparse.Namespace) -> None:
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     sample.to_csv(out, index=False)
-    print(f"Аудит-выборка: {len(sample)} строк (25 P1 + 25 P2) → {out}")
+    print(f"Аудит-выборка: {len(sample)} строк (25 P1 + 25 P2) -> {out}")
 
 
 def cmd_estimate(_args: argparse.Namespace) -> None:
-    print(f"Модель: {MODEL} ({MODEL_VERSION}); reasoning_effort=max")
+    p = DeepSeekParams()
+    print(f"Модель: {MODEL} ({MODEL_VERSION}); thinking={p.thinking}, "
+          f"temperature={p.temperature}, top_p={p.top_p}, max_tokens={p.max_tokens}")
     print(f"Пик: {PEAK_UTC}; +7: {PEAK_PLUS7}. Off-peak вдвое дешевле (включая выходные).")
-    print(f"Допущения: вход {AVG_IN_TOKENS} ток./запрос, completion {AVG_COMP_TOKENS} "
-          f"(диапазон {COMP_TOKENS_RANGE[0]}-{COMP_TOKENS_RANGE[1]} — reasoning при max неизвестен).")
+    print(f"Допущения (факт 13.10): вход {AVG_IN_TOKENS} ток./запрос, completion {AVG_COMP_TOKENS} "
+          f"(диапазон {COMP_TOKENS_RANGE[0]}-{COMP_TOKENS_RANGE[1]}).")
     print("")
     print("| партия | запросов | off-peak, $ | peak, $ |")
     print("|---|---|---|---|")
     for row in cost_table([12, 600, 1400]):
         print(f"| {row['n_requests']} | {row['n_requests']} | {row['usd_offpeak']:.3f} | {row['usd_peak']:.3f} |")
     print("")
-    print("Диапазон completion 800/2300 ток. на запрос:")
-    for n in (600, 1400):
-        lo_off = cost_usd(n, AVG_IN_TOKENS, 800, False)
-        hi_peak = cost_usd(n, AVG_IN_TOKENS, 2300, True)
-        print(f"  {n} запросов: ${lo_off:.2f} (off, 800) … ${hi_peak:.2f} (peak, 2300)")
-    print("После smoke пересчитать по usage.csv (средний completion на запрос).")
+    print("Пересчёт от факта: запросы * (вход*цена_вх + completion*цена_вых)/1M по usage.csv.")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -410,6 +419,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--report", default=None)
     p.add_argument("--out", default=None)
     p.add_argument("--n", type=int, default=None)
+    p.add_argument("--limit", type=int, default=None,
+                   help="первые N функций манифеста (отчёт без missing_response)")
     p.set_defaults(func=cmd_import)
     p = sub.add_parser("audit-sample", help="выборка 25+25 для ручного аудита")
     p.add_argument("--in-path", dest="in_path", required=True)
