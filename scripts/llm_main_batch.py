@@ -35,8 +35,8 @@ from src.synth.deepseek_client import (
     cost_usd,
     load_api_key,
 )
-from src.synth.llm_batch import build_synth_row
-from src.synth.llm_validators import parse_batch_response, validate_p1, validate_p2
+from src.synth.llm_batch import build_paraphrase_row, build_synth_row
+from src.synth.llm_validators import parse_batch_response, validate_p1, validate_p2, validate_p3
 
 TASKS = ("p1", "p2")
 MANIFEST_NAME = "main_manifest.csv"
@@ -354,6 +354,90 @@ def _write_main_report(report_path: Path, stats: dict[str, Any], out_dir: Path,
     report_path.write_text("\n".join(lines), encoding="utf-8")
 
 
+def cmd_export_p3(args: argparse.Namespace) -> None:
+    """Запросы P3 (парафраз docstring) для функций существующего манифеста."""
+    from src.data.normalizer import extract_docstring_and_clean_node, parse_function_ast
+
+    out_dir = Path(args.dir)
+    df_pool = pd.read_parquet(args.pool)
+    pool_src = {str(r["function_hash"]): str(r["src"]) for _, r in df_pool.iterrows()}
+    manifest = pd.read_csv(out_dir / MANIFEST_NAME, dtype=str)
+    (out_dir / REQUESTS_DIR).mkdir(parents=True, exist_ok=True)
+    prompts_dir = Path(args.prompts)
+    params = DeepSeekParams()
+    n = 0
+    for _, row in manifest.iterrows():
+        src = pool_src.get(str(row["function_hash"]))
+        if src is None:
+            continue
+        messages = build_messages("p3", src, prompts_dir)
+        req = {
+            "m_id": str(row["m_id"]),
+            "task": "p3",
+            "function_hash": str(row["function_hash"]),
+            "model": params.model,
+            "model_version": MODEL_VERSION,
+            "params": params.__dict__,
+            "messages": messages,
+        }
+        (out_dir / REQUESTS_DIR / f"{row['m_id']}_p3.json").write_text(
+            json.dumps(req, ensure_ascii=False), encoding="utf-8")
+        n += 1
+    print(f"P3-запросов: {n}; каталог: {out_dir} (прогон — тем же run)")
+
+
+def cmd_import_p3(args: argparse.Namespace) -> None:
+    from src.data.normalizer import extract_docstring_and_clean_node, parse_function_ast
+
+    def doc_of(src: str) -> str:
+        fn = parse_function_ast(src)
+        if fn is None:
+            return ""
+        doc, _ = extract_docstring_and_clean_node(fn)
+        return (doc or "").strip()
+
+    out_dir = Path(args.dir)
+    df_pool = pd.read_parquet(args.pool)
+    pool_src = {str(r["function_hash"]): str(r["src"]) for _, r in df_pool.iterrows()}
+    manifest = pd.read_csv(out_dir / MANIFEST_NAME, dtype=str)
+    stats: dict[str, Any] = {"objects_total": 0, "accepted": 0, "skipped": 0, "reasons": {}}
+    rows: list[dict[str, Any]] = []
+    for _, row in manifest.iterrows():
+        fhash = str(row["function_hash"])
+        src_old = pool_src.get(fhash)
+        if src_old is None:
+            stats["reasons"]["unknown_id"] = stats["reasons"].get("unknown_id", 0) + 1
+            continue
+        resp_path = out_dir / RESPONSES_DIR / f"{row['m_id']}_p3.response.json"
+        if not resp_path.exists():
+            stats["reasons"]["missing_response"] = stats["reasons"].get("missing_response", 0) + 1
+            continue
+        payload = json.loads(resp_path.read_text(encoding="utf-8"))
+        objects, error = parse_batch_response(payload.get("content", ""))
+        if error is not None or len(objects) != 1:
+            reason = error or f"bad_count:{len(objects)}"
+            stats["reasons"][reason] = stats["reasons"].get(reason, 0) + 1
+            continue
+        stats["objects_total"] += 1
+        ok, reason, parts = validate_p3(doc_of(src_old), objects[0])
+        if not ok:
+            if reason == "skipped":
+                stats["skipped"] += 1
+            stats["reasons"][reason] = stats["reasons"].get(reason, 0) + 1
+            continue
+        assert parts is not None
+        rows.append(build_paraphrase_row(fhash, doc_of(src_old), parts["doc_para"], parts["style"]))
+        stats["accepted"] += 1
+    out_path = Path(args.out)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(rows, columns=["function_hash", "doc_orig", "doc_para", "style"]).to_parquet(out_path, index=False)
+    denom = stats["objects_total"]
+    rate = round(stats["accepted"] / denom, 3) if denom else 0.0
+    print(f"P3 принято: {stats['accepted']}/{stats['objects_total']}, доля: {rate}")
+    print(f"Причины отказов: {stats['reasons']}")
+    print(f"Таблица: {out_path} ({len(rows)} строк)")
+
+
 def cmd_audit_sample(args: argparse.Namespace) -> None:
     df = pd.read_parquet(args.in_path)
     rng = random.Random(args.seed)
@@ -422,6 +506,16 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--limit", type=int, default=None,
                    help="первые N функций манифеста (отчёт без missing_response)")
     p.set_defaults(func=cmd_import)
+    p = sub.add_parser("export-p3", help="запросы P3 для функций манифеста (без ключа)")
+    p.add_argument("--dir", required=True)
+    p.add_argument("--pool", default="data/interim/functions_pool_v1.parquet")
+    p.add_argument("--prompts", default="prompts")
+    p.set_defaults(func=cmd_export_p3)
+    p = sub.add_parser("import-p3", help="валидация P3-ответов → parquet (без ключа)")
+    p.add_argument("--dir", required=True)
+    p.add_argument("--pool", default="data/interim/functions_pool_v1.parquet")
+    p.add_argument("--out", required=True)
+    p.set_defaults(func=cmd_import_p3)
     p = sub.add_parser("audit-sample", help="выборка 25+25 для ручного аудита")
     p.add_argument("--in-path", dest="in_path", required=True)
     p.add_argument("--out", default="reports/llm_audit_sample.csv")

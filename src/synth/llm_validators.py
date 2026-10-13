@@ -155,9 +155,19 @@ P3_MIN_RATIO = 0.6
 P3_MAX_RATIO = 1.6
 
 
+# Заголовки секций docstring (Google/NumPy-стиль) — не идентификаторы,
+# хотя подходят под эвристику ALLCAPS (13.10: ~20 ложных identifier_lost).
+_SECTION_HEADERS = frozenset({
+    "ARGS", "ARGUMENTS", "PARAMETERS", "PARAMS", "RETURNS", "RETURN",
+    "RAISES", "YIELDS", "YIELD", "EXAMPLES", "EXAMPLE", "NOTES", "NOTE",
+})
+
+
 def must_keep_identifiers(doc_orig: str) -> list[str]:
     keep: set[str] = set()
     for tok in _IDENT_RE.findall(doc_orig or ""):
+        if tok in _SECTION_HEADERS:
+            continue
         if "_" in tok or tok.isupper() or any(c.isdigit() for c in tok) or tok in _LITERAL_KEEP:
             keep.add(tok)
     return sorted(keep)

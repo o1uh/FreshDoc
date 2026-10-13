@@ -80,9 +80,9 @@ def split_template(template: str) -> tuple[str, str]:
 
 def build_messages(task: str, function_source: str, prompts_dir: Path) -> list[dict[str, str]]:
     """Сообщения для Chat Completions: system + user с подставленной функцией."""
-    names = {"p1": "p1_behavior.txt", "p2": "p2_neutral.txt"}
+    names = {"p1": "p1_behavior.txt", "p2": "p2_neutral.txt", "p3": "p3_paraphrase.txt"}
     if task not in names:
-        raise ValueError(f"Задача {task!r}: для API-партии допустимы только p1/p2")
+        raise ValueError(f"Задача {task!r}: для API-партии допустимы только p1/p2/p3")
     template = (prompts_dir / names[task]).read_text(encoding="utf-8")
     system, user_tpl = split_template(template)
     user = user_tpl.replace("{function_source}", function_source.strip())

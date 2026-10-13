@@ -92,6 +92,13 @@
 - **Итог:** 700 функций / 1400 запросов, ошибок API 0; принято 1071 пара (P1 580 + P2 491), доля 0.799 — цель FD-11 выполнена. Выход: `data/interim/synth_llm_main700.parquet` (1071 строка), отчёт `reports/llm_main700.md`.
 - **Цена (факт по usage.csv):** $0.447 за 1400 запросов (реально по дашборду API ~$1.2 с учётом утреннего thinking-режима).
 
+### P3-парафразы docstring, фулл 700 функций (13.10.2026, ~12:05–12:25 +7, off-peak)
+- **Итог:** 700 запросов P3 (по одному на функцию), ошибок API 0; принято 520 парафраз, доля 0.750 (стоплист заголовков секций в `must_keep_identifiers` спас 12: было 508). Выход: `data/interim/p3_main700.parquet` (колонки function_hash/doc_orig/doc_para/style).
+- **Код:** `build_messages` расширен на p3, команды `export-p3`/`import-p3` в `scripts/llm_main_batch.py` (прогон — тем же `run`); тест `test_build_messages_allows_p3`. По пути чинены две склеенные строки в скрипте и печать `audit-sample` (кириллица/стрелка на cp1251).
+- **Отказы:** length_ratio 108 (модель сжимает), numbers_changed 29, docstring_unchanged 22, identifier_lost ~8 (настоящие: EXCHANGE/SCHEMA/одиночные буквы — оставить отказом), обрезка JSON 7.
+- **Решение по P3 → FD-12 (зафиксировано 13.10):** P3-таблица (`function_hash/doc_orig/doc_para/style`) — НЕ пары (схема R1 не меняется, `source` не расширяется). Использование — аугментация `doc_old` в train на усмотрение FD-12 после аудита P1/P2; до решения лежит отдельно и в обучение не идёт.
+- **Цена:** ~$0.11 за 700 P3 (usage-based итого $0.561 за 2100 запросов; реально по дашборду ~$1.3, лимит $1.50 цел).
+
 ### Майнинг git-истории (FD-05, шаги 0–1, 14.10.2026)
 - **Шаг 0:** `data/` локально отсутствовала — склонирован CoDocBench (`git clone https://github.com/kunpai/codocbench.git data/external/codocbench`), хэш `ee0256da15a07dcf265d5313fe51a269aa7268e0` совпал с FD-03. Адаптер FD-04 перепрогонен локально для точной таблицы пулов: 2997 пар, `manim → test_pool`, `Python → train_pool` (после фильтров только train), пулов 91 train / 90 test. Команда: `python scripts/build_codocbench_pairs.py` (интерпретатор `.venv/bin/python3.11`; symlink `.venv/bin/python` бит — указывает на системный 3.14 без зависимостей, чинить отдельно).
 - **Неоднозначность имён в projects.csv:** `manim` ×2 (ManimCommunity/manim, 3b1b/manim), `Python`/`python` ×2 (TheAlgorithms/Python, Yonv1943/Python). Разрешено: `Python → TheAlgorithms/Python` (пути `data_structures/...`, SHA `477b2c24` — 200 у TheAlgorithms, 422 у Yonv1943); `manim → ManimCommunity/manim` (коммит 2024-05 `1f249e45` — 200 у ManimCommunity, 422 у 3b1b; старые `manimlib/`-пути — общая история форка). Пулы: manim test, Python train.

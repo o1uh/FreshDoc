@@ -65,9 +65,12 @@ def test_build_messages_substitutes_function_and_mentions_json(tmp_path):
         assert "json" in (messages[0]["content"] + messages[1]["content"]).lower()
 
 
-def test_build_messages_rejects_p3(tmp_path):
+def test_build_messages_allows_p3():
+    messages = build_messages("p3", _tiny_src("demo"), Path("prompts"))
+    assert [m["role"] for m in messages] == ["system", "user"]
+    assert "def demo" in messages[1]["content"]
     with pytest.raises(ValueError):
-        build_messages("p3", _tiny_src("demo"), Path("prompts"))
+        build_messages("p9", _tiny_src("demo"), Path("prompts"))
 
 
 def test_request_key_stable_and_task_sensitive():
