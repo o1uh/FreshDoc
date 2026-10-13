@@ -8,7 +8,7 @@ pair_id,label_source,project,symbol,sig_old,diff_code,doc_old,verdict,comment
 +    if not docs:
 +        return
      self.store = self._write(docs, metadatas)
-     self.persist()","Initialize the index and library based on the provided Document (JSON / XLSX, etc.) file.",,
+     self.persist()","Initialize the index and library based on the provided Document (JSON / XLSX, etc.) file.",верно,пустой вход теперь молча выходит без store/persist — «initialize…» для него ложно
 7b77b44aa45005bb,llm_p1,pytorch-lightning,save_checkpoint,"def save_checkpoint(self, path: _PATH, state: Dict[str, Union[Module, Optimizer, Any]], storage_options: Optional[Any]=None) -> None:","--- a/code.py
 +++ b/code.py
 @@ -27,5 +27,4 @@
@@ -20,7 +20,7 @@ pair_id,label_source,project,symbol,sig_old,diff_code,doc_old,verdict,comment
 +    torch.save(metadata, path / 'meta.pt')","Save model, optimizer, and other state in a checkpoint directory.
 
 The directory will contain one file per process, with model- and optimizer shards stored per file. Additionally,
-it creates a metadata file `meta.pt` with the rest of the user's state (only saved from rank 0).",,
+it creates a metadata file `meta.pt` with the rest of the user's state (only saved from rank 0).",верно,"meta.pt теперь пишется со всех рангов, «only saved from rank 0» ложно"
 da5f557723426d0e,llm_p1,promptflow,execute_flow,"def execute_flow(flow_file: Path, working_dir: Path, output_dir: Path, connections: dict, inputs: Mapping[str, Any], *, run_id: str=None, run_aggregation: bool=True, enable_stream_output: bool=False, allow_generator_output: bool=False, **kwargs) -> LineResult:","--- a/code.py
 +++ b/code.py
 @@ -4,7 +4,7 @@
@@ -50,7 +50,7 @@ da5f557723426d0e,llm_p1,promptflow,execute_flow,"def execute_flow(flow_file: Pat
 :param kwargs: Other keyword arguments to create flow executor.
 :type kwargs: Any
 :return: The line result of executing the flow.
-:rtype: ~promptflow.executor._result.LineResult",,
+:rtype: ~promptflow.executor._result.LineResult",верно,флаг run_aggregation игнорируется при наличии aggregation_inputs
 5fb7e97f0a1fc1c5,llm_p1,rich,export_text,"def export_text(self, *, clear: bool=True, styles: bool=False) -> str:","--- a/code.py
 +++ b/code.py
 @@ -7,4 +7,6 @@
@@ -67,7 +67,7 @@ Args:
         Defaults to ``False``.
 
 Returns:
-    str: String containing console contents.",,
+    str: String containing console contents.",верно,при clear=False буфер режется до последних 1000 — противоречит смыслу флага
 d622bd79a9decc41,llm_p1,st2,is_pack_virtualenv_using_python3,def is_pack_virtualenv_using_python3(pack):,"--- a/code.py
 +++ b/code.py
 @@ -8,6 +8,6 @@
@@ -77,7 +77,7 @@ d622bd79a9decc41,llm_p1,st2,is_pack_virtualenv_using_python3,def is_pack_virtual
 -        uses_python3 = False
 +        uses_python3 = True
          virtualenv_directories = None
-     return (uses_python3, virtualenv_directories)",Return True if a particular pack virtual environment is used Python 3.,,
+     return (uses_python3, virtualenv_directories)",Return True if a particular pack virtual environment is used Python 3.,верно,else-ветка теперь возвращает True вместо False
 878d774d566fb4c9,llm_p1,detectron2,draw_binary_mask,"def draw_binary_mask(self, binary_mask, color=None, *, edge_color=None, text=None, alpha=0.5, area_threshold=0):","--- a/code.py
 +++ b/code.py
 @@ -9,7 +9,7 @@
@@ -101,7 +101,7 @@ d622bd79a9decc41,llm_p1,st2,is_pack_virtualenv_using_python3,def is_pack_virtual
     area_threshold (float): a connected component small than this will not be shown.
 
 Returns:
-    output (VisImage): image object with mask drawn.",,
+    output (VisImage): image object with mask drawn.",неверно,граница area_threshold в docstring не описана — нечего опровергать
 f1ce408424b76750,llm_p1,OpenDevin,condense,"def condense(self, llm: LLM):","--- a/code.py
 +++ b/code.py
 @@ -4,7 +4,8 @@
@@ -119,7 +119,7 @@ Parameters:
 - llm (LLM): llm to be used for summarization
 
 Raises:
-- RunTimeError: When the condensing process fails for any reason",,
+- RunTimeError: When the condensing process fails for any reason",неверно,пустой ответ просто пропускается; «attempts…» остаётся верным
 3340282f674b0151,llm_p1,aws-sam-cli,get_dir_path_handler,def get_dir_path_handler(dir_path_str: str) -> PathHandler:,"--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -137,7 +137,7 @@ dir_path_str : str
 Returns
 -------
 PathHandler
-    The PathHandler for the folder specified",,
+    The PathHandler for the folder specified",неверно,рекурсия обхода в docstring не упомянута
 b08524e862e8970f,llm_p1,cpython,assertCountEqual,"def assertCountEqual(self, actual, expected, msg=None):","--- a/code.py
 +++ b/code.py
 @@ -8,7 +8,7 @@
@@ -158,7 +158,7 @@ Equivalent to::
 Asserts that each element has the same count in both sequences.
 Example:
     - [0, 1, 1] and [1, 0, 1] compare equal.
-    - [0, 0, 1] and [0, 1] compare unequal.",,
+    - [0, 0, 1] and [0, 1] compare unequal.",неверно,"семантика равенства та же; своп аргументов внутр. хелпера doc не затрагивает (возможно, изменение вообще нейтрально)"
 f291bda0aaed9713,llm_p1,microk8s,update_cert_auth_kubeproxy,"def update_cert_auth_kubeproxy(token, master_ip, master_port, hostname_override):","--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,6 @@
@@ -174,7 +174,7 @@ f291bda0aaed9713,llm_p1,microk8s,update_cert_auth_kubeproxy,"def update_cert_aut
 :param ca: the ca
 :param master_ip: the master node IP
 :param master_port: the master node port where the cluster agent listens
-:param hostname_override: the hostname override in case the hostname is not resolvable",,
+:param hostname_override: the hostname override in case the hostname is not resolvable",неверно,значение --master в docstring не описано
 4c5b30bd8972e1cb,llm_p1,datasets,list_metrics,"def list_metrics(with_community_metrics=True, with_details=False):","--- a/code.py
 +++ b/code.py
 @@ -1,3 +1,3 @@
@@ -185,7 +185,7 @@ f291bda0aaed9713,llm_p1,microk8s,update_cert_auth_kubeproxy,"def update_cert_aut
 
 Args:
     with_community_metrics (Optional ``bool``): Include the community provided metrics (default: ``True``)
-    with_details (Optional ``bool``): Return the full details on the metrics instead of only the short name (default: ``False``)",,
+    with_details (Optional ``bool``): Return the full details on the metrics instead of only the short name (default: ``False``)",верно,«List all…» при срезе [:100] ложно
 8bb74a96636eb37c,llm_p1,Theano,add_key,"def add_key(self, key):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,5 @@
@@ -194,7 +194,7 @@ Args:
      self.keys.add(key)
 -    self.save_pkl()
 +    if len(self.keys) % 100 == 0:
-+        self.save_pkl()","Add a key to the `keys` set, and update the pickled file.",,
++        self.save_pkl()","Add a key to the `keys` set, and update the pickled file.",верно,«update the pickled file» при записи раз в 100 ключей ложно
 d01ea55e30e0e3aa,llm_p1,rich,input,"def input(self, prompt: TextType='', *, markup: bool=True, emoji: bool=True, password: bool=False) -> str:","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,8 @@
@@ -215,7 +215,7 @@ Args:
     password: (bool, optional): Hide typed text. Defaults to False.
 
 Returns:
-    str: Text read from stdin.",,
+    str: Text read from stdin.",неверно,текст приглашения getpass в docstring не указан
 7827394f20bc1d02,llm_p1,aws-sam-cli,prepare,"def prepare(self, output_dir_path: str, iac_project_path: Optional[str]=None, debug: bool=False, aws_profile: Optional[str]=None, aws_region: Optional[str]=None, skip_prepare_infra: bool=False, plan_file: Optional[str]=None) -> str:","--- a/code.py
 +++ b/code.py
 @@ -10,7 +10,7 @@
@@ -248,7 +248,7 @@ plan_file: Optional[str]
 Returns
 -------
 str
-    Path to the generated IaC Metadata file",,
+    Path to the generated IaC Metadata file",неверно,случай нескольких приложений в docstring не описан (максимум B)
 e46ed9835be01cb2,llm_p1,gym,sample,def sample(self) -> tuple:,"--- a/code.py
 +++ b/code.py
 @@ -1,2 +1,2 @@
@@ -259,7 +259,7 @@ e46ed9835be01cb2,llm_p1,gym,sample,def sample(self) -> tuple:,"--- a/code.py
 This method draws independent samples from the subspaces.
 
 Returns:
-    Tuple of the subspace's samples",,
+    Tuple of the subspace's samples",верно,порядок сэмплов реверсирован — «tuple of the subspace's samples» нарушен
 1ef7e1bdb56eb4de,llm_p1,llama_index,load_data,"def load_data(self, url: str) -> List[Document]:","--- a/code.py
 +++ b/code.py
 @@ -7,4 +7,4 @@
@@ -273,7 +273,7 @@ Args:
     urls (List[str]): List of URLs to scrape.
 
 Returns:
-    List[Document]: List of documents.",,
+    List[Document]: List of documents.",неверно,порядок списка в docstring не заявлен
 81a0002bca529fbf,llm_p1,ccxt,create_order,"def create_order(self, symbol: str, type: OrderType, side: OrderSide, amount, price=None, params={}):","--- a/code.py
 +++ b/code.py
 @@ -8,4 +8,4 @@
@@ -288,7 +288,7 @@ Returns:
 :param float amount: how much of currency you want to trade in units of base currency
 :param float [price]: the price at which the order is to be fullfilled, in units of the quote currency, ignored in market orders
 :param dict [params]: extra parameters specific to the btcalpha api endpoint
-:returns dict: an `order structure <https://github.com/ccxt/ccxt/wiki/Manual#order-structure>`",,
+:returns dict: an `order structure <https://github.com/ccxt/ccxt/wiki/Manual#order-structure>`",неверно,лишний ключ price в ответе; утверждения docstring целы
 709b1837ce9f2092,llm_p1,PythonRobotics,planning,"def planning(self, animation=True, search_until_max_iter=True):","--- a/code.py
 +++ b/code.py
 @@ -11,7 +11,7 @@
@@ -301,7 +301,7 @@ Returns:
              self.draw_graph(rnd)
          if not search_until_max_iter and new_node:","RRT Star planning
 
-animation: flag for animation on or off",,
+animation: flag for animation on or off",неверно,частота перерисовки animation в docstring не указана
 f0f1e194c2b59576,llm_p1,twine,addHtml,"def addHtml(self, source):","--- a/code.py
 +++ b/code.py
 @@ -13,11 +13,11 @@
@@ -317,7 +317,7 @@ f0f1e194c2b59576,llm_p1,twine,addHtml,"def addHtml(self, source):","--- a/code.p
 -            div.strip()
 +            div = div.strip()
              if div:
-                 self.addTiddler(Tiddler('<div' + div, 'html', obfuscationkey))",Adds HTML source code to this TiddlyWiki.,,
+                 self.addTiddler(Tiddler('<div' + div, 'html', obfuscationkey))",Adds HTML source code to this TiddlyWiki.,неверно,тонкий docstring; багфикс strip и набор символов не покрыты утверждениями
 daa77ff001bf9d05,llm_p1,gensim,evaluate_spearman,"def evaluate_spearman(self, embedding):","--- a/code.py
 +++ b/code.py
 @@ -14,5 +14,7 @@
@@ -337,7 +337,7 @@ embedding : PoincareKeyedVectors instance
 Returns
 -------
 float
-    Spearman correlation score for the task for input embedding.",,
+    Spearman correlation score for the task for input embedding.",неверно,"пустой вход → 0.0; тип Returns соблюдён, edge-кейс не описан (погранично B)"
 893e084706e305a8,llm_p1,spaCy,score,"def score(self, examples):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,7 @@
@@ -351,7 +351,7 @@ float
 
 examples (Iterable[Example]): The predicted annotations + correct annotations.
 RETURNS (Dict): A dictionary of scores.
-DOCS: https://spacy.io/api/scorer#score",,
+DOCS: https://spacy.io/api/scorer#score",неверно,пустой вход → {}; «dictionary of scores» соблюдено
 bf689001bb5cbe39,llm_p1,ultralytics,yaml_save,"def yaml_save(file='data.yaml', data=None):","--- a/code.py
 +++ b/code.py
 @@ -7,5 +7,5 @@
@@ -367,7 +367,7 @@ Args:
     data (dict): Data to save in YAML format.
 
 Returns:
-    (None): Data is saved to the specified file.",,
+    (None): Data is saved to the specified file.",верно,"'w'→'a': данные дописываются, «save data to the file» нарушено"
 8f0e07a5ffbc87c0,llm_p1,cpython,iglob,def iglob(pathname):,"--- a/code.py
 +++ b/code.py
 @@ -19,5 +19,5 @@
@@ -381,7 +381,7 @@ Returns:
 The pattern may contain simple shell-style wildcards a la
 fnmatch. However, unlike fnmatch, filenames starting with a
 dot are special cases that are not matched by '*' and '?'
-patterns.",,
+patterns.",неверно,порядок выдачи в docstring не заявлен
 eeda06f2267e4d8e,llm_p1,pydantic,tuple_variable_schema,"def tuple_variable_schema(self, schema: core_schema.TupleVariableSchema) -> JsonSchemaValue:","--- a/code.py
 +++ b/code.py
 @@ -2,5 +2,5 @@
@@ -396,7 +396,7 @@ Args:
     schema (core_schema.TupleVariableSchema): The schema.
 
 Returns:
-    JsonSchemaValue: The generated JSON schema.",,
+    JsonSchemaValue: The generated JSON schema.",верно,валидации object вместо array — «matches a tuple» сломано
 2cb46a0933bc0a9a,llm_p1,OpenBBTerminal,tcm,"def tcm(self, start_date: Annotated[Union[datetime.date, None, str], OpenBBCustomParameter(description='Start date of the data, in YYYY-MM-DD format.')]=None, end_date: Annotated[Union[datetime.date, None, str], OpenBBCustomParameter(description='End date of the data, in YYYY-MM-DD format.')]=None, maturity: Annotated[Optional[Literal['3m', '2y']], OpenBBCustomParameter(description='The maturity')]='3m', provider: Optional[Literal['fred']]=None, **kwargs) -> OBBject:","--- a/code.py
 +++ b/code.py
 @@ -1,2 +1,4 @@
@@ -448,7 +448,7 @@ yield curve which, in turn, is based on closing bid-yields of actively-traded Tr
     Example
     -------
     >>> from openbb import obb
-    >>> obb.fixedincome.fixedincome.spreads.tcm(maturity=""2y"")",,
+    >>> obb.fixedincome.fixedincome.spreads.tcm(maturity=""2y"")",не уверен,"docstring обрезан в выборке, дефолт provider не виден"
 d837e4503fb09a2f,llm_p2,black,normalize_string_prefix,"def normalize_string_prefix(s: str, remove_u_prefix: bool=False) -> str:","--- a/code.py
 +++ b/code.py
 @@ -1,8 +1,8 @@
@@ -464,7 +464,7 @@ d837e4503fb09a2f,llm_p2,black,normalize_string_prefix,"def normalize_string_pref
 -    return f'{new_prefix}{match.group(2)}'
 +    return f'{new_prefix}{rest}'","Make all string prefixes lowercase.
 
-If remove_u_prefix is given, also removes any u prefix from the string.",,
+If remove_u_prefix is given, also removes any u prefix from the string.",верно,"переименование локальных, те же значения"
 fa8c015e8af2ba55,llm_p2,conan,autoreconf,"def autoreconf(self, args=None):","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,6 @@
@@ -477,7 +477,7 @@ fa8c015e8af2ba55,llm_p2,conan,autoreconf,"def autoreconf(self, args=None):","---
          self._conanfile.run(command)","Call ``autoreconf``
 
 :param args: (Optional, Defaulted to ``None``): List of arguments to use for the
-             ``autoreconf`` call.",,
+             ``autoreconf`` call.",верно,"эквивалентная проверка None (нюанс лишь для ложных не-None, практически недостижимо)"
 4e965b594b9e3e59,llm_p2,datasets,to_dict,"def to_dict(self, batch_size: Optional[int]=None, batched: bool=False) -> Union[dict, Iterator[dict]]:","--- a/code.py
 +++ b/code.py
 @@ -2,5 +2,6 @@
@@ -503,7 +503,7 @@ Example:
 
 ```py
 >>> ds.to_dict()
-```",,
+```",неверно,"batch_size=0: было дефолт, стало ValueError (шаг range 0)"
 5ff308865ba470b2,llm_p2,sanic,all_exceptions,"def all_exceptions(self, handler):","--- a/code.py
 +++ b/code.py
 @@ -1,2 +1,3 @@
@@ -516,7 +516,7 @@ handler for the current blueprint under question.
 :param handler: A coroutine function to handle exceptions
 
 :return a decorated method to handle global exceptions for any
-    route registered under this blueprint.",,
+    route registered under this blueprint.",верно,вынос декоратора во временную переменную
 57fdf87cbacb695e,llm_p2,Python,reformat_hex,def reformat_hex(i):,"--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,3 @@
@@ -532,7 +532,7 @@ Converts the given integer into 8-digit hex number.
 Arguments:
         i {[int]} -- [integer]
 >>> reformat_hex(666)
-'9a020000'",,
+'9a020000'",верно,"цикл → генератор, тот же результат"
 a183fa7c89816d46,llm_p2,faker,postcode,def postcode(self) -> str:,"--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,5 @@
@@ -545,7 +545,7 @@ a183fa7c89816d46,llm_p2,faker,postcode,def postcode(self) -> str:,"--- a/code.py
 +    if dept in ['2A', '2B']:
 +        dept = '20'
 +    return f'{dept}{self.random_number(digits=5 - len(dept))}'","Randomly returns a postcode generated from existing french depertment number.
-exemple: '33260'",,
+exemple: '33260'",верно,переименование локальной переменной
 672fa99c38eb0c9f,llm_p2,luigi,send_email,"def send_email(subject, message, sender, recipients, image_png=None):","--- a/code.py
 +++ b/code.py
 @@ -6,10 +6,7 @@
@@ -562,7 +562,7 @@ exemple: '33260'",,
      email_sender(config, sender, subject, message, recipients, image_png)","Decides whether to send notification. Notification is cancelled if there are
 no recipients or if stdout is onto tty or if in debug mode.
 
-Dispatches on config value email.type.  Default is 'smtp'.",,
+Dispatches on config value email.type.  Default is 'smtp'.",верно,"цикл → comprehensions, тот же список"
 d45f136e26cc84d6,llm_p2,scikit-learn,fit,"def fit(self, X, y=None, labels=None):","--- a/code.py
 +++ b/code.py
 @@ -1,2 +1,3 @@
@@ -584,7 +584,7 @@ y : array-like, shape = [n_samples] or [n_samples, n_output], optional
 
 labels : array-like, with shape (n_samples,), optional
     Group labels for the samples used while splitting the dataset into
-    train/test set.",,
+    train/test set.",верно,вынос ParameterGrid во временную переменную
 8bbc13256d74ee5e,llm_p2,freqtrade,advise_buy,"def advise_buy(self, dataframe: DataFrame, metadata: dict) -> DataFrame:","--- a/code.py
 +++ b/code.py
 @@ -1,7 +1,6 @@
@@ -602,7 +602,7 @@ This method should not be overridden.
 :param dataframe: DataFrame
 :param metadata: Additional information dictionary, with details like the
     currently traded pair
-:return: DataFrame with buy column",,
+:return: DataFrame with buy column",верно,инверсия условия с тем же разбиением веток
 14523be9da557339,llm_p2,pydantic,tuple_positional_schema,"def tuple_positional_schema(self, schema: core_schema.TuplePositionalSchema) -> JsonSchemaValue:","--- a/code.py
 +++ b/code.py
 @@ -1,12 +1,13 @@
@@ -627,7 +627,7 @@ Args:
     schema: The core schema.
 
 Returns:
-    The generated JSON schema.",,
+    The generated JSON schema.",верно,вынос items_schema во временную переменную
 fdeee4f41179ff26,llm_p2,pupy,do_list_modules,"def do_list_modules(self, arg):","--- a/code.py
 +++ b/code.py
 @@ -1,3 +1,3 @@
@@ -635,7 +635,7 @@ fdeee4f41179ff26,llm_p2,pupy,do_list_modules,"def do_list_modules(self, arg):","
 -    for m, d in self.pupsrv.list_modules():
 -        self.stdout.write('{:<20}\t{}\n'.format(m, color(d, 'grey')))
 +    for name, desc in self.pupsrv.list_modules():
-+        self.stdout.write('{:<20}\t{}\n'.format(name, color(desc, 'grey')))",List available modules with a brief description,,
++        self.stdout.write('{:<20}\t{}\n'.format(name, color(desc, 'grey')))",List available modules with a brief description,верно,переименование переменных цикла
 ab8f0f55aa6e0dca,llm_p2,promptflow,test,"def test(self, flow: Union[str, PathLike], *, inputs: Union[dict, PathLike]=None, variant: str=None, node: str=None, environment_variables: dict=None) -> dict:","--- a/code.py
 +++ b/code.py
 @@ -1,10 +1,11 @@
@@ -669,7 +669,7 @@ ab8f0f55aa6e0dca,llm_p2,promptflow,test,"def test(self, flow: Union[str, PathLik
     and all environment variables specified will be set into os.environ.
 :type environment_variables: dict
 :return: The result of flow or node
-:rtype: dict",,
+:rtype: dict",верно,вынос Path(inputs) во временную переменную
 9d946071f8b46521,llm_p2,cookiecutter,test_unzip_local_file,"def test_unzip_local_file(mocker, tmpdir):","--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,7 @@
@@ -680,7 +680,7 @@ ab8f0f55aa6e0dca,llm_p2,promptflow,test,"def test(self, flow: Union[str, PathLik
 +    archive_path = 'tests/files/fake-repo-tmpl.zip'
 +    output_dir = zipfile.unzip(archive_path, is_url=False, clone_to_dir=str(clone_to_dir))
      assert output_dir == os.path.join(str(clone_to_dir), 'fake-repo-tmpl')
-     assert not mock_prompt_and_delete.called","In `unzip()`, a local file reference is just unzipped where it is.",,
+     assert not mock_prompt_and_delete.called","In `unzip()`, a local file reference is just unzipped where it is.",верно,вынос строкового литерала в переменную (тест)
 1231da549eecf964,llm_p2,MetaGPT,main,"def main(idea: str=DEFAULT_PLAYER_SETUP, investment: float=3.0, n_round: int=100):","--- a/code.py
 +++ b/code.py
 @@ -1,2 +1,3 @@
@@ -690,7 +690,7 @@ ab8f0f55aa6e0dca,llm_p2,promptflow,test,"def test(self, flow: Union[str, PathLik
 +    asyncio.run(start_game(game_config, investment, n_round))",":param idea: game config instructions
 :param investment: contribute a certain dollar amount to watch the debate
 :param n_round: maximum rounds of the debate
-:return:",,
+:return:",верно,"алиас аргумента, тот же вызов"
 60ae830d444ba612,llm_p2,mycroft-core,store,"def store(self, path=None):","--- a/code.py
 +++ b/code.py
 @@ -1,8 +1,8 @@
@@ -707,7 +707,7 @@ ab8f0f55aa6e0dca,llm_p2,promptflow,test,"def test(self, flow: Union[str, PathLik
              json.dump(self, f, indent=2)","Cache the received settings locally.
 
 The cache will be used if the remote is unreachable to load settings
-that are as close to the user's as possible.",,
+that are as close to the user's as possible.",верно,переименование локальной переменной
 9f80fa47877fcbb8,llm_p2,speechbrain,details,"def details(self, predictions, targets, length=None, reduction='batchmean'):","--- a/code.py
 +++ b/code.py
 @@ -5,5 +5,5 @@
@@ -747,7 +747,7 @@ details: VAELossDetails
         the distribution loss (K-L divergence), raw value
     weighted_dist_loss: torch.Tensor
         the weighted value of the distribution loss, as used
-        in the combined loss",,
+        in the combined loss",верно,переименование локальной переменной
 422dc918e73d9354,llm_p2,pytorch-image-models,test_model_forward_fx,"def test_model_forward_fx(model_name, batch_size):","--- a/code.py
 +++ b/code.py
 @@ -6,8 +6,9 @@
@@ -761,7 +761,7 @@ details: VAELossDetails
 +    model = create_feature_extractor(model, train_return_nodes=[train_nodes[-1]], eval_return_nodes=[eval_nodes[-1]], tracer_kwargs=tracer_kwargs)
      inputs = torch.randn((batch_size, *input_size))
      outputs = model(inputs)[eval_nodes[-1]]
-     assert outputs.shape[0] == batch_size",Symbolically trace each model and run single forward pass through the resulting GraphModule,,
+     assert outputs.shape[0] == batch_size",Symbolically trace each model and run single forward pass through the resulting GraphModule,верно,вынос общего словаря во временную переменную
 6a36a713897d77e4,llm_p2,ultralytics,download,"def download(url, dir=Path.cwd(), unzip=True, delete=False, curl=False, threads=1, retry=3):","--- a/code.py
 +++ b/code.py
 @@ -1,11 +1,12 @@
@@ -793,7 +793,7 @@ Args:
 Example:
     ```python
     download('https://ultralytics.com/assets/example.zip', dir='path/to/dir', unzip=True)
-    ```",,
+    ```",неверно,"str-URL + threads>1: было zip по символам строки (сломано), стало корректно — поведение отличается"
 533bf76fedefe088,llm_p2,jina,to_docker_compose_yaml,"def to_docker_compose_yaml(self, output_path: Optional[str]=None, network_name: Optional[str]=None):","--- a/code.py
 +++ b/code.py
 @@ -5,14 +5,11 @@
@@ -818,7 +818,7 @@ If you don't want to rebuild image on Jina Hub,
 you can set `JINA_HUB_NO_IMAGE_REBUILD` environment variable.
 
 :param output_path: The path where to dump the yaml file
-:param network_name: The name of the network that will be used by the deployment",,
+:param network_name: The name of the network that will be used by the deployment",верно,перестановка независимых операторов (порядок ключей dict может отличаться — косметика)
 6d33a8928823eabb,llm_p2,sanic,load_environment_vars,"def load_environment_vars(self, prefix=SANIC_PREFIX):","--- a/code.py
 +++ b/code.py
 @@ -5,7 +5,7 @@
@@ -855,7 +855,7 @@ are registered before you instantiate your application.
     app = Sanic(__name__, config=config)
 
 `See user guide re: config
-<https://sanicframework.org/guide/deployment/configuration.html>`__",,
+<https://sanicframework.org/guide/deployment/configuration.html>`__",верно,эквивалентная индексация [1] вместо распаковки
 bef2edbd1052a95c,llm_p2,gym,callback,"def callback(self, obs_t: ObsType, obs_tp1: ObsType, action: ActType, rew: float, done: bool, info: dict):","--- a/code.py
 +++ b/code.py
 @@ -4,10 +4,11 @@
@@ -878,7 +878,7 @@ Args:
     action: The action
     rew: The reward
     done: If the environment is done
-    info: The information from the environment",,
+    info: The information from the environment",верно,вынос range во временную переменную
 e0f85f0af766ea52,llm_p2,models,evaluate_continuously,"def evaluate_continuously(self, steps: int=-1, timeout: Optional[Union[int, float]]=None, timeout_fn: Optional[Callable[[], bool]]=None):","--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,7 @@
@@ -906,7 +906,7 @@ Args:
 
 Raises:
   ValueError: If no checkpoint found in `self.checkpoint_manager.directory`.
-  ValueError: If `evaluator` was not provided as a controller init arg.",,
+  ValueError: If `evaluator` was not provided as a controller init arg.",верно,вынос итератора во временную переменную
 c6aa58284a95201a,llm_p2,pydantic,validate_python,"def validate_python(self, __object: Any, *, strict: bool | None=None, context: dict[str, Any] | None=None) -> T:","--- a/code.py
 +++ b/code.py
 @@ -1,2 +1,3 @@
@@ -921,7 +921,7 @@ Args:
     context (dict[str, Any] | None, optional): Additional context to use during validation. Defaults to None.
 
 Returns:
-    T: The validated object.",,
+    T: The validated object.",верно,вынос validator во временную переменную
 2e2ec2001ada8d05,llm_p2,freqtrade,main,def main():,"--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,7 @@
@@ -935,7 +935,7 @@ Returns:
 +    validate(config, CONF_SCHEMA)
 +    _CONF = config
 +    app(_CONF)","Loads and validates the config and starts the main loop
-:return: None",,
+:return: None",верно,happy path тот же; нюанс: при невалидном конфиге _CONF теперь не перезаписывается до падения
 36ac1c77377c6044,llm_p2,pytorch-image-models,get_pretrained_cfg_value,"def get_pretrained_cfg_value(model_name, cfg_key):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,5 @@
@@ -945,4 +945,4 @@ Returns:
 +    cfg = _model_pretrained_cfgs.get(model_name)
 +    if cfg is not None:
 +        return cfg.get(cfg_key, None)
-     return None",Get a specific model default_cfg value by key. None if it doesn't exist.,,
+     return None",Get a specific model default_cfg value by key. None if it doesn't exist.,верно,эквивалентная проверка наличия ключа (нюанс лишь при значении None в реестре)
