@@ -1,0 +1,32 @@
+{
+  "seed": 42,
+  "filters": {
+    "вход": 26827,
+    "underscore": 4860,
+    "doc_short": 6986,
+    "len_out": 939,
+    "отброшено_union": 11459,
+    "успех": 15368
+  },
+  "roles": {
+    "doc_changed_отброшено": 0,
+    "cand_strong": 96,
+    "cand_weak": 12037,
+    "unlabeled": 3200
+  },
+  "selected_total": 2997,
+  "selected_by_pool": {
+    "test_pool": 1521,
+    "train_pool": 1476
+  },
+  "selected_strong": 96,
+  "selected_weak": 2901,
+  "unlabeled_total": 3200,
+  "ks_before": 0.064,
+  "ks_after": 0.0277,
+  "ks_by_pool": {
+    "test_pool": 0.0316,
+    "train_pool": 0.0305
+  },
+  "max_deficit_rate": 0.0
+}
