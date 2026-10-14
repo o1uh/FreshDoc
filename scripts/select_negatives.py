@@ -4,6 +4,7 @@
 
 Строго по R5: добор недостающего strong типом weak, дефицит фиксируется.
 Strong из synth_ast НЕ подмешивается (источник фальсифицировать нельзя).
+Канон графиков — PNG через matplotlib (в requirements); без него — SVG.
 """
 
 from __future__ import annotations
@@ -18,7 +19,6 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 import pandas as pd
-
 
 from src.data.negatives import (
     apply_r1_filters,
@@ -36,6 +36,9 @@ OUT_UN = PROJECT_ROOT / "data" / "interim" / "unlabeled_sigchange.parquet"
 OUT_DEF = PROJECT_ROOT / "reports" / "tables" / "neg_deficit.csv"
 OUT_FIG = PROJECT_ROOT / "reports" / "figures" / "neg_length_before_after.png"
 OUT_JSON = PROJECT_ROOT / "reports" / "neg_select.json"
+OUT_DROPPED = PROJECT_ROOT / "reports" / "neg_dropped_pair_ids.txt"
+
+DEFICIT_LIMIT = 0.2
 
 
 def _plot_svg(pos, cand_all, selected, path: Path) -> None:
@@ -45,38 +48,37 @@ def _plot_svg(pos, cand_all, selected, path: Path) -> None:
         ("До: положительные vs все кандидаты", cand_all),
         ("После: положительные vs отобрано", selected),
     ]
-    W, H, pad = 560, 300, 40
-    bw = (W - 2 * pad) // (len(order) * 3)
+    width, height, pad = 560, 300, 40
+    bw = (width - 2 * pad) // (len(order) * 3)
     top = 20
-    height = H - pad - top
+    plot_h = height - pad - top
     parts = [
-        f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" '
-        'font-family="sans-serif" font-size="11">'
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" '
+        f'height="{height}" font-family="sans-serif" font-size="11">'
     ]
     for pi, (title, frame) in enumerate(panels):
-        x0 = pad + pi * (W // 2)
+        x0 = pad + pi * (width // 2)
         parts.append(f'<text x="{x0}" y="14">{title}</text>')
-        p = pos["bin"].value_counts(normalize=True).reindex(order).fillna(0.0)
-        q = frame["bin"].value_counts(normalize=True).reindex(order).fillna(0.0)
+        p = pos["bin"].value_counts(normalize=True).reindex(order)
+        q = frame["bin"].value_counts(normalize=True).reindex(order)
         vmax = max(float(p.max()), float(q.max()), 0.01)
         for i, b in enumerate(order):
             for j, v in enumerate((float(p[b]), float(q[b]))):
-                bh = (v / vmax) * height
+                bh = (v / vmax) * plot_h
                 x = x0 + i * 3 * bw + j * bw
-                y = top + height - bh
+                y = top + plot_h - bh
                 color = "#4a90d9" if j == 0 else "#e07a5f"
                 parts.append(
                     f'<rect x="{x:.0f}" y="{y:.0f}" width="{bw - 2}" '
                     f'height="{bh:.0f}" fill="{color}"/>'
                 )
-                parts.append(
-                    f'<text x="{x + 2:.0f}" y="{y - 3:.0f}">{v:.2f}</text>'
-                )
-            parts.append(
-                f'<text x="{x0 + i * 3 * bw + 4:.0f}" y="{H - 8}">{b}</text>'
-            )
+                parts.append(f'<text x="{x + 2:.0f}" y="{y - 3:.0f}">'
+                             f"{v:.2f}</text>")
+            parts.append(f'<text x="{x0 + i * 3 * bw + 4:.0f}" '
+                         f'y="{height - 8}">{b}</text>')
     parts.append(
-        f'<text x="{pad}" y="{H - 22}">синий — positive, оранжевый — negative</text>'
+        f'<text x="{pad}" y="{height - 22}">'
+        "синий — positive, оранжевый — negative</text>"
     )
     parts.append("</svg>")
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -84,24 +86,24 @@ def _plot_svg(pos, cand_all, selected, path: Path) -> None:
 
 
 def plot_before_after(pos, cand_all, selected, path: Path) -> None:
-    """Гистограммы долей до/после (matplotlib; без него — SVG)."""
+    """Гистограммы долей до/после. Формат — по суффиксу пути."""
     path = Path(path)
-    try:
-        import matplotlib
-
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
-    except ImportError:
-        _plot_svg(pos, cand_all, selected, path.with_suffix(".svg"))
+    if path.suffix.lower() == ".svg":
+        _plot_svg(pos, cand_all, selected, path)
         return
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
     order = ["4-8", "9-15", "16-40", "41-300"]
     fig, axes = plt.subplots(1, 2, figsize=(12, 5), sharey=True)
     for ax, frame, title in (
         (axes[0], cand_all, "До: положительные vs все кандидаты"),
         (axes[1], selected, "После: положительные vs отобрано"),
     ):
-        p = pos["bin"].value_counts(normalize=True).reindex(order).fillna(0.0)
-        q = frame["bin"].value_counts(normalize=True).reindex(order).fillna(0.0)
+        p = pos["bin"].value_counts(normalize=True).reindex(order)
+        q = frame["bin"].value_counts(normalize=True).reindex(order)
         x = range(len(order))
         ax.bar([i - 0.2 for i in x], p.values, width=0.4, label="positive")
         ax.bar([i + 0.2 for i in x], q.values, width=0.4, label="negative")
@@ -111,12 +113,14 @@ def plot_before_after(pos, cand_all, selected, path: Path) -> None:
         ax.legend()
     fig.tight_layout()
     path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(path.with_suffix(".png"), dpi=120)
+    fig.savefig(path, dpi=120)
     plt.close(fig)
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="FD-06: отбор отрицательных пар (R5).")
+    parser = argparse.ArgumentParser(
+        description="FD-06: отбор отрицательных пар (R5)."
+    )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--in_neg", default=str(IN_NEG))
     parser.add_argument("--in_pos", default=str(IN_POS))
@@ -125,15 +129,18 @@ def main() -> None:
     parser.add_argument("--out_un", default=str(OUT_UN))
     parser.add_argument("--out_def", default=str(OUT_DEF))
     parser.add_argument("--out_fig", default=str(OUT_FIG))
+    parser.add_argument("--out_json", default=str(OUT_JSON))
+    parser.add_argument("--out_dropped", default=str(OUT_DROPPED))
     args = parser.parse_args()
 
     df_neg_raw = pd.read_parquet(args.in_neg)
     df_pos = pd.read_parquet(args.in_pos)
     df_pools = pd.read_parquet(args.in_pools)
-    pool_of = dict(zip(df_pools["project"].astype(str), df_pools["pool"].astype(str)))
+    pool_of = dict(zip(df_pools["project"].astype(str),
+                       df_pools["pool"].astype(str)))
 
     df_filt, filt_stats = apply_r1_filters(df_neg_raw)
-    df_cand, df_un, role_stats = build_r1_rows(df_filt, pool_of)
+    df_cand, df_un, role_stats, dropped_ids = build_r1_rows(df_filt, pool_of)
 
     df_pos = df_pos.copy()
     df_pos["bin"] = df_pos["n_src_lines"].map(assign_bin)
@@ -149,7 +156,8 @@ def main() -> None:
         ks_by_pool[str(pool)] = round(ks_stat(a, b), 4) if len(b) else None
 
     assert selected["pair_id"].is_unique, "Дубликаты pair_id в отборе!"
-    assert set(selected["split_pool"]) <= set(df_pos["split_pool"]), "Неизвестный пул в отборе"
+    assert set(selected["split_pool"]) <= set(df_pos["split_pool"]), \
+        "Неизвестный пул в отборе"
 
     out_neg = selected.drop(columns=["bin"])
     out_path = Path(args.out_neg)
@@ -160,7 +168,12 @@ def main() -> None:
     df_un.to_parquet(out_un_path, index=False)
     deficit.to_csv(args.out_def, index=False)
     plot_before_after(df_pos, df_cand, selected, Path(args.out_fig))
+    dropped_path = Path(args.out_dropped)
+    dropped_path.parent.mkdir(parents=True, exist_ok=True)
+    dropped_path.write_text("\n".join(dropped_ids) + "\n", encoding="utf-8")
 
+    max_deficit = float(deficit["deficit_rate"].max()) if len(deficit) else 0.0
+    over_limit = bool((deficit["deficit_rate"] > DEFICIT_LIMIT).any())
     summary = {
         "seed": args.seed,
         "filters": filt_stats,
@@ -170,27 +183,37 @@ def main() -> None:
             str(k): int(v)
             for k, v in selected["split_pool"].value_counts().items()
         },
-        "selected_strong": int((selected["label_source"] == "real_strong_neg").sum()),
-        "selected_weak": int((selected["label_source"] == "real_weak_neg").sum()),
+        "selected_strong": int(
+            (selected["label_source"] == "real_strong_neg").sum()),
+        "selected_weak": int(
+            (selected["label_source"] == "real_weak_neg").sum()),
+        "strong_target_total": int(deficit["strong_target"].sum()),
+        "strong_deficit_total": int(deficit["strong_deficit"].sum()),
         "unlabeled_total": int(len(df_un)),
         "ks_before": round(ks_before, 4),
         "ks_after": round(ks_after, 4),
         "ks_by_pool": ks_by_pool,
-        "max_deficit_rate": float(deficit["deficit_rate"].max()) if len(deficit) else 0.0,
+        "max_deficit_rate": max_deficit,
+        "deficit_over_20": over_limit,
     }
-    with open(OUT_JSON, "w", encoding="utf-8") as fh:
+    with open(args.out_json, "w", encoding="utf-8") as fh:
         json.dump(summary, fh, ensure_ascii=False, indent=2)
 
     print(f"Фильтры R1: {filt_stats}")
     print(f"Роли: {role_stats}")
-    print(
-        f"Отобрано: {len(selected)} "
-        f"(strong {summary['selected_strong']}, weak {summary['selected_weak']})"
-    )
-    print(f"KS до/после: {ks_before:.4f} / {ks_after:.4f}; по пулам: {ks_by_pool}")
-    print(f"Макс. дефицит итога: {summary['max_deficit_rate']:.2%}")
+    print(f"Дроп pair_id-дубликатов: {len(dropped_ids)} -> {args.out_dropped}")
+    print(f"Отобрано: {len(out_neg)} "
+          f"(strong {summary['selected_strong']} из "
+          f"{summary['strong_target_total']})")
+    print(f"KS до/после: {ks_before:.4f} / {ks_after:.4f}; "
+          f"по пулам: {ks_by_pool}")
+    print(f"Макс. дефицит итога: {max_deficit:.2%} "
+          f"(флаг >20%: {over_limit})")
     print(deficit.to_string(index=False))
-    print(f"Сохранено: {out_path} ({len(out_neg)}), {out_un_path} ({len(df_un)})")
+    if over_limit:
+        print("ВНИМАНИЕ: дефицит >20% в ячейке — вернуться в FD-05!")
+    print(f"Сохранено: {out_path} ({len(out_neg)}), "
+          f"{out_un_path} ({len(df_un)})")
 
 
 if __name__ == "__main__":

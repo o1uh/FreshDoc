@@ -1,18 +1,19 @@
 {
   "seed": 42,
   "filters": {
-    "вход": 26827,
+    "input": 26827,
     "underscore": 4860,
     "doc_short": 6986,
     "len_out": 939,
-    "отброшено_union": 11459,
-    "успех": 15368
+    "dropped": 11459,
+    "kept": 15368
   },
   "roles": {
-    "doc_changed_отброшено": 0,
+    "doc_changed_dropped": 0,
     "cand_strong": 96,
     "cand_weak": 12037,
-    "unlabeled": 3200
+    "unlabeled": 3200,
+    "pair_id_dedup_dropped": 35
   },
   "selected_total": 2997,
   "selected_by_pool": {
@@ -21,12 +22,15 @@
   },
   "selected_strong": 96,
   "selected_weak": 2901,
+  "strong_target_total": 899,
+  "strong_deficit_total": 803,
   "unlabeled_total": 3200,
   "ks_before": 0.064,
-  "ks_after": 0.0277,
+  "ks_after": 0.021,
   "ks_by_pool": {
-    "test_pool": 0.0316,
-    "train_pool": 0.0305
+    "test_pool": 0.0289,
+    "train_pool": 0.0278
   },
-  "max_deficit_rate": 0.0
+  "max_deficit_rate": 0.0,
+  "deficit_over_20": false
 }
