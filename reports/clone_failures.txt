@@ -1,0 +1,1 @@
+https://github.com/frappe/frappe.git :: TimeoutExpired(['git', 'clone', '--depth', '1000', 'https://github.com/frappe/frappe.git', '/home/naviko/Рабочий стол/FreshDoc/data/repos/frappe__frappe'], 1200)
