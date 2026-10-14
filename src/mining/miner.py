@@ -98,27 +98,48 @@ def iter_functions(tree):
     return found
 
 
+def _local_binding_names(fn_node):
+    """Names bound inside the function, order of first appearance.
+
+    R2.7 locals: assignment/for/with/comprehension targets,
+    walrus and ``del`` targets, ``except ... as`` names.
+    Parameters, call targets and decorators are NOT locals.
+    """
+    names = []
+    seen = set()
+
+    def add(name):
+        if name not in seen:
+            seen.add(name)
+            names.append(name)
+
+    for child in ast.walk(fn_node):
+        if isinstance(child, ast.Name) and isinstance(
+            child.ctx, (ast.Store, ast.Del)
+        ):
+            add(child.id)
+        elif isinstance(child, ast.ExceptHandler) and child.name:
+            add(child.name)
+    return names
+
+
 def cosmetic_equal(fn_old, fn_new):
-    """R2.7: equal after renaming locals to v0, v1, ... in order of appearance."""
+    """R2.7: equal after locals -> v0, v1, ... in order of appearance.
+
+    Only names BOUND inside the function are renamed (in all their
+    occurrences). Free names -- call targets, decorators, attributes,
+    parameters -- keep their identifiers, so renaming them is a
+    behavior change and is NOT cosmetic.
+    """
 
     def canonical(node):
         node = copy.deepcopy(node)
-        mapping = {}
-
-        def rename(old):
-            if old not in mapping:
-                mapping[old] = f"v{len(mapping)}"
-            return mapping[old]
-
+        mapping = {n: f"v{i}" for i, n in enumerate(_local_binding_names(node))}
         for child in ast.walk(node):
-            if isinstance(child, ast.Name):
-                child.id = rename(child.id)
-            elif isinstance(child, ast.arg):
-                child.arg = rename(child.arg)
-            elif isinstance(child, ast.ExceptHandler) and child.name:
-                child.name = rename(child.name)
-            elif isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-                child.name = rename(child.name)
+            if isinstance(child, ast.Name) and child.id in mapping:
+                child.id = mapping[child.id]
+            elif isinstance(child, ast.ExceptHandler) and child.name in mapping:
+                child.name = mapping[child.name]
         return ast.dump(node)
 
     return canonical(fn_old) == canonical(fn_new)
