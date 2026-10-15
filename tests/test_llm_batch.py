@@ -14,9 +14,11 @@ from src.synth.llm_batch import (
 
 def _tiny_src(name: str, default_b: int = 1) -> str:
     return (
-        f"def {name}(a, b={default_b}):\n"
-        f'    """Add a and b. Default of b is {default_b}. Result is their sum."""\n'
-        "    return a + b"
+        f"def {name}(value_amount, base_offset={default_b}):\n"
+        f'    """Compute total of inputs with base offset value.\n'
+        f"    Default of base_offset is {default_b} and base offset is 100.\n"
+        f'    Result is their sum plus offset value."""\n'
+        "    return value_amount + base_offset + 100"
     )
 
 
@@ -50,17 +52,18 @@ def test_render_batch_task_replaces_markers():
 
 
 def _p1_edit(src: str) -> str:
-    return src.replace("return a + b", "return a - b")
+    return src.replace("+ 100", "+ 200")
 
 
 def _p2_edit(src: str) -> str:
-    return src.replace("return a + b", "res = a + b\n    return res")
+    return src.replace("return value_amount + base_offset + 100",
+                       "result_total = value_amount + base_offset + 100\n    return result_total")
 
 
 def _stale_of(src: str) -> str:
     for line in src.splitlines():
-        if "Add a and b" in line:
-            return "Add a and b."
+        if "base offset is 100" in line:
+            return "base offset is 100."
     raise AssertionError("no stale candidate")
 
 

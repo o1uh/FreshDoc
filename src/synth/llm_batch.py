@@ -142,6 +142,9 @@ def build_synth_row(
     src_old: str,
     parts: dict[str, str],
 ) -> dict[str, Any]:
+    # R1: в выходе только 17 колонок схемы (без pilot_id/m_id); трассировка
+    # к запросу — через pair_id + function_hash + манифест + responses/.
+    # pilot_id принят для совместимости вызовов, в parquet не пишется.
     drift = "behavior_changed" if task == "p1" else "none"
     return {
         "pair_id": _pair_id(function_hash, drift, parts["diff"]),
@@ -161,7 +164,6 @@ def build_synth_row(
         "label_source": "llm_p1" if task == "p1" else "llm_p2",
         "weight": 1.0 if task == "p1" else 0.5,
         "n_src_lines": len(src_old.strip().splitlines()),
-        "pilot_id": pilot_id,
     }
 
 
@@ -354,7 +356,7 @@ def import_pilot_responses(
             columns=[
                 "pair_id", "source", "project", "commit_sha", "symbol", "function_hash",
                 "sig_old", "code_old", "code_new", "diff_code", "doc_old", "label_stale",
-                "drift_type", "sig_type", "label_source", "weight", "n_src_lines", "pilot_id",
+                "drift_type", "sig_type", "label_source", "weight", "n_src_lines",
             ]
         ).to_parquet(out_parquet, index=False)
     stats["accepted_total"] = stats["accepted_p1"] + stats["accepted_p2"]

@@ -1,0 +1,913 @@
+pair_id,label_source,project,symbol,sig_old,diff_code,doc_old,verdict,comment
+ae5e383a14afbb6e,llm_p1,conan,check_required_conan_version,def check_required_conan_version(cache_folder):,"--- a/code.py
++++ b/code.py
+@@ -3,3 +3,5 @@
+     required_range_new = cache.new_config.get('core:required_conan_version')
+     if required_range_new:
+         validate_conan_version(required_range_new)
++    else:
++        validate_conan_version('>=1.0.0')","Check if the required Conan version in config file matches to the current Conan version
+
+    When required_conan_version is not configured, it's skipped
+    When required_conan_version is configured, Conan's version must matches the required
+    version
+    When it doesn't match, an ConanException is raised
+
+:param cache_folder: Conan cache folder
+:return: None",верно,не настроен → validate >=1.0.0; «it's skipped» ложно
+33061c903fa118c1,llm_p1,uiautomator2,adb_shell,"def adb_shell(self, *args):","--- a/code.py
++++ b/code.py
+@@ -3,4 +3,4 @@
+     ret = self._reqsess.post(self.path2url('/shell'), data={'command': cmdline})
+     if ret.status_code != 200:
+         raise RuntimeError('expect status 200, but got %d' % ret.status_code)
+-    return ret.json().get('output')
++    return ret.json().get('output', '')","Example:
+    adb_shell('pwd')
+    adb_shell('ls', '-l')
+    adb_shell('ls -l')
+
+Returns:
+    shell output",неверно,missing key → ''; «shell output» без спеки на missing (C)
+36c6fe3f581f7cf5,llm_p1,mycroft-core,CPS_send_tracklist,"def CPS_send_tracklist(self, tracklist=None):","--- a/code.py
++++ b/code.py
+@@ -3,4 +3,4 @@
+     if not isinstance(tracklist, list):
+         tracklist = [tracklist]
+     for idx, track in enumerate(tracklist):
+-        self.CPS_send_status(playlist_position=idx, **track)
++        self.CPS_send_status(playlist_position=idx + 1, **track)","Inform system of playlist track info.
+
+Provides track data for playlist
+
+Arguments:
+    tracklist (str/list): Tracklist data",неверно,idx→idx+1; база индекса в doc не заявлена (C)
+48aa9b7923084f76,llm_p1,localstack,dispatch_to_backend,"def dispatch_to_backend(context: RequestContext, http_request_dispatcher: Callable[[RequestContext], HttpBackendResponse], include_response_metadata=False) -> ServiceResponse:","--- a/code.py
++++ b/code.py
+@@ -4,6 +4,6 @@
+     if status >= 301:
+         error = response['Error']
+         raise CommonServiceException(code=error.get('Code', 'UnknownError'), status_code=status, message=error.get('Message', ''), sender_fault='Type' in error)
+-    if not include_response_metadata:
++    if include_response_metadata:
+         response.pop('ResponseMetadata', None)
+     return response","Dispatch the given request to a backend by using the `request_forwarder` function to
+fetch an HTTP response, converting it to a ServiceResponse.
+:param context: the request context
+:param http_request_dispatcher: dispatcher that performs the request and returns an HTTP response
+:param include_response_metadata: whether to include boto3 response metadata in the response
+:return:",верно,инверсия include_response_metadata; «whether to include» нарушено
+da5f557723426d0e,llm_p1,promptflow,execute_flow,"def execute_flow(flow_file: Path, working_dir: Path, output_dir: Path, connections: dict, inputs: Mapping[str, Any], *, run_id: str=None, run_aggregation: bool=True, enable_stream_output: bool=False, allow_generator_output: bool=False, **kwargs) -> LineResult:","--- a/code.py
++++ b/code.py
+@@ -4,7 +4,7 @@
+     with _change_working_dir(working_dir), _force_flush_tracer_provider():
+         line_result = flow_executor.exec_line(inputs, index=0, allow_generator_output=allow_generator_output, run_id=run_id)
+         line_result.output = flow_executor._multimedia_processor.persist_multimedia_data(line_result.output, base_dir=working_dir, sub_dir=output_dir)
+-        if run_aggregation and line_result.aggregation_inputs:
++        if line_result.aggregation_inputs:
+             flow_inputs = {k: [v] for k, v in inputs.items()}
+             aggregation_inputs = {k: [v] for k, v in line_result.aggregation_inputs.items()}
+             aggregation_results = flow_executor.exec_aggregation(flow_inputs, aggregation_inputs=aggregation_inputs, run_id=run_id)","Execute the flow, including aggregation nodes.
+
+:param flow_file: The path to the flow file.
+:type flow_file: Path
+:param working_dir: The working directory of the flow.
+:type working_dir: Path
+:param output_dir: Relative path relative to working_dir.
+:type output_dir: Path
+:param connections: A dictionary containing connection information.
+:type connections: dict
+:param inputs: A dictionary containing the input values for the flow.
+:type inputs: Mapping[str, Any]
+:param enable_stream_output: Whether to allow stream (generator) output for flow output. Default is False.
+:type enable_stream_output: Optional[bool]
+:param run_id: Run id will be set in operation context and used for session.
+:type run_id: Optional[str]
+:param kwargs: Other keyword arguments to create flow executor.
+:type kwargs: Any
+:return: The line result of executing the flow.
+:rtype: ~promptflow.executor._result.LineResult",верно,run_aggregation игнорируется (повтор пары из v1)
+e61435b819cd7570,llm_p1,detectron2,export_onnx_model,"def export_onnx_model(cfg, model, inputs):","--- a/code.py
++++ b/code.py
+@@ -1,5 +1,4 @@
+ def export_onnx_model(cfg, model, inputs):
+-    model = copy.deepcopy(model)
+     assert isinstance(cfg, CN), cfg
+     C2MetaArch = META_ARCH_CAFFE2_EXPORT_TYPE_MAP[cfg.MODEL.META_ARCHITECTURE]
+     c2_compatible_model = C2MetaArch(cfg, model)","Export a detectron2 model to ONNX format.
+Note that the exported model contains custom ops only available in caffe2, therefore it
+cannot be directly executed by other runtime. Post-processing or transformation passes
+may be applied on the model to accommodate different runtimes.
+
+Args:
+    cfg (CfgNode): a detectron2 config, with extra export-related options
+        added by :func:`add_export_config`.
+    model (nn.Module): a model built by
+        :func:`detectron2.modeling.build_model`.
+        It will be modified by this function.
+    inputs: sample inputs that the given model takes for inference.
+        Will be used to trace the model.
+
+Returns:
+    onnx.ModelProto: an onnx model.",неверно,убран deepcopy; «will be modified» остаётся верным (C)
+e89b3285d18898bb,llm_p1,Python,next_greatest_element,def next_greatest_element(arr):,"--- a/code.py
++++ b/code.py
+@@ -1,6 +1,6 @@
+ def next_greatest_element(arr):
+     stack = []
+-    result = [-1] * len(arr)
++    result = [0] * len(arr)
+     for index in reversed(range(len(arr))):
+         if len(stack):
+             while stack[-1] <= arr[index]:","Function to get Next Greatest Element (NGE) pair for all elements of list
+Maximum element present afterwards the current one which is also greater than current one
+
+Naive way to solve this is to take two loops and check for the next bigger number but that will make the
+time complexity as O(n^2). The better way to solve this would be to use a stack to keep track of maximum
+number givig a linear time complex solution.
+
+>>> next_greatest_element(arr)
+[-5, 0, 5, 5.1, 11, 13, 21, -1, 4, -1, -10, -5, -1, 0, -1]",верно,дефолт -1→0; пример с -1 ложен
+086564143939360a,llm_p1,jina,reload,"def reload(self, devices: Union[str, List[str]], on_done: CallbackFnType=None, on_error: CallbackFnType=None, on_always: CallbackFnType=None, **kwargs):","--- a/code.py
++++ b/code.py
+@@ -1,6 +1,8 @@
+ def reload(self, devices: Union[str, List[str]], on_done: CallbackFnType=None, on_error: CallbackFnType=None, on_always: CallbackFnType=None, **kwargs):
+     if isinstance(devices, str):
+         devices = [devices]
++    elif not devices:
++        devices = ['.*']
+     kwargs['devices'] = devices
+     self.mode = RequestType.CONTROL
+     return run_async(self._get_results, [], on_done, on_error, on_always, command='RELOAD', **kwargs)","Send 'reload' request to the Flow.
+
+:param devices: the regex string or list of regex strings to match the pea/pod names.
+:param on_done: the function to be called when the :class:`Request` object is resolved.
+:param on_error: the function to be called when the :class:`Request` object is rejected.
+:param on_always: the function to be called when the :class:`Request` object is  is either resolved or rejected.
+:param kwargs: additional parameters
+:return: None",неверно,пустой devices→[.*]; пустой вход в doc не описан (C)
+cd4caeaf3329bc74,llm_p1,st2,assertExtractedParametersMatch,"def assertExtractedParametersMatch(self, format_string, command, values):","--- a/code.py
++++ b/code.py
+@@ -1,3 +1,4 @@
+ def assertExtractedParametersMatch(self, format_string, command, values):
+     extracted_params = extract_parameters(action_alias_db=self.action_alias_db, format_str=format_string, param_stream=command)
+-    self.assertEqual(extracted_params, values)
++    self.assertEqual(extracted_params, values, 'Extracted parameters do not match the expected values')
++    self.assertGreaterEqual(len(extracted_params), 0)","Assert that the parameters extracted from the user provided command
+match the provided values.
+
+In addition to that, also assert that the parameters which have been extracted from the
+user input also match the provided parameters.",неверно,сообщение assert + тривиальный assertGreaterEqual; doc цел (C)
+0f70f7ddffc380d4,llm_p1,Theano,infer_reuse_pattern,"def infer_reuse_pattern(env, outputs_to_disown):","--- a/code.py
++++ b/code.py
+@@ -2,5 +2,5 @@
+     rval = set()
+     for o in outputs_to_disown:
+         view_tree_set(alias_root(o), rval)
+-    rval = set((r for r in rval if r.owner is not None))
++    rval = set((r for r in rval if r.owner is not None and r.name is not None))
+     return rval","Given an env and a list of variables, returns the list or set of all variables which may
+share the same underlying data storage as any of the specified variables. Used internally
+by function, FunctionMaker.
+
+This list (or set) is also refered to as no_recycling sometimes, especially by linker code.",неверно,фильтр r.name is not None; имена в doc не упомянуты (C)
+f848da9ad74f3526,llm_p1,langchain,get_file_paths,def get_file_paths(self) -> List[Dict]:,"--- a/code.py
++++ b/code.py
+@@ -3,4 +3,4 @@
+     response = requests.get(base_url, headers=self.headers)
+     response.raise_for_status()
+     all_files = response.json()['tree']
+-    return [f for f in all_files if not (self.file_filter and (not self.file_filter(f['path'])))]
++    return [f for f in all_files if not (self.file_filter and (not self.file_filter(f['path']))) and f['type'] == 'blob']","one element in all_files
+{
+    'path': '.github', 
+    'mode': '040000', 
+    'type': 'tree', 
+    'sha': '89a2ae046e8b59eb96531f123c0c6d4913885df1', 
+    'url': 'https://github.com/api/v3/repos/shufanhao/langchain/git/trees/89a2ae046e8b59eb96531f123c0c6d4913885dxxx'
+}",верно,фильтр type==blob; пример с tree ложен
+5bd90ae60fed759b,llm_p1,scikit-rf,splitter,"def splitter(self, nports: int, **kwargs) -> Network:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+ def splitter(self, nports: int, **kwargs) -> Network:
+     result = self.match(nports, **kwargs)
+-    result.s = splitter_s(self.frequency, nports, z0=result.z0)
++    result.s = splitter_s(self.frequency, nports, z0=50)
+     return result","r""""""
+Ideal, lossless n-way splitter.
+
+Parameters
+----------
+nports : int
+        number of ports
+\*\*kwargs : key word arguments
+        passed to :func:`match`, which is called initially to create a
+        'blank' network.
+
+Returns
+-------
+tee : :class:`~skrf.network.Network` object
+        a n-port splitter
+
+See Also
+--------
+match : called to create a 'blank' network",неверно,z0=result.z0→50; z0 в doc нет (C)
+f3f0877e44d1fabc,llm_p1,datasets,exists,"def exists(self, token: Optional[Union[str, bool]]=None):","--- a/code.py
++++ b/code.py
+@@ -1,2 +1,2 @@
+ def exists(self, token: Optional[Union[str, bool]]=None):
+-    return xexists(str(self), token=token)
++    return xexists(str(self), token=token) and (not str(self).endswith('.lock'))","Extend `pathlib.Path.exists` method to support both local and remote files.
+
+Args:
+    token (`bool` or `str`, *optional*): Whether to use token or token to authenticate on the
+        Hugging Face Hub for private remote files.
+
+Returns:
+    `bool`",неверно,.lock→False; .lock в doc не описан (C)
+296a2d57e1b39078,llm_p1,langchain,parse,"def parse(self, text: str) -> Any:","--- a/code.py
++++ b/code.py
+@@ -6,8 +6,8 @@
+     else:
+         reasoning, verdict = parsed
+     verdict = verdict.strip('[').strip(']')
+-    if verdict not in {'A', 'B', 'C'}:
++    if verdict not in {'A', 'B', 'C', 'D'}:
+         raise ValueError(f""Invalid verdict: {verdict}. Verdict must be one of 'A', 'B', or 'C'."")
+     verdict_ = None if verdict == 'C' else verdict
+-    score = {'A': 1, 'B': 0, None: 0.5}.get(verdict_)
++    score = {'A': 1, 'B': 0, 'D': 1, None: 0.5}.get(verdict_)
+     return {'reasoning': reasoning, 'value': verdict_, 'score': score}","Parse the output text.
+
+Args:
+    text (str): The output text to parse.
+
+Returns:
+    Any: The parsed output.
+
+Raises:
+    ValueError: If the verdict is invalid.",неверно,вердикт D стал валиден; список валидных в doc не заявлен (C)
+0e97bfda4aba35e2,llm_p1,gensim,load,"def load(cls, fname, *args, **kwargs):","--- a/code.py
++++ b/code.py
+@@ -1,5 +1,5 @@
+ def load(cls, fname, *args, **kwargs):
+-    kwargs['mmap'] = kwargs.get('mmap', 'r')
++    kwargs['mmap'] = kwargs.get('mmap', 'r+')
+     result = super(LdaModel, cls).load(fname, *args, **kwargs)
+     try:
+         result.state = super(LdaModel, cls).load(fname + '.state', *args, **kwargs)","Load a previously saved object from file (also see `save`).
+
+Large arrays are mmap'ed back as read-only (shared memory).",верно,дефолт mmap r→r+; «read-only» ложно
+e57163d83d847e95,llm_p1,ray,completed,def completed(self) -> bool:,"--- a/code.py
++++ b/code.py
+@@ -1,2 +1,2 @@
+ def completed(self) -> bool:
+-    return self._inputs_complete and self.num_active_tasks() == 0 and (not self.has_next()) or self._dependents_complete
++    return self._inputs_complete and self.num_active_tasks() == 0 and (not self.has_next()) and self._dependents_complete","Return True when this operator is completed.
+
+An operator is completed if any of the following conditions are met:
+- All upstream operators are completed and all outputs are taken.
+- All downstream operators are completed.",верно,or→and; «if any» нарушено
+18b0926f194e309d,llm_p1,speechbrain,repo_list,"def repo_list(recipe_csvfile='tests/recipes.csv', field='HF_repo'):","--- a/code.py
++++ b/code.py
+@@ -7,5 +7,5 @@
+                 repos = row[field].split(' ')
+                 for repo in repos:
+                     HF_repos.append(repo)
+-    HF_repos = set(HF_repos)
++    HF_repos = sorted(set(HF_repos))
+     return HF_repos","Get the list of HF recipes in the csv recipe file.
+
+Arguments
+---------
+recipe_csvfile: path
+    Path of the csv recipe file summarizing all the recipes in the repo.
+field: string
+    Field of the csv recipe file containing the links to HF repos.
+
+Returns
+---------
+HF_repos: list
+    List of the detected HF repos.",неверно,"set→sorted; порядок в doc не заявлен (C, как iglob)"
+25bcaab0434a0f13,llm_p1,luigi,send_email,"def send_email(subject, message, sender, recipients, image_png=None):","--- a/code.py
++++ b/code.py
+@@ -10,6 +10,8 @@
+     for r in recipients:
+         recipients_tmp.extend([a.strip() for a in r.split(',') if a.strip()])
+     recipients = recipients_tmp
++    if not recipients:
++        return
+     email_sender_type = config.get('email', 'type', None)
+-    email_sender = notifiers.get(email_sender_type, send_email_smtp)
++    email_sender = notifiers.get(email_sender_type, send_email_ses)
+     email_sender(config, sender, subject, message, recipients, image_png)","Decides whether to send notification. Notification is cancelled if there are
+no recipients or if stdout is onto tty or if in debug mode.
+
+Dispatches on config value email.type.  Default is 'smtp'.",верно,дефолт smtp→ses; «Default is smtp» ложно (+ early return)
+73d895da8918382e,llm_p1,conan,get_package,"def get_package(self, package_reference, remote):","--- a/code.py
++++ b/code.py
+@@ -4,4 +4,6 @@
+     uncompress_files(package_files, destination_dir, PACKAGE_TGZ_NAME)
+     for dirname, _, files in os.walk(destination_dir):
+         for fname in files:
++            if fname.endswith('.pyc'):
++                continue
+             touch(os.path.join(dirname, fname))","Read the conans package from remotes
+Will iterate the remotes to find the conans unless remote was specified
+
+returns (dict relative_filepath:content , remote_name)",неверно,скип .pyc; .pyc в doc нет (C)
+9623b3d42f4a0b57,llm_p1,ultralytics,save,"def save(self, filename: Union[str, Path]='saved_model.pt') -> None:","--- a/code.py
++++ b/code.py
+@@ -1,3 +1,6 @@
+ def save(self, filename: Union[str, Path]='saved_model.pt') -> None:
+     self._check_is_pytorch_model()
++    if isinstance(filename, str):
++        filename = Path(filename)
++    filename.parent.mkdir(parents=True, exist_ok=True)
+     torch.save(self.ckpt, filename)","Saves the current model state to a file.
+
+This method exports the model's checkpoint (ckpt) to the specified filename.
+
+Args:
+    filename (str | Path): The name of the file to save the model to. Defaults to 'saved_model.pt'.
+
+Raises:
+    AssertionError: If the model is not a PyTorch model.",неверно,mkdir parents + Path(); создание родителей в doc нет (C)
+ef4966edd05125f4,llm_p1,microk8s,create_kubeconfig,"def create_kubeconfig(token, ca, master_ip, filename, user):","--- a/code.py
++++ b/code.py
+@@ -14,3 +14,4 @@
+             config_txt = config_txt.replace('127.0.0.1', master_ip)
+             fp.write(config_txt)
+         try_set_file_permissions(config)
++    shutil.copyfile('{}.backup'.format(config), '{}.bak'.format(config))","Create a kubeconfig file. The file in stored under credentials named after the user
+
+:param token: the token to be in the kubeconfig
+:param ca: the ca
+:param master_ip: the master node IP
+:param filename: the name of the config file
+:param user: the user to use al login",неверно,лишний copyfile backup→bak; backup в doc нет (C)
+2a85e46ea6cf47c9,llm_p1,Theano,gcc_llvm,def gcc_llvm():,"--- a/code.py
++++ b/code.py
+@@ -3,7 +3,7 @@
+         pass
+         p = None
+         try:
+-            p = call_subprocess_Popen(['g++', '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
++            p = call_subprocess_Popen(['clang++', '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+             p.wait()
+             output = p.stdout.read() + p.stderr.read()
+         except OSError:","Detect if the g++ version used is the llvm one or not.
+
+It don't support all g++ parameters even if it support many of them.",верно,g++→clang++; «g++ version» ложно
+053e0113f14a2913,llm_p1,readthedocs.org,raise_container_error,"def raise_container_error(self, state):","--- a/code.py
++++ b/code.py
+@@ -1,8 +1,8 @@
+ def raise_container_error(self, state):
+     if state is not None and state.get('Running') is False:
+-        if state.get('ExitCode') == DOCKER_TIMEOUT_EXIT_CODE:
++        if state.get('OOMKilled', False):
++            raise BuildEnvironmentError(_('Build exited due to excessive memory consumption'))
++        elif state.get('ExitCode') == DOCKER_TIMEOUT_EXIT_CODE:
+             raise BuildEnvironmentError(_('Build exited due to time out'))
+-        elif state.get('OOMKilled', False):
+-            raise BuildEnvironmentError(_('Build exited due to excessive memory consumption'))
+         elif state.get('Error'):
+             raise BuildEnvironmentError((_('Build exited due to unknown error: {0}').format(state.get('Error')),))","Raise an exception based on the container's state.
+
+In the case of the parent command exiting before the exec commands
+finish, or in the case of OOM on the container, raise a
+`BuildEnvironmentError` with an error message explaining the failure.",неверно,перестановка OOM/timeout; приоритет в doc не указан (C)
+fd8fd36ae2f7dbc0,llm_p1,black,is_line_short_enough,"def is_line_short_enough(line: Line, *, line_length: int, line_str: str='') -> bool:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+ def is_line_short_enough(line: Line, *, line_length: int, line_str: str='') -> bool:
+-    if not line_str:
++    if line_str is None:
+         line_str = line_to_string(line)
+     return len(line_str) <= line_length and '\n' not in line_str and (not line.contains_standalone_comments())","Return True if `line` is no longer than `line_length`.
+
+Uses the provided `line_str` rendering, if any, otherwise computes a new one.",неверно,not line_str→is None; пустая строка в doc не спефицирована (C)
+e8bf938a0d81e1e0,llm_p1,saleor,get_users_and_look_for_permissions_in_groups_with_manage_staff,"def get_users_and_look_for_permissions_in_groups_with_manage_staff(group_pk: int, groups_data: dict, permissions_to_find: Set[str]):","--- a/code.py
++++ b/code.py
+@@ -1,7 +1,7 @@
+ def get_users_and_look_for_permissions_in_groups_with_manage_staff(group_pk: int, groups_data: dict, permissions_to_find: Set[str]):
+     users_with_manage_staff: Set[int] = set()
+     for pk, data in groups_data.items():
+-        if pk == group_pk:
++        if pk != group_pk:
+             continue
+         permissions = data['permissions']
+         users = data['users']","Search for permissions in groups with manage staff and return their users.
+
+Args:
+    group_pk: pk of group which should be excluded for search
+    groups_data: dict with groups data, key is a group pk and value is group data
+        with permissions and users
+    permissions_to_find: searched permissions",верно,инверсия ==/!=; «excluded» нарушено
+ae44b458dab7fe2e,llm_p2,ray,get_activation_fn,"def get_activation_fn(name, framework='tf'):","--- a/code.py
++++ b/code.py
+@@ -1,7 +1,7 @@
+ def get_activation_fn(name, framework='tf'):
++    if name in ['linear', None]:
++        return None
+     if framework == 'torch':
+-        if name in ['linear', None]:
+-            return None
+         if name == 'swish':
+             from ray.rllib.utils.torch_ops import Swish
+             return Swish
+@@ -11,8 +11,6 @@
+         elif name == 'tanh':
+             return nn.Tanh
+     else:
+-        if name in ['linear', None]:
+-            return None
+         tf1, tf, tfv = try_import_tf()
+         fn = getattr(tf.nn, name, None)
+         if fn is not None:","Returns a framework specific activation function, given a name string.
+
+Args:
+    name (str): One of ""relu"" (default), ""tanh"", ""swish"", or ""linear"".
+    framework (str): One of ""tf"" or ""torch"".
+
+Returns:
+    A framework-specific activtion function. e.g. tf.nn.tanh or
+        torch.nn.ReLU. None if name in [""linear"", None].
+
+Raises:
+    ValueError: If name is an unknown activation function.",,
+7548e5deb451c6c3,llm_p2,jina,ports,def ports(self) -> List[int]:,"--- a/code.py
++++ b/code.py
+@@ -1,8 +1,4 @@
+ def ports(self) -> List[int]:
+     if self.head_port:
+         return [self.head_port]
+-    else:
+-        ports = []
+-        for replica in self.pod_args['pods'][0]:
+-            ports.append(replica.port)
+-        return ports
++    return [replica.port for replica in self.pod_args['pods'][0]]","Returns a list of ports exposed by this Deployment.
+Exposed means these are the ports a Client/Gateway is supposed to communicate with.
+For sharded deployments this will be the head_port.
+For non sharded deployments it will be all replica ports
+.. # noqa: DAR201",,
+c75073287fc07ae7,llm_p2,saleor,prepare_filter,"def prepare_filter(cursor, sorting_fields, sorting_direction):","--- a/code.py
++++ b/code.py
+@@ -1,9 +1,7 @@
+ def prepare_filter(cursor, sorting_fields, sorting_direction):
+     filter_kwargs = Q()
+-    for field_id in range(len(sorting_fields)):
+-        field_expression = {}
+-        for val_id in range(len(cursor[:field_id])):
+-            field_expression[sorting_fields[val_id]] = cursor[val_id]
+-        field_expression[f'{sorting_fields[field_id]}__{sorting_direction}'] = cursor[field_id]
++    for i, field in enumerate(sorting_fields):
++        field_expression = {sorting_fields[j]: cursor[j] for j in range(i)}
++        field_expression[f'{field}__{sorting_direction}'] = cursor[i]
+         filter_kwargs |= Q(**field_expression)
+     return filter_kwargs",":param cursor: list of values that are passed from page_info, used for filtering.
+:param sorting_fields: list of fields that were used for sorting.
+:param sorting_direction: keyword direction ('lt', gt').
+:return: Q() in following format
+    (OR: ('first_field__gt', 'first_value_form_cursor'),
+        (AND: ('second_field__gt', 'second_value_form_cursor'),
+            ('first_field', 'first_value_form_cursor')),
+        (AND: ('thrid_field__gt', 'third_value_form_cursor'),
+            ('second_field__gt', 'second_value_form_cursor'),
+            ('first_field', 'first_value_form_cursor'))
+    )",,
+f706408924edb033,llm_p2,faceswap,post_edit_trigger,"def post_edit_trigger(self, frame_index, face_index):","--- a/code.py
++++ b/code.py
+@@ -1,5 +1,6 @@
+ def post_edit_trigger(self, frame_index, face_index):
+     face = self._frame_faces[frame_index][face_index]
+-    aligned = AlignedFace(face.landmarks_xy, image=self._globals.current_frame['image'], centering='head', size=96)
++    current_image = self._globals.current_frame['image']
++    aligned = AlignedFace(face.landmarks_xy, image=current_image, centering='head', size=96)
+     face.thumbnail = generate_thumbnail(aligned.face, size=96)
+     self._tk_edited.set(True)","Update the jpg thumbnail and the viewport thumbnail on a face edit.
+
+Parameters
+----------
+frame_index: int
+    The frame that the face is being set for
+face_index: int
+    The face index within the frame",,
+3becfd74230c82fc,llm_p2,core,preset_modes,def preset_modes(self):,"--- a/code.py
++++ b/code.py
+@@ -1,2 +1,3 @@
+ def preset_modes(self):
+-    return [PRESET_NONE, PRESET_BOOST]
++    modes = [PRESET_NONE, PRESET_BOOST]
++    return modes","Return a list of available preset modes.
+
+Requires SUPPORT_PRESET_MODE.",,
+97b23a88ea3bdbd4,llm_p2,langchain,parse,"def parse(self, text: str) -> Any:","--- a/code.py
++++ b/code.py
+@@ -8,6 +8,6 @@
+     verdict = verdict.strip('[').strip(']')
+     if verdict not in {'A', 'B', 'C'}:
+         raise ValueError(f""Invalid verdict: {verdict}. Verdict must be one of 'A', 'B', or 'C'."")
+-    verdict_ = None if verdict == 'C' else verdict
+-    score = {'A': 1, 'B': 0, None: 0.5}.get(verdict_)
+-    return {'reasoning': reasoning, 'value': verdict_, 'score': score}
++    value = None if verdict == 'C' else verdict
++    score = {'A': 1, 'B': 0, None: 0.5}[value]
++    return {'reasoning': reasoning, 'value': value, 'score': score}","Parse the output text.
+
+Args:
+    text (str): The output text to parse.
+
+Returns:
+    Any: The parsed output.
+
+Raises:
+    ValueError: If the verdict is invalid.",,
+0647e3edcaf3ee0b,llm_p2,cpython,assertRaises,"def assertRaises(self, excClass, callableObj=None, *args, **kwargs):","--- a/code.py
++++ b/code.py
+@@ -1,3 +1,3 @@
+ def assertRaises(self, excClass, callableObj=None, *args, **kwargs):
+-    context = _AssertRaisesContext(excClass, self, callableObj)
+-    return context.handle('assertRaises', callableObj, args, kwargs)
++    ctx = _AssertRaisesContext(excClass, self, callableObj)
++    return ctx.handle('assertRaises', callableObj, args, kwargs)","Fail unless an exception of class excClass is raised
+by callableObj when invoked with arguments args and keyword
+arguments kwargs. If a different type of exception is
+raised, it will not be caught, and the test case will be
+deemed to have suffered an error, exactly as for an
+unexpected exception.
+
+If called with callableObj omitted or None, will return a
+context object used like this::
+
+     with self.assertRaises(SomeException):
+         do_something()
+
+An optional keyword argument 'msg' can be provided when assertRaises
+is used as a context object.
+
+The context manager keeps a reference to the exception as
+the 'exception' attribute. This allows you to inspect the
+exception after the assertion::
+
+    with self.assertRaises(SomeException) as cm:
+        do_something()
+    the_exception = cm.exception
+    self.assertEqual(the_exception.error_code, 3)",,
+7d4e8ea1c046ff52,llm_p2,ultralytics,set_args,"def set_args(self, imw, imh, colormap=cv2.COLORMAP_JET, heatmap_alpha=0.5, view_img=False, count_reg_pts=None, count_txt_thickness=2, count_txt_color=(0, 0, 0), count_color=(255, 255, 255), count_reg_color=(255, 0, 255), region_thickness=5, line_dist_thresh=15, decay_factor=0.99, shape='circle'):","--- a/code.py
++++ b/code.py
+@@ -5,11 +5,12 @@
+     self.view_img = view_img
+     self.colormap = colormap
+     if count_reg_pts is not None:
+-        if len(count_reg_pts) == 2:
++        n_pts = len(count_reg_pts)
++        if n_pts == 2:
+             print('Line Counter Initiated.')
+             self.count_reg_pts = count_reg_pts
+             self.counting_region = LineString(count_reg_pts)
+-        elif len(count_reg_pts) == 4:
++        elif n_pts == 4:
+             print('Region Counter Initiated.')
+             self.count_reg_pts = count_reg_pts
+             self.counting_region = Polygon(self.count_reg_pts)","Configures the heatmap colormap, width, height and display parameters.
+
+Args:
+    colormap (cv2.COLORMAP): The colormap to be set.
+    imw (int): The width of the frame.
+    imh (int): The height of the frame.
+    heatmap_alpha (float): alpha value for heatmap display
+    view_img (bool): Flag indicating frame display
+    count_reg_pts (list): Object counting region points
+    count_txt_thickness (int): Text thickness for object counting display
+    count_txt_color (RGB color): count text color value
+    count_color (RGB color): count text background color value
+    count_reg_color (RGB color): Color of object counting region
+    region_thickness (int): Object counting Region thickness
+    line_dist_thresh (int): Euclidean Distance threshold for line counter
+    decay_factor (float): value for removing heatmap area after object passed
+    shape (str): Heatmap shape, rect or circle shape supported",,
+7fdd30ff100afbf8,llm_p2,scikit-rf,add_markers_to_lines,"def add_markers_to_lines(ax=None, marker_list=['o', 'D', 's', '+', 'x'], markevery=10):","--- a/code.py
++++ b/code.py
+@@ -4,5 +4,6 @@
+     lines = ax.get_lines()
+     if len(lines) > len(marker_list):
+         marker_list *= 3
+-    [k[0].set_marker(k[1]) for k in zip(lines, marker_list)]
++    for line, marker in zip(lines, marker_list):
++        line.set_marker(marker)
+     [line.set_markevery(markevery) for line in lines]","adds markers to existing lings on a plot
+
+this is convenient if you have already have a plot made, but then
+need to add markers afterwards, so that it can be interpreted in
+black and white. The markevery argument makes the markers less
+frequent than the data, which is generally what you want.
+
+Parameters
+-----------
+ax : matplotlib.Axes
+    axis which to add markers to, defaults to gca()
+marker_list : list of marker characters
+    see matplotlib.plot help for possible marker characters
+markevery : int
+    markevery number of points with a marker.",,
+23dfc6527cfc1656,llm_p2,chainer,fixed_batch_normalization,"def fixed_batch_normalization(x, gamma, beta, mean, var, eps=1e-05):","--- a/code.py
++++ b/code.py
+@@ -1,2 +1,3 @@
+ def fixed_batch_normalization(x, gamma, beta, mean, var, eps=1e-05):
+-    return BatchNormalizationFunction(eps)(x, gamma, beta, mean, var)
++    bn = BatchNormalizationFunction(eps)
++    return bn(x, gamma, beta, mean, var)","Batch normalization function with fixed statistics.
+
+This is a variant of batch normalization, where the mean and variance
+statistics are given by the caller as variables. This is used on testing
+mode of the batch normalization layer, where batch statistics cannot be
+used for prediction consistency.
+
+Args:
+    x (Variable): The input variable.
+    gamma (Variable): The scaling parameter of normalized data.
+    beta (Variable): The shifting parameter of scaled normalized data.
+    mean (Variable): The shifting parameter of input.
+    var (Variable): The square of scaling parameter of input.
+    eps (float): Epsilon value for numerical stability.
+
+.. seealso::
+   :func:`functions.batch_normalization`,
+   :class:`links.BatchNormalization`",,
+0ea0bd6f4db6233d,llm_p2,ulid,test_timestamp_coverts_bytes_to_unix_time_seconds,def test_timestamp_coverts_bytes_to_unix_time_seconds():,"--- a/code.py
++++ b/code.py
+@@ -1,4 +1,5 @@
+ def test_timestamp_coverts_bytes_to_unix_time_seconds():
+-    now_ms = int(time.time()) * 1000
++    now = time.time()
++    now_ms = int(now) * 1000
+     timestamp = ulid.Timestamp(now_ms.to_bytes(6, byteorder='big'))
+     assert timestamp.timestamp == now_ms / 1000.0",Assert that :prop:`~ulid.ulid.Timestamp.timestamp` returns the value in Unix time in seconds from epoch.,,
+422dc918e73d9354,llm_p2,pytorch-image-models,test_model_forward_fx,"def test_model_forward_fx(model_name, batch_size):","--- a/code.py
++++ b/code.py
+@@ -6,8 +6,9 @@
+     input_size = _get_input_size(model=model, target=TARGET_FWD_SIZE)
+     if max(input_size) > MAX_FWD_SIZE:
+         pytest.skip('Fixed input size model > limit.')
+-    train_nodes, eval_nodes = get_graph_node_names(model, tracer_kwargs={'leaf_modules': list(_leaf_modules), 'autowrap_functions': list(_autowrap_functions)})
+-    model = create_feature_extractor(model, train_return_nodes=[train_nodes[-1]], eval_return_nodes=[eval_nodes[-1]], tracer_kwargs={'leaf_modules': list(_leaf_modules), 'autowrap_functions': list(_autowrap_functions)})
++    tracer_kwargs = {'leaf_modules': list(_leaf_modules), 'autowrap_functions': list(_autowrap_functions)}
++    train_nodes, eval_nodes = get_graph_node_names(model, tracer_kwargs=tracer_kwargs)
++    model = create_feature_extractor(model, train_return_nodes=[train_nodes[-1]], eval_return_nodes=[eval_nodes[-1]], tracer_kwargs=tracer_kwargs)
+     inputs = torch.randn((batch_size, *input_size))
+     outputs = model(inputs)[eval_nodes[-1]]
+     assert outputs.shape[0] == batch_size",Symbolically trace each model and run single forward pass through the resulting GraphModule,,
+6f769028bd810926,llm_p2,Python,vol_circular_cylinder,"def vol_circular_cylinder(radius: float, height: float) -> float:","--- a/code.py
++++ b/code.py
+@@ -1,2 +1,3 @@
+ def vol_circular_cylinder(radius: float, height: float) -> float:
+-    return pi * pow(radius, 2) * height
++    base_area = pi * radius ** 2
++    return base_area * height","Calculate the Volume of a Circular Cylinder.
+Wikipedia reference: https://en.wikipedia.org/wiki/Cylinder
+:return pi * radius^2 * height
+
+>>> vol_circular_cylinder(1, 1)
+3.141592653589793
+>>> vol_circular_cylinder(4, 3)
+150.79644737231007",,
+b9b7b480a469e7db,llm_p2,algorithms,lcs,"def lcs(s1, s2, i, j):","--- a/code.py
++++ b/code.py
+@@ -1,7 +1,6 @@
+ def lcs(s1, s2, i, j):
+     if i == 0 or j == 0:
+         return 0
+-    elif s1[i - 1] == s2[j - 1]:
++    if s1[i - 1] == s2[j - 1]:
+         return 1 + lcs(s1, s2, i - 1, j - 1)
+-    else:
+-        return max(lcs(s1, s2, i - 1, j), lcs(s1, s2, i, j - 1))
++    return max(lcs(s1, s2, i - 1, j), lcs(s1, s2, i, j - 1))",The length of longest common subsequence among the two given strings s1 and s2,,
+c7c27d5186cf3f9d,llm_p2,localstack,parse_range_header,"def parse_range_header(range_header: str, object_size: int) -> ObjectRange:","--- a/code.py
++++ b/code.py
+@@ -13,4 +13,5 @@
+         raise Exception('TODO')
+     if begin < 0 or end > last or begin > min(end, last):
+         raise InvalidRange('The requested range is not satisfiable', ActualObjectSize=str(object_size), RangeRequested=range_header)
+-    return ObjectRange(content_range=f'bytes {begin}-{end}/{object_size}', content_length=end - begin + 1, begin=begin, end=end)
++    content_length = end - begin + 1
++    return ObjectRange(content_range=f'bytes {begin}-{end}/{object_size}', content_length=content_length, begin=begin, end=end)","Takes a Range header, and returns a dataclass containing the necessary information to return only a slice of an
+S3 object
+:param range_header: a Range header
+:param object_size: the requested S3 object total size
+:return: ObjectRange",,
+1199246b74ecb12c,llm_p2,uiautomator2,healthcheck,"def healthcheck(self, unlock=True):","--- a/code.py
++++ b/code.py
+@@ -10,12 +10,12 @@
+     while time.time() < deadline:
+         print(time.strftime('[%Y-%m-%d %H:%M:%S]'), 'wait uiautomator is ready ...')
+         if self.alive:
+-            if self.current_app()['package'] != 'com.github.uiautomator':
++            pkg = self.current_app()['package']
++            if pkg != 'com.github.uiautomator':
+                 self.shell(['am', 'startservice', '-n', 'com.github.uiautomator/.Service'])
+-                time.sleep(0.5)
+             else:
+-                time.sleep(0.5)
+                 self.shell(['input', 'keyevent', 'BACK'])
++            time.sleep(0.5)
+             print('uiautomator back to normal')
+             return True
+         time.sleep(1)","Check if uiautomator is running, if not launch again
+
+Args:
+    unlock (bool): unlock screen before
+
+Raises:
+    RuntimeError",,
+98dda68af18d42f0,llm_p2,readthedocs.org,parse_tags,"def parse_tags(self, data):","--- a/code.py
++++ b/code.py
+@@ -1,7 +1,4 @@
+ def parse_tags(self, data):
+     squashed_data = re.sub(' +', ' ', data)
+     raw_tags = csv.reader(StringIO(squashed_data), delimiter=' ')
+-    vcs_tags = []
+-    for name, commit in raw_tags:
+-        vcs_tags.append(VCSVersion(self, commit, name))
+-    return vcs_tags
++    return [VCSVersion(self, commit, name) for name, commit in raw_tags]","Parses output of show-ref --tags, eg:
+
+0.1.0                171
+0.1.1                173
+0.1.2                174
+0.2.0-pre-alpha      177",,
+e2aea0d6255333b7,llm_p2,promptflow,execute_flow,"def execute_flow(flow_file: Path, working_dir: Path, output_dir: Path, connections: dict, inputs: Mapping[str, Any], *, run_id: str=None, run_aggregation: bool=True, enable_stream_output: bool=False, allow_generator_output: bool=False, **kwargs) -> LineResult:","--- a/code.py
++++ b/code.py
+@@ -8,7 +8,7 @@
+             flow_inputs = {k: [v] for k, v in inputs.items()}
+             aggregation_inputs = {k: [v] for k, v in line_result.aggregation_inputs.items()}
+             aggregation_results = flow_executor.exec_aggregation(flow_inputs, aggregation_inputs=aggregation_inputs, run_id=run_id)
+-            line_result.node_run_infos = {**line_result.node_run_infos, **aggregation_results.node_run_infos}
++            line_result.node_run_infos.update(aggregation_results.node_run_infos)
+             line_result.run_info.metrics = aggregation_results.metrics
+             line_result.aggregation_inputs = None
+         if isinstance(line_result.output, dict):","Execute the flow, including aggregation nodes.
+
+:param flow_file: The path to the flow file.
+:type flow_file: Path
+:param working_dir: The working directory of the flow.
+:type working_dir: Path
+:param output_dir: Relative path relative to working_dir.
+:type output_dir: Path
+:param connections: A dictionary containing connection information.
+:type connections: dict
+:param inputs: A dictionary containing the input values for the flow.
+:type inputs: Mapping[str, Any]
+:param enable_stream_output: Whether to allow stream (generator) output for flow output. Default is False.
+:type enable_stream_output: Optional[bool]
+:param run_id: Run id will be set in operation context and used for session.
+:type run_id: Optional[str]
+:param kwargs: Other keyword arguments to create flow executor.
+:type kwargs: Any
+:return: The line result of executing the flow.
+:rtype: ~promptflow.executor._result.LineResult",,
+ddc1ddc83c7a37ba,llm_p2,lit-llama,main,"def main(datasets: str='wikitext,ptb,c4', *, accelerator: str='auto', adapter_path: Path=Path('out/adapter/alpaca/lit-llama-adapter-finetuned.pth'), checkpoint_path: Path=Path('checkpoints/lit-llama/7B/lit-llama.pth'), tokenizer_path: Path=Path('checkpoints/lit-llama/tokenizer.model'), dtype: str='float32', quantize: Optional[str]=None) -> None:","--- a/code.py
++++ b/code.py
+@@ -41,6 +41,6 @@
+         ppl = math.exp(nlls / toks)
+         print(f'Perplexity on {dsname}: {ppl:.2f}')
+         total_toks += toks
+-    t = time.perf_counter() - t0
+-    print(f'\n\nTime for inference: {t:.02f} sec total, {total_toks / t:.02f} tokens/sec', file=sys.stderr)
++    elapsed = time.perf_counter() - t0
++    print(f'\n\nTime for inference: {elapsed:.02f} sec total, {total_toks / elapsed:.02f} tokens/sec', file=sys.stderr)
+     print(f'Memory used: {torch.cuda.max_memory_reserved() / 1000000000.0:.02f} GB', file=sys.stderr)","Generates text samples based on a pre-trained LLaMA model and tokenizer.
+
+Args:
+    datasets: The datasets to use as a comma separated string
+    # compile: Whether to compile the model.
+    accelerator: The hardware to run on. Possible choices are:
+        ``""cpu""``, ``""cuda""``, ``""mps""``, ``""gpu""``, ``""tpu""``, ``""auto""``.
+    adapter_path: Path to the checkpoint with trained adapter weights, which are the output of
+        `finetune_adapter.py`.
+    checkpoint_path: The checkpoint path to load.
+    tokenizer_path: The tokenizer path to load.
+    quantize: Whether to quantize the model and using which method:
+        ``""llm.int8""``: LLM.int8() mode,
+        ``""gptq.int4""``: GPTQ 4-bit mode.",,
+93f3d98242f210f1,llm_p2,localstack,create,"def create(self, arn: str, version: str, endpoint_options: Optional[DomainEndpointOptions]=None, preferred_port: Optional[int]=None) -> Server:","--- a/code.py
++++ b/code.py
+@@ -2,7 +2,7 @@
+     custom_endpoint = determine_custom_endpoint(endpoint_options)
+     engine_type = versions.get_engine_type(version)
+     endpoint = build_cluster_endpoint(DomainKey.from_arn(arn), custom_endpoint, engine_type, preferred_port)
+-    url = f'http://{endpoint}' if '://' not in endpoint else endpoint
++    url = endpoint if '://' in endpoint else f'http://{endpoint}'
+     cluster = self._create_cluster(arn, url, version, custom_endpoint)
+     cluster.start()
+     self.clusters[arn] = cluster","Creates a new cluster.
+
+:param arn: of the cluster to create
+:param version: of the cluster to start (string including the EngineType)
+:param endpoint_options: DomainEndpointOptions (may contain information about a custom endpoint url)
+:param preferred_port: port which should be preferred (only if OPENSEARCH_ENDPOINT_STRATEGY == ""port"")
+:return: None",,
+2804ec58b4946111,llm_p2,uiautomator2,connect_wifi,def connect_wifi(addr: str) -> 'UIAutomatorServer':,"--- a/code.py
++++ b/code.py
+@@ -1,7 +1,7 @@
+ def connect_wifi(addr: str) -> 'UIAutomatorServer':
+     if not re.match('^https?://', addr):
+         addr = 'http://' + addr
+-    u = urlparse.urlparse(addr)
+-    host = u.hostname
+-    port = u.port or 7912
++    parsed = urlparse.urlparse(addr)
++    host = parsed.hostname
++    port = parsed.port or 7912
+     return UIAutomatorServer(host, port)","Args:
+    addr (str) uiautomator server address.
+
+Returns:
+    UIAutomatorServer
+
+Raises:
+    ConnectError
+
+Examples:
+    connect_wifi(""10.0.0.1"")",,
+cbe79ea93bfdf873,llm_p2,luigi,run_job,"def run_job(self, project_id, body, dataset=None):","--- a/code.py
++++ b/code.py
+@@ -2,13 +2,15 @@
+     if dataset and (not self.dataset_exists(dataset)):
+         self.make_dataset(dataset)
+     new_job = self.client.jobs().insert(projectId=project_id, body=body).execute()
+-    job_id = new_job['jobReference']['jobId']
++    job_ref = new_job['jobReference']
++    job_id = job_ref['jobId']
+     logger.info('Started import job %s:%s', project_id, job_id)
+     while True:
+         status = self.client.jobs().get(projectId=project_id, jobId=job_id).execute(num_retries=10)
+         if status['status']['state'] == 'DONE':
+-            if status['status'].get('errorResult'):
+-                raise Exception('BigQuery job failed: {}'.format(status['status']['errorResult']))
++            err = status['status'].get('errorResult')
++            if err:
++                raise Exception('BigQuery job failed: {}'.format(err))
+             return
+         logger.info('Waiting for job %s:%s to complete...', project_id, job_id)
+         time.sleep(5)","Runs a BigQuery ""job"". See the documentation for the format of body.
+
+.. note::
+    You probably don't need to use this directly. Use the tasks defined below.
+
+:param dataset:
+:type dataset: BQDataset",,
+207c25b68a89a990,llm_p2,conan,color_enabled,def color_enabled(stream):,"--- a/code.py
++++ b/code.py
+@@ -2,6 +2,7 @@
+     from conan.api.output import conan_output_logger_format
+     if conan_output_logger_format:
+         return False
+-    if os.getenv('NO_COLOR') is not None:
++    no_color = os.getenv('NO_COLOR')
++    if no_color is not None:
+         return False
+     return is_terminal(stream)","NO_COLOR: No colors
+
+https://no-color.org/
+
+Command-line software which adds ANSI color to its output by default should check for the
+presence of a NO_COLOR environment variable that, when present (**regardless of its value**),
+prevents the addition of ANSI color.",,
+086c546b8716304c,llm_p2,speechbrain,spectral_clustering_sb,"def spectral_clustering_sb(affinity, n_clusters=8, n_components=None, random_state=None, n_init=10):","--- a/code.py
++++ b/code.py
+@@ -1,6 +1,6 @@
+ def spectral_clustering_sb(affinity, n_clusters=8, n_components=None, random_state=None, n_init=10):
+-    random_state = check_random_state(random_state)
++    rng = check_random_state(random_state)
+     n_components = n_clusters if n_components is None else n_components
+-    maps = spectral_embedding_sb(affinity, n_components=n_components, drop_first=False)
+-    _, labels, _ = k_means(maps, n_clusters, random_state=random_state, n_init=n_init)
++    embedding = spectral_embedding_sb(affinity, n_components=n_components, drop_first=False)
++    _, labels, _ = k_means(embedding, n_clusters, random_state=rng, n_init=n_init)
+     return labels","Performs spectral clustering.
+
+Arguments
+---------
+affinity : matrix
+    Affinity matrix.
+n_clusters : int
+    Number of clusters for kmeans.
+n_components : int
+    Number of components to retain while estimating spectral embeddings.
+random_state : int
+    A pseudo random number generator used by kmeans.
+ n_init : int
+    Number of time the k-means algorithm will be run with different centroid seeds.",,
+fd94d075389a1247,llm_p2,Python,euclidean_length,def euclidean_length(self) -> float:,"--- a/code.py
++++ b/code.py
+@@ -1,3 +1,5 @@
+ def euclidean_length(self) -> float:
+-    squares = [c ** 2 for c in self.__components]
+-    return math.sqrt(sum(squares))
++    total = 0.0
++    for c in self.__components:
++        total += c ** 2
++    return math.sqrt(total)",returns the euclidean length of the vector,,

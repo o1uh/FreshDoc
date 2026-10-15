@@ -1,0 +1,32 @@
+model: deepseek-flash
+model_version: DeepSeek-V4.1-Flash
+base_url: https://api.deepseek.com
+thinking: disabled
+temperature: 0.7
+top_p: 0.95
+max_tokens: 1200
+response_format: json_object
+
+# Судья M3 (FD-22) — Gemini 3.8 Flash: с генератором не совпадает, требование R7 соблюдено.
+
+sampling:
+  seed: 11            # пилот FD-10 использовал 42; пересечение исключается по хэшам
+  seed_smoke: 7
+  strategy: round-robin по проектам (как пилот)
+  exclude_pilot: true  # функции пилота FD-10 не переиспользуются
+  max_uses_per_function: 2  # P1 + P2
+
+volumes:
+  smoke: {functions: 6, requests: 12}     # тест ключа в отдельной сессии
+  min: {functions: 300, requests: 600}    # минимум FD-11
+  target: {functions: 700, requests: 1400}  # цель FD-11
+
+# Цены за 1M токенов, USD (pricing 13.10.2026). Off-peak = половина peak.
+pricing:
+  in_miss: {offpeak: 0.15, peak: 0.30}
+  in_hit: {offpeak: 0.003, peak: 0.006}
+  out: {offpeak: 0.60, peak: 1.20}
+peak_utc: "Mon-Fri 01:00-04:00, 06:00-10:00 (без гос. праздников КНР)"
+peak_plus7: "Mon-Fri 08:00-11:00, 13:00-17:00"
+token_assumptions: {in_per_request: 560, completion_per_request: 400, completion_range: [100, 1200]}
+# Факт 13.10 (usage.csv, 2100 запросов): P1 573/421, P2 550/362, P3 498/147 (вход/completion средние).
