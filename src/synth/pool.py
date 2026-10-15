@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from typing import Dict, Set, Tuple
 
 import pandas as pd
@@ -27,6 +28,25 @@ def _passes_r1(name: str, doc: str, n_lines: int) -> bool:
     if not (4 <= n_lines <= 300):
         return False
     return True
+
+
+def _is_test_path(path: str) -> bool:
+    # Тестовые файлы и каталоги: test/, tests/, *_test.py, test_*.py,
+    # conftest.py, каталоги вида llm_tests. Якорные правила, чтобы не
+    # зацепить latest.py / contest.py (проверяется началом/концом, не подстрокой).
+    parts = re.split(r"[\\/]", (path or "").lower())
+    for i, p in enumerate(parts):
+        if p in ("test", "tests", "testing"):
+            return True
+        if p.startswith(("test_", "test-")) or p.endswith(("_test", "_tests", "-test", "-tests")):
+            return True
+        if i == len(parts) - 1:
+            stem = p[:-3] if p.endswith(".py") else p
+            if stem.startswith("test_") or stem.endswith(("_test", "_tests")):
+                return True
+            if stem == "conftest":
+                return True
+    return False
 
 
 def build_functions_pool(
@@ -142,12 +162,14 @@ def build_functions_pool_v2(
         "не_разобралось": 0,
         "не_прошёл_фильтры": 0,
         "отсев_test_функции": 0,
+        "отсев_test_файлы": 0,
         "источник2_успех": 0,
         "успех_v2": 0,
     }
 
     v1_hashes = set(df_pool_v1["function_hash"].astype(str))
     seen: Set[str] = set()
+    has_file = "file" in df_negatives.columns
 
     new_rows = []
     for _, r in df_negatives.iterrows():
@@ -165,6 +187,9 @@ def build_functions_pool_v2(
             continue
         if project in test_projects:
             stats["утечка_test_project"] += 1
+            continue
+        if has_file and _is_test_path(r["file"] if isinstance(r["file"], str) else ""):
+            stats["отсев_test_файлы"] += 1
             continue
         src = r["src_old"]
         if not isinstance(src, str) or not src.strip():

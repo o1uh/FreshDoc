@@ -270,29 +270,123 @@ def mut_param_renamed(fn, doc_old: str, rng: random.Random):
 
 def mut_param_added(fn, doc_old: str, rng: random.Random):
     taken = _all_param_names(fn)
+    bound = _bound_names(fn)
     doc_low = (doc_old or "").lower()
-    cands = [(n, d) for n, d in NEW_PARAMS_12
-             if n not in taken and re.search(r"\b" + re.escape(n.lower()) + r"\b", doc_low) is None]
+    cands: list[tuple[str, str, object]] = []
+    for n, d in NEW_PARAMS_12:
+        if n in taken or n in bound:
+            continue
+        if re.search(r"\b" + re.escape(n.lower()) + r"\b", doc_low) is not None:
+            continue
+        v = _literal_value(d)
+        if v is _SENTINEL:
+            continue
+        cands.append((n, d, v))
     if not cands:
         return None
-    name, default_code = cands[rng.randrange(len(cands))]
+    order = list(cands)
+    rng.shuffle(order)
+    for name, default_code, value in order:
+        try:
+            default_node = ast.parse(default_code, mode="eval").body
+        except SyntaxError:
+            continue
+        new_fn = copy.deepcopy(fn)
+        matches = _body_const_matches(new_fn, value)
+        if not matches:
+            continue
+        parent, target = matches[rng.randrange(len(matches))]
+        if parent is None:
+            continue
+        new_name = ast.Name(id=name, ctx=ast.Load())
+        ast.copy_location(new_name, target)
+        if not _replace_node(parent, target, new_name):
+            continue
+        a = new_fn.args
+        new_arg = ast.arg(arg=name, annotation=None)
+        # Аннотацию ставим, только если у остальных параметров они есть.
+        existing_annot = any(
+            getattr(x, "annotation", None) is not None
+            for x in list(a.posonlyargs) + list(a.args) + list(a.kwonlyargs)
+        )
+        if existing_annot:
+            new_arg.annotation = _annotation_for_default(default_code)
+        a.kwonlyargs.append(new_arg)
+        a.kw_defaults.append(default_node)
+        ast.fix_missing_locations(new_fn)
+        return new_fn
+    return None
+
+
+def _literal_value(code: str):
     try:
-        default_node = ast.parse(default_code, mode="eval").body
-    except SyntaxError:
-        return None
-    new_fn = copy.deepcopy(fn)
-    a = new_fn.args
-    new_arg = ast.arg(arg=name, annotation=None)
-    # Аннотацию ставим, только если у остальных параметров они есть.
-    existing_annot = any(
-        getattr(x, "annotation", None) is not None
-        for x in list(a.posonlyargs) + list(a.args) + list(a.kwonlyargs)
-    )
-    if existing_annot:
-        new_arg.annotation = _annotation_for_default(default_code)
-    a.kwonlyargs.append(new_arg)
-    a.kw_defaults.append(default_node)
-    return new_fn
+        return ast.literal_eval(ast.parse(code, mode="eval").body)
+    except Exception:  # noqa: BLE001 — не литерал, кандидат неприменим
+        return _SENTINEL
+
+
+def _const_matches(default_value, const_value) -> bool:
+    # Строго по типу: bool не смешивается с int, int — с float.
+    if isinstance(default_value, bool) or isinstance(const_value, bool):
+        return (
+            isinstance(default_value, bool)
+            and isinstance(const_value, bool)
+            and default_value == const_value
+        )
+    return type(default_value) is type(const_value) and default_value == const_value
+
+
+def _bound_names(fn) -> set[str]:
+    # Имена, связанные в функции: кандидат, затенённый локалом,
+    # был бы мёртв (UnboundLocalError-риск) — таких не добавляем.
+    bound = set(_all_param_names(fn))
+    for n in ast.walk(fn):
+        if isinstance(n, ast.Name) and isinstance(n.ctx, (ast.Store, ast.Del)):
+            bound.add(n.id)
+        elif isinstance(n, ast.arg):
+            bound.add(n.arg)
+        elif isinstance(n, ast.ExceptHandler) and n.name:
+            bound.add(n.name)
+        elif isinstance(n, ast.MatchAs) and n.name:
+            bound.add(n.name)
+        elif isinstance(n, ast.MatchMapping) and n.rest:
+            bound.add(n.rest)
+        elif isinstance(n, ast.MatchStar) and n.name:
+            bound.add(n.name)
+        elif isinstance(n, ast.alias) and n.asname:
+            bound.add(n.asname)
+        elif isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) and n is not fn:
+            bound.add(n.name)
+    return bound
+
+
+def _body_const_matches(fn, value) -> list:
+    # Константы только из тела (дефолты сигнатуры и декораторы не трогаем:
+    # подстановка туда дала бы NameError при определении).
+    # Литеральные куски f-строк (родитель JoinedStr) и голые Expr пропускаем.
+    out = []
+    for stmt in fn.body:
+        for parent, node in _walk_with_parent(stmt, None):
+            if not isinstance(node, ast.Constant):
+                continue
+            if isinstance(parent, (ast.JoinedStr, ast.Expr)):
+                continue
+            if _const_matches(value, node.value):
+                out.append((parent, node))
+    return out
+
+
+def _replace_node(parent, old, new) -> bool:
+    for field, val in ast.iter_fields(parent):
+        if val is old:
+            setattr(parent, field, new)
+            return True
+        if isinstance(val, list):
+            for i, item in enumerate(val):
+                if item is old:
+                    val[i] = new
+                    return True
+    return False
 
 
 def mut_param_removed(fn, doc_old: str, rng: random.Random):
@@ -343,6 +437,7 @@ def mut_param_removed(fn, doc_old: str, rng: random.Random):
         def visit_Name(self, node):  # noqa: N802
             if node.id == "__fd_removed_placeholder__" and isinstance(node.ctx, ast.Load):
                 new_node = copy.deepcopy(repl)
+                new_node._fd_subst = True
                 if isinstance(new_node, ast.Constant) and new_node.value is None:
                     new_node._fd_subst_none = True
                 return new_node
@@ -363,6 +458,17 @@ def mut_param_removed(fn, doc_old: str, rng: random.Random):
         if isinstance(parent, (ast.For, ast.AsyncFor, ast.comprehension)) and parent.iter is node:
             return None
         if isinstance(parent, ast.ExceptHandler) and parent.type is node:
+            return None
+    for parent, node in _walk_with_parent(new_fn):
+        # Подставленный литерал в статически разрешимом условии
+        # (`if None == 'true'`, `if not True:`) так мейнтейнер не пишет.
+        if not getattr(node, "_fd_subst", False):
+            continue
+        if not isinstance(node, ast.Constant):
+            continue
+        if isinstance(parent, ast.Compare):
+            return None
+        if isinstance(parent, ast.UnaryOp) and isinstance(parent.op, ast.Not):
             return None
     return new_fn
 
@@ -545,10 +651,9 @@ def mut_return_changed(fn, doc_old: str, rng: random.Random):
         slice=copy.deepcopy(old_ret),
         ctx=ast.Load(),
     )
-    if rng.random() < 0.5:
-        guard = ast.parse(f"if not {first}:\n    return None").body[0]
-    else:
-        guard = ast.parse(f"if {first} is None:\n    return None").body[0]
+    # Всегда `is None`: truthiness-гард мёртв на объектах без __bool__/__len__
+    # и падает на Series/DataFrame/ndarray (ambiguous truth value).
+    guard = ast.parse(f"if {first} is None:\n    return None").body[0]
     new_fn.body.insert(0, guard)
     ast.fix_missing_locations(new_fn)
     return new_fn

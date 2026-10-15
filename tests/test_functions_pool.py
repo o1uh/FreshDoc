@@ -199,3 +199,35 @@ def test_v2_excludes_test_functions_by_default():
     )
     assert statsb["отсев_test_функции"] == 0
     assert statsb["источник2_успех"] == 2
+
+
+def test_is_test_path_rules():
+    from src.synth.pool import _is_test_path
+
+    assert _is_test_path("tests/test_python.py")
+    assert _is_test_path("openbb_platform/extensions/tests/utils/x.py")
+    assert _is_test_path("pkg/llm_tests/a.py")
+    assert _is_test_path("pkg/conftest.py")
+    assert _is_test_path("pkg/foo_test.py")
+    assert _is_test_path("pkg/test_foo.py")
+    assert _is_test_path("test/integrationtests/skills/skill_tester.py")
+    assert not _is_test_path("pkg/latest.py")
+    assert not _is_test_path("pkg/contest/core.py")
+    assert not _is_test_path("src/server.py")
+    assert not _is_test_path("")
+
+
+def test_v2_excludes_test_paths_but_keeps_src():
+    df_v1, df_pools = _pools_v1()
+    df_neg = _pairs(
+        [
+            {"project": "p1", "src_old": _src(name="fetch"), "doc_changed": False,
+             "file": "tests/test_x.py"},
+            {"project": "p1", "src_old": _src(name="load"), "doc_changed": False,
+             "file": "src/core.py"},
+        ]
+    )
+    df_v2, stats = build_functions_pool_v2(df_v1, df_neg, df_pools)
+    assert stats["отсев_test_файлы"] == 1
+    assert stats["источник2_успех"] == 1
+    assert set(df_v2["project"]) == {"p1"}
