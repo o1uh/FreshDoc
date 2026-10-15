@@ -44,6 +44,31 @@ REQUESTS_DIR = "requests"
 RESPONSES_DIR = "responses"
 CACHE_DIR = "cache"
 USAGE_NAME = "usage.csv"
+CONFIG_DEFAULT = Path("config/llm_main.yaml")
+
+
+def load_config(path: Path | str = CONFIG_DEFAULT) -> DeepSeekParams:
+    """Параметры DeepSeek из config/llm_main.yaml (FD-11 fix: скрипт больше
+    не игнорирует конфиг). При отсутствии файла — дефолт dataclass."""
+    cfg_path = Path(path)
+    # Резолв относительно корня репозитория, если вызван из другой cwd.
+    if not cfg_path.is_absolute():
+        cand = PROJECT_ROOT / cfg_path
+        if cand.exists():
+            cfg_path = cand
+    if not cfg_path.exists():
+        return DeepSeekParams()
+    import yaml
+
+    with open(cfg_path, encoding="utf-8") as f:
+        cfg = yaml.safe_load(f) or {}
+    return DeepSeekParams(
+        model=str(cfg.get("model", MODEL)),
+        thinking=str(cfg.get("thinking", "disabled")),
+        temperature=float(cfg.get("temperature", 0.7)),
+        top_p=float(cfg.get("top_p", 0.95)),
+        max_tokens=int(cfg.get("max_tokens", 1200)),
+    )
 
 
 def _symbol_of(src: str) -> str:
@@ -115,7 +140,7 @@ def cmd_export(args: argparse.Namespace) -> None:
     })
     manifest.to_csv(out_dir / MANIFEST_NAME, index=False)
     src_by_hash = {str(r["function_hash"]): str(r["src"]) for _, r in sample.iterrows()}
-    params = DeepSeekParams()
+    params = load_config(getattr(args, "config", CONFIG_DEFAULT))
     for _, row in manifest.iterrows():
         src = src_by_hash[str(row["function_hash"])]
         for task in TASKS:
@@ -176,7 +201,7 @@ def cmd_run(args: argparse.Namespace) -> None:
     if not req_files:
         raise RuntimeError(f"В {out_dir / REQUESTS_DIR} нет запросов: сначала export")
     api_key = load_api_key()
-    params = DeepSeekParams()
+    params = load_config(getattr(args, "config", CONFIG_DEFAULT))
     (out_dir / RESPONSES_DIR).mkdir(parents=True, exist_ok=True)
     (out_dir / CACHE_DIR).mkdir(parents=True, exist_ok=True)
     rows: list[dict[str, Any]] = []
@@ -263,10 +288,11 @@ def cmd_import(args: argparse.Namespace) -> None:
     if len(df_out):
         df_out.to_parquet(out_parquet, index=False)
     else:
+        # R1: 17 колонок схемы без pilot_id (исправлено с устаревшей pilot_id).
         pd.DataFrame(columns=["pair_id", "source", "project", "commit_sha", "symbol", "function_hash",
                               "sig_old", "code_old", "code_new", "diff_code", "doc_old", "label_stale",
                               "drift_type", "sig_type", "label_source", "weight", "n_src_lines",
-                              "pilot_id"]).to_parquet(out_parquet, index=False)
+                              ]).to_parquet(out_parquet, index=False)
     stats["accepted_total"] = stats["accepted_p1"] + stats["accepted_p2"]
     denom = stats["objects_total"]
     stats["accept_rate"] = round(stats["accepted_total"] / denom, 3) if denom else 0.0
@@ -306,7 +332,7 @@ def _usage_totals(out_dir: Path) -> dict[str, int]:
 def _write_main_report(report_path: Path, stats: dict[str, Any], out_dir: Path,
                        args: argparse.Namespace) -> None:
     totals = _usage_totals(out_dir)
-    p = DeepSeekParams()
+    p = load_config(getattr(args, "config", CONFIG_DEFAULT))
     n_req = totals.get("n") or stats["objects_total"]
     in_tok = totals.get("prompt_tokens", 0)
     comp_tok = totals.get("completion_tokens", 0)
@@ -364,7 +390,7 @@ def cmd_export_p3(args: argparse.Namespace) -> None:
     manifest = pd.read_csv(out_dir / MANIFEST_NAME, dtype=str)
     (out_dir / REQUESTS_DIR).mkdir(parents=True, exist_ok=True)
     prompts_dir = Path(args.prompts)
-    params = DeepSeekParams()
+    params = load_config(getattr(args, "config", CONFIG_DEFAULT))
     n = 0
     for _, row in manifest.iterrows():
         src = pool_src.get(str(row["function_hash"]))
@@ -459,8 +485,8 @@ def cmd_audit_sample(args: argparse.Namespace) -> None:
     print(f"Аудит-выборка: {len(sample)} строк (25 P1 + 25 P2) -> {out}")
 
 
-def cmd_estimate(_args: argparse.Namespace) -> None:
-    p = DeepSeekParams()
+def cmd_estimate(args: argparse.Namespace) -> None:
+    p = load_config(getattr(args, "config", CONFIG_DEFAULT))
     print(f"Модель: {MODEL} ({MODEL_VERSION}); thinking={p.thinking}, "
           f"temperature={p.temperature}, top_p={p.top_p}, max_tokens={p.max_tokens}")
     print(f"Пик: {PEAK_UTC}; +7: {PEAK_PLUS7}. Off-peak вдвое дешевле (включая выходные).")
@@ -477,6 +503,8 @@ def cmd_estimate(_args: argparse.Namespace) -> None:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="FD-11: основная партия через DeepSeek API.")
+    parser.add_argument("--config", default=str(CONFIG_DEFAULT),
+                        help="путь к config/llm_main.yaml (по умолчанию %(default)s)")
     sub = parser.add_subparsers(dest="mode", required=True)
     p = sub.add_parser("estimate", help="смета без сети")
     p.set_defaults(func=cmd_estimate)

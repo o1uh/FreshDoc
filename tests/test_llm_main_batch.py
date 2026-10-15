@@ -16,15 +16,20 @@ from scripts.llm_main_batch import (
     cmd_audit_sample,
     cmd_export,
     cmd_import,
+    load_config,
     sample_main_functions,
 )
 
 
 def _tiny_src(name: str, default_b: int = 1) -> str:
+    # Docstring ≥80 символов и ≥3 строк — проходит thin-фильтр P1 (FD-11 fix).
+    # Содержит число 100 для лексической связности P1.
     return (
-        f"def {name}(a, b={default_b}):\n"
-        f'    """Add a and b. Default of b is {default_b}. Result is their sum."""\n'
-        "    return a + b"
+        f"def {name}(value_amount, base_offset={default_b}):\n"
+        f'    """Compute total of inputs with base offset value.\n'
+        f"    Default of base_offset is {default_b} and base offset is 100.\n"
+        f'    Result is their sum plus offset value."""\n'
+        "    return value_amount + base_offset + 100"
     )
 
 
@@ -121,19 +126,20 @@ def test_export_import_roundtrip_single_object(tmp_path):
 
     def stale_of(src: str) -> str:
         for line in src.splitlines():
-            if "Add a and b" in line:
-                return "Add a and b."
+            if "base offset is 100" in line:
+                return "base offset is 100."
         raise AssertionError
 
     for req_path in req_files:
         req = json.loads(req_path.read_text(encoding="utf-8"))
         src = src_by_hash[req["function_hash"]]
         if req["task"] == "p1":
-            obj = {"new_function_source": src.replace("return a + b", "return a - b"),
-                   "change_summary": "changed op", "stale_statements": [stale_of(src)],
-                   "why_stale": "subtraction now"}
+            obj = {"new_function_source": src.replace("+ 100", "+ 200"),
+                   "change_summary": "changed offset", "stale_statements": [stale_of(src)],
+                   "why_stale": "offset now 200"}
         else:
-            obj = {"new_function_source": src.replace("return a + b", "res = a + b\n    return res"),
+            obj = {"new_function_source": src.replace("return value_amount + base_offset + 100",
+                                                      "result_total = value_amount + base_offset + 100\n    return result_total"),
                    "change_summary": "temp var", "docstring_still_true": True}
         (batch_dir / "responses").mkdir(exist_ok=True)
         (batch_dir / "responses" / f"{req_path.stem}.response.json").write_text(
@@ -152,6 +158,27 @@ def test_export_import_roundtrip_single_object(tmp_path):
     df_out = pd.read_parquet(out_parquet)
     assert len(df_out) == 8
     assert set(df_out["label_source"]) == {"llm_p1", "llm_p2"}
+    # R1: без устаревшей колонки pilot_id (FD-11 fix).
+    assert "pilot_id" not in df_out.columns
+    assert set(df_out.columns) == {"pair_id", "source", "project", "commit_sha", "symbol",
+                                   "function_hash", "sig_old", "code_old", "code_new",
+                                   "diff_code", "doc_old", "label_stale", "drift_type",
+                                   "sig_type", "label_source", "weight", "n_src_lines"}
+
+
+def test_load_config_reads_yaml(tmp_path):
+    from src.synth.deepseek_client import MODEL
+    cfg = tmp_path / "llm_main.yaml"
+    cfg.write_text("model: custom-model\nthinking: disabled\ntemperature: 0.5\ntop_p: 0.9\nmax_tokens: 500\n",
+                   encoding="utf-8")
+    params = load_config(cfg)
+    assert params.model == "custom-model"
+    assert params.temperature == 0.5
+    assert params.top_p == 0.9
+    assert params.max_tokens == 500
+    # Отсутствующий файл — дефолт dataclass, без исключения.
+    fallback = load_config(tmp_path / "missing.yaml")
+    assert fallback.model == MODEL
 
 
 def test_audit_sample_stratified(tmp_path):

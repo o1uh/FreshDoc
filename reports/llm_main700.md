@@ -3,21 +3,24 @@
 - Генератор: deepseek-flash (DeepSeek-V4.1-Flash), thinking=disabled, temperature=0.7, top_p=0.95, max_tokens=1200. Дата прогона: см. fetched_at в responses/.
 - Судья M3 (FD-22, Gemini 3.8 Flash) для данных не используется.
 - Каталог партии: data\llm_main700; выборка: все (seed — в имени каталога/документации).
-- Объектов всего: 1341; принято P1: 580; принято P2: 491; пропущено skip: 0.
-- Доля принятых: 0.799 (ожидание FD-11: порядка 200+200 при минимуме 300 функций).
-- Контроль арифметики: слотов 1400 = разобрано 1341 + до-разбора 59; разобрано = принято 1071 + отказы валидации 270
+- Объектов всего: 1341; принято P1: 331; принято P2: 491; пропущено skip: 0.
+- Доля принятых: 0.613 (ожидание FD-11: порядка 200+200 при минимуме 300 функций).
+- Контроль арифметики: слотов 1400 = разобрано 1341 + до-разбора 59; разобрано = принято 822 + отказы валидации 519
 
 ## Причины отказов
 
 | reason | n |
 |---|---|
+| thin_docstring | 154 |
 | code_unchanged | 145 |
+| stale_not_linked_to_diff | 93 |
 | diff_too_big | 68 |
 | bad_json: Unterminated string starting at: line 1 column 25 (char 24) | 43 |
 | signature_changed | 26 |
 | docstring_changed | 20 |
 | stale_statement_not_found | 9 |
 | bad_json: Unterminated string starting at: line 2 column 26 (char 27) | 7 |
+| stale_covers_docstring | 2 |
 | bad_json: Unterminated string starting at: line 1 column 5026 (char 5025) | 1 |
 | bad_json: Invalid \escape: line 1 column 1599 (char 1598) | 1 |
 | bad_syntax | 1 |

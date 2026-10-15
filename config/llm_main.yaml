@@ -1,23 +1,11 @@
 model: deepseek-flash
-model_version: DeepSeek-V4.1-Flash  # версия за именем deepseek-flash на 13.10.2026
-base_url: https://api.deepseek.com  # OpenAI-совместимый endpoint
-
-# Thinking включён (дефолт API), усилие — максимальное по требованию задачи.
-reasoning_effort: max
-thinking_type: enabled
-response_format: json_object
-# Thinking ВЫКЛЮЧЕН 13.10 (~11:45 +7): thinking=enabled давал пустой content
-# (reasoning съедал весь max_tokens: finish=length, 4096/4096 reasoning, 16% fails + 7 обрезанных JSON при 8192).
-# Проверка: thinking=disabled + temperature/top_p — валидный ответ за 615 completion-токенов.
-# Итоговые параметры — как R7: temperature=0.7, top_p=0.95, max_tokens=1200.
+model_version: DeepSeek-V4.1-Flash
+base_url: https://api.deepseek.com
 thinking: disabled
 temperature: 0.7
 top_p: 0.95
 max_tokens: 1200
-# reasoning_effort/thinking=enabled 13.10 отменены (история: 4096 -> 8192 -> disabled; см. docs/data_notes.md)
-# temperature / top_p / penalties намеренно НЕ отправляются: в thinking-режиме
-# temperature и penalties не действуют, top_p эффективен лишь в 0.95-1.0 (дефолт 1.0).
-# Это отклонение от R7 (там предполагался non-thinking вызов).
+response_format: json_object
 
 # Судья M3 (FD-22) — Gemini 3.8 Flash: с генератором не совпадает, требование R7 соблюдено.
 
