@@ -1,0 +1,1012 @@
+pair_id,project,symbol,drift_type,label_stale,sig_old,diff_code,doc_old,verdict,comment
+6f8e25e4694491bc,core,async_setup_entry,param_renamed,1,"async def async_setup_entry(hass: HomeAssistant, entry: OumanEh800ConfigEntry, async_add_entities: AddConfigEntryEntitiesCallback) -> None:","--- a/code.py
++++ b/code.py
+@@ -1,3 +1,3 @@
+-async def async_setup_entry(hass: HomeAssistant, entry: OumanEh800ConfigEntry, async_add_entities: AddConfigEntryEntitiesCallback) -> None:
+-    coordinator = entry.runtime_data
++async def async_setup_entry(hass: HomeAssistant, entry_new: OumanEh800ConfigEntry, async_add_entities: AddConfigEntryEntitiesCallback) -> None:
++    coordinator = entry_new.runtime_data
+     async_add_entities((OumanEh800NumberEntity(coordinator, endpoint, description) for endpoint in coordinator.data if isinstance(endpoint, IntControlOumanEndpoint | FloatControlOumanEndpoint) and (description := NUMBER_DESCRIPTIONS.get(endpoint)) is not None))",Set up Ouman EH-800 number entities based on a config entry.,,
+d6ef107a7b838633,speechbrain,run_inference_sample,param_removed,1,"def run_inference_sample(self, name, epoch):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def run_inference_sample(self, name, epoch):
++def run_inference_sample(self, name):
+     with torch.no_grad():
+         if self.last_batch is None:
+             return","Produces a sample in inference mode.
+This is called when producing samples.
+
+Arguments
+---------
+name: str
+    the name of the saved audio folder
+epoch: int or str
+    the epoch number (used in file path calculations)
+    or ""test"" for test stage
+
+Returns
+-------
+None",,
+73d2decf98bddb7e,core,async_setup_entry,none,0,"async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:","--- a/code.py
++++ b/code.py
+@@ -22,4 +22,5 @@
+     entry.runtime_data = coordinator
+     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+     entry.async_on_unload(coordinator.async_start())
+-    return True
++    ret = True
++    return ret",Set up Xiaomi BLE device from a config entry.,,
+bcf19343b3335821,scikit-image,sato,param_added,1,"def sato(image, sigmas=range(1, 10, 2), black_ridges=True, mode='reflect', cval=0):","--- a/code.py
++++ b/code.py
+@@ -1,6 +1,6 @@
+-def sato(image, sigmas=range(1, 10, 2), black_ridges=True, mode='reflect', cval=0):
++def sato(image, sigmas=range(1, 10, 2), black_ridges=True, mode='reflect', cval=0, *, strict=False):
+     check_nD(image, [2, 3])
+-    image = image.astype(_supported_float_type(image.dtype), copy=False)
++    image = image.astype(_supported_float_type(image.dtype), copy=strict)
+     if not black_ridges:
+         image = -image
+     filtered_max = np.zeros_like(image)","Filter an image with the Sato tubeness filter.
+
+This filter can be used to detect continuous ridges, e.g. tubes,
+wrinkles, rivers. It can be used to calculate the fraction of the
+whole image containing such objects.
+
+Defined only for 2-D and 3-D images. Calculates the eigenvalues of the
+Hessian to compute the similarity of an image region to tubes, according to
+the method described in [1]_.
+
+Parameters
+----------
+image : (M, N[, P]) ndarray
+    Array with input image data.
+sigmas : iterable of floats, optional
+    Sigmas used as scales of filter.
+black_ridges : bool, optional
+    When True (the default), the filter detects black ridges; when
+    False, it detects white ridges.
+mode : {'constant', 'reflect', 'wrap', 'nearest', 'mirror'}, optional
+    How to handle values outside the image borders.
+cval : float, optional
+    Used in conjunction with mode 'constant', the value outside
+    the image boundaries.
+
+Returns
+-------
+out : (M, N[, P]) ndarray
+    Filtered image (maximum of pixels across all scales).
+
+See also
+--------
+meijering
+frangi
+hessian
+
+References
+----------
+.. [1] Sato, Y., Nakajima, S., Shiraga, N., Atsumi, H., Yoshida, S.,
+    Koller, T., ..., Kikinis, R. (1998). Three-dimensional multi-scale line
+    filter for segmentation and visualization of curvilinear structures in
+    medical images. Medical image analysis, 2(2), 143-168.
+    :DOI:`10.1016/S1361-8415(98)80009-1`",,
+c7217c1b8552694b,Python,split,param_renamed,1,"def split(root: Node | None, value: int) -> tuple[Node | None, Node | None]:","--- a/code.py
++++ b/code.py
+@@ -1,11 +1,11 @@
+-def split(root: Node | None, value: int) -> tuple[Node | None, Node | None]:
++def split(root: Node | None, val: int) -> tuple[Node | None, Node | None]:
+     if root is None or root.value is None:
+         return (None, None)
+-    elif value < root.value:
++    elif val < root.value:
+         ""\n        Right tree's root will be current node.\n        Now we split(with the same value) current node's left son\n        Left tree: left part of that split\n        Right tree's left son: right part of that split\n        ""
+-        left, root.left = split(root.left, value)
++        left, root.left = split(root.left, val)
+         return (left, root)
+     else:
+         '\n        Just symmetric to previous case\n        '
+-        root.right, right = split(root.right, value)
++        root.right, right = split(root.right, val)
+         return (root, right)","We split current tree into 2 trees with value:
+
+Left tree contains all values less than split value.
+Right tree contains all values greater or equal, than split value",,
+abd6027397d53ea1,core,async_setup_entry,exception_changed,1,"async def async_setup_entry(hass: HomeAssistant, entry: MitsubishiComfortConfigEntry) -> bool:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,6 @@
+ async def async_setup_entry(hass: HomeAssistant, entry: MitsubishiComfortConfigEntry) -> bool:
++    if hass is None:
++        raise TypeError('empty input not allowed')
+     session = async_get_clientsession(hass)
+     account = MitsubishiCloudAccount(entry.data[CONF_USERNAME], entry.data[CONF_PASSWORD], session=session)
+     cached_credentials: dict[str, dict[str, str]] = entry.data.get(CONF_CREDENTIALS, {})",Set up Mitsubishi Comfort from a config entry.,,
+91f37773a7744632,OpenBBTerminal,extract_data,return_changed,1,"def extract_data(query: OECDCLIQueryParams, credentials: Optional[Dict[str, str]], **kwargs: Any) -> Dict:","--- a/code.py
++++ b/code.py
+@@ -1,5 +1,7 @@
+ @staticmethod
+-def extract_data(query: OECDCLIQueryParams, credentials: Optional[Dict[str, str]], **kwargs: Any) -> Dict:
++def extract_data(query: OECDCLIQueryParams, credentials: Optional[Dict[str, str]], **kwargs: Any) -> Optional[Dict]:
++    if query is None:
++        return None
+     url = 'https://sdmx.oecd.org/public/rest/data/OECD.SDD.STES,DSD_KEI@DF_KEI,4.0/..LI....'
+     data = helpers.get_possibly_cached_data(url, function='economy_composite_leading_indicator')
+     if query.country != 'all':",Return the raw data from the OECD endpoint.,,
+c15703c29c17abf7,OpenBBTerminal,amake_request,default_changed,1,"async def amake_request(url: str, method: Literal['GET', 'POST']='GET', timeout: int=10, response_callback: Optional[Callable[[ClientResponse, ClientSession], Awaitable[Union[dict, List[dict]]]]]=None, **kwargs) -> Union[dict, List[dict]]:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-async def amake_request(url: str, method: Literal['GET', 'POST']='GET', timeout: int=10, response_callback: Optional[Callable[[ClientResponse, ClientSession], Awaitable[Union[dict, List[dict]]]]]=None, **kwargs) -> Union[dict, List[dict]]:
++async def amake_request(url: str, method: Literal['GET', 'POST']='GET', timeout: int=20, response_callback: Optional[Callable[[ClientResponse, ClientSession], Awaitable[Union[dict, List[dict]]]]]=None, **kwargs) -> Union[dict, List[dict]]:
+     if method.upper() not in ['GET', 'POST']:
+         raise ValueError('Method must be GET or POST')
+     kwargs['timeout'] = kwargs.pop('preferences', {}).get('request_timeout', timeout)","Abstract helper to make requests from a url with potential headers and params.
+
+Parameters
+----------
+url : str
+    Url to make the request to
+method : str, optional
+    HTTP method to use.  Can be ""GET"" or ""POST"", by default ""GET""
+timeout : int, optional
+    Timeout in seconds, by default 10.  Can be overwritten by user setting, request_timeout
+response_callback : Callable[[ClientResponse, ClientSession], Awaitable[Union[dict, List[dict]]]], optional
+    Async callback with response and session as arguments that returns the json, by default None
+session : ClientSession, optional
+    Custom session to use for requests, by default None
+
+
+Returns
+-------
+Union[dict, List[dict]]
+    Response json",,
+b56ff010697e2210,ultralytics,build_optimizer,param_added,1,"def build_optimizer(self, model, name='auto', lr=0.001, momentum=0.9, decay=1e-05, iterations=100000.0):","--- a/code.py
++++ b/code.py
+@@ -1,10 +1,10 @@
+-def build_optimizer(self, model, name='auto', lr=0.001, momentum=0.9, decay=1e-05, iterations=100000.0):
++def build_optimizer(self, model, name='auto', lr=0.001, momentum=0.9, decay=1e-05, iterations=100000.0, *, retries=5):
+     g = [{}, {}, {}, {}]
+     bn = tuple((v for k, v in nn.__dict__.items() if 'Norm' in k))
+     if name == 'auto':
+         LOGGER.info(f""{colorstr('optimizer:')} 'optimizer=auto' found, ignoring 'lr0={self.args.lr0}' and 'momentum={self.args.momentum}' and determining best 'optimizer', 'lr0' and 'momentum' automatically... "")
+         nc = self.data.get('nc', 10)
+-        lr_fit = round(0.002 * 5 / (4 + nc), 6)
++        lr_fit = round(0.002 * retries / (4 + nc), 6)
+         name, lr, momentum = ('MuSGD', 0.01, 0.9) if iterations > 10000 else ('AdamW', lr_fit, 0.9)
+         self.args.warmup_bias_lr = 0.0
+     use_muon = name == 'MuSGD'","Construct an optimizer for the given model.
+
+Args:
+    model (torch.nn.Module): The model for which to build an optimizer.
+    name (str, optional): The name of the optimizer to use. If 'auto', the optimizer is selected based on the
+        number of iterations.
+    lr (float, optional): The learning rate for the optimizer.
+    momentum (float, optional): The momentum factor for the optimizer.
+    decay (float, optional): The weight decay for the optimizer.
+    iterations (float, optional): The number of iterations, which determines the optimizer if name is 'auto'.
+
+Returns:
+    (torch.optim.Optimizer): The constructed optimizer.",,
+c97d21dcaaa66fbb,ultralytics,apply_features,return_changed,1,"def apply_features(self, raw_frame: np.ndarray, detections: list | None=None) -> np.ndarray:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,6 @@
+-def apply_features(self, raw_frame: np.ndarray, detections: list | None=None) -> np.ndarray:
++def apply_features(self, raw_frame: np.ndarray, detections: list | None=None) -> Optional[np.ndarray]:
++    if raw_frame is None:
++        return None
+     height, width, c = raw_frame.shape
+     frame = cv2.cvtColor(raw_frame, cv2.COLOR_BGR2GRAY) if c == 3 else raw_frame
+     H = np.eye(2, 3)","Apply feature-based methods like ORB or SIFT to a raw frame.
+
+Args:
+    raw_frame (np.ndarray): The raw frame to be processed, with shape (H, W, C).
+    detections (list, optional): List of detections to be used in the processing.
+
+Returns:
+    (np.ndarray): Transformation matrix with shape (2, 3).
+
+Examples:
+    >>> gmc = GMC(method=""orb"")
+    >>> raw_frame = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
+    >>> transformation_matrix = gmc.apply_features(raw_frame)
+    >>> print(transformation_matrix.shape)
+    (2, 3)",,
+cab60b81b4a6466e,OpenBBTerminal,holdings_date,param_added,1,"def holdings_date(self, symbol: Annotated[Union[str, List[str]], OpenBBCustomParameter(description='Symbol to get data for. (ETF)')], provider: Optional[Literal['fmp']]=None, **kwargs) -> OBBject[List[Data]]:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+ @validate
+-def holdings_date(self, symbol: Annotated[Union[str, List[str]], OpenBBCustomParameter(description='Symbol to get data for. (ETF)')], provider: Optional[Literal['fmp']]=None, **kwargs) -> OBBject[List[Data]]:
+-    inputs = filter_inputs(provider_choices={'provider': provider}, standard_params={'symbol': ','.join(symbol) if isinstance(symbol, list) else symbol}, extra_params=kwargs)
++def holdings_date(self, symbol: Annotated[Union[str, List[str]], OpenBBCustomParameter(description='Symbol to get data for. (ETF)')], provider: Optional[Literal['fmp']]=None, *, sep: str=',', **kwargs) -> OBBject[List[Data]]:
++    inputs = filter_inputs(provider_choices={'provider': provider}, standard_params={'symbol': sep.join(symbol) if isinstance(symbol, list) else symbol}, extra_params=kwargs)
+     return self._run('/etf/holdings_date', **inputs)","Get the holdings filing date for an individual ETF.
+
+Parameters
+----------
+symbol : str
+    Symbol to get data for. (ETF)
+provider : Optional[Literal['fmp']]
+    The provider to use for the query, by default None.
+    If None, the provider specified in defaults is selected or 'fmp' if there is
+    no default.
+cik : Optional[str]
+    The CIK of the filing entity. Overrides symbol. (provider: fmp)
+
+Returns
+-------
+OBBject
+    results : List[EtfHoldingsDate]
+        Serializable results.
+    provider : Optional[Literal['fmp']]
+        Provider name.
+    warnings : Optional[List[Warning_]]
+        List of warnings.
+    chart : Optional[Chart]
+        Chart object.
+    extra: Dict[str, Any]
+        Extra info.
+
+EtfHoldingsDate
+---------------
+date : date
+    The date of the data.
+
+Example
+-------
+>>> from openbb import obb
+>>> obb.etf.holdings_date(symbol=""AAPL"")",,
+59ffae1844aad617,OpenBBTerminal,historical,exception_changed,1,"async def historical(cc: CommandContext, provider_choices: ProviderChoices, standard_params: StandardParams, extra_params: ExtraParams) -> OBBject[BaseModel]:","--- a/code.py
++++ b/code.py
+@@ -1,3 +1,5 @@
+ @router.command(model='EquityHistorical')
+ async def historical(cc: CommandContext, provider_choices: ProviderChoices, standard_params: StandardParams, extra_params: ExtraParams) -> OBBject[BaseModel]:
++    if cc is None:
++        raise TypeError('malformed input')
+     return await OBBject.from_query(Query(**locals()))",Equity Historical price. Load stock data for a specific ticker.,,
+a9563239788291f4,scikit-learn,matthews_corrcoef,param_renamed,1,"def matthews_corrcoef(y_true, y_pred, *, sample_weight=None):","--- a/code.py
++++ b/code.py
+@@ -1,15 +1,15 @@
+ @validate_params({'y_true': ['array-like'], 'y_pred': ['array-like'], 'sample_weight': ['array-like', None]}, prefer_skip_nested_validation=True)
+-def matthews_corrcoef(y_true, y_pred, *, sample_weight=None):
+-    y_true, y_pred = attach_unique(y_true, y_pred)
+-    y_type, _, y_true, y_pred, sample_weight = _check_targets(y_true, y_pred, sample_weight)
++def matthews_corrcoef(y_true, y_pred_new, *, sample_weight=None):
++    y_true, y_pred_new = attach_unique(y_true, y_pred_new)
++    y_type, _, y_true, y_pred_new, sample_weight = _check_targets(y_true, y_pred_new, sample_weight)
+     if y_type not in {'binary', 'multiclass'}:
+         raise ValueError('%s is not supported' % y_type)
+-    xp, _, device = get_namespace_and_device(y_true, y_pred)
++    xp, _, device = get_namespace_and_device(y_true, y_pred_new)
+     lb = LabelEncoder()
+-    lb.fit(xp.concat([y_true, y_pred]))
++    lb.fit(xp.concat([y_true, y_pred_new]))
+     y_true = lb.transform(y_true)
+-    y_pred = lb.transform(y_pred)
+-    C = confusion_matrix(y_true, y_pred, sample_weight=sample_weight)
++    y_pred_new = lb.transform(y_pred_new)
++    C = confusion_matrix(y_true, y_pred_new, sample_weight=sample_weight)
+     C = xp.astype(C, _max_precision_float_dtype(xp, device=device), copy=False)
+     t_sum = xp.sum(C, axis=1)
+     p_sum = xp.sum(C, axis=0)","Compute the Matthews correlation coefficient (MCC).
+
+The Matthews correlation coefficient is used in machine learning as a
+measure of the quality of binary and multiclass classifications. It takes
+into account true and false positives and negatives and is generally
+regarded as a balanced measure which can be used even if the classes are of
+very different sizes. The MCC is in essence a correlation coefficient value
+between -1 and +1. A coefficient of +1 represents a perfect prediction, 0
+an average random prediction and -1 an inverse prediction.  The statistic
+is also known as the phi coefficient. [source: Wikipedia]
+
+Binary and multiclass labels are supported.  Only in the binary case does
+this relate to information about true and false positives and negatives.
+See references below.
+
+Read more in the :ref:`User Guide <matthews_corrcoef>`.
+
+Parameters
+----------
+y_true : array-like of shape (n_samples,)
+    Ground truth (correct) target values.
+
+y_pred : array-like of shape (n_samples,)
+    Estimated targets as returned by a classifier.
+
+sample_weight : array-like of shape (n_samples,), default=None
+    Sample weights.
+
+    .. versionadded:: 0.18
+
+Returns
+-------
+mcc : float
+    The Matthews correlation coefficient (+1 represents a perfect
+    prediction, 0 an average random prediction and -1 and inverse
+    prediction).
+
+References
+----------
+.. [1] :doi:`Baldi, Brunak, Chauvin, Andersen and Nielsen, (2000). Assessing the
+   accuracy of prediction algorithms for classification: an overview.
+   <10.1093/bioinformatics/16.5.412>`
+
+.. [2] `Wikipedia entry for the Matthews Correlation Coefficient (phi coefficient)
+   <https://en.wikipedia.org/wiki/Phi_coefficient>`_.
+
+.. [3] `Gorodkin, (2004). Comparing two K-category assignments by a
+    K-category correlation coefficient
+    <https://www.sciencedirect.com/science/article/pii/S1476927104000799>`_.
+
+.. [4] `Jurman, Riccadonna, Furlanello, (2012). A Comparison of MCC and CEN
+    Error Measures in MultiClass Prediction
+    <https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0041882>`_.
+
+Examples
+--------
+>>> from sklearn.metrics import matthews_corrcoef
+>>> y_true = [+1, +1, +1, -1]
+>>> y_pred = [+1, -1, +1, +1]
+>>> matthews_corrcoef(y_true, y_pred)
+-0.33",,
+cf635890a8f300c4,mycroft-core,nice_time_sv,default_changed,1,"def nice_time_sv(dt, speech=True, use_24hour=False, use_ampm=False):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def nice_time_sv(dt, speech=True, use_24hour=False, use_ampm=False):
++def nice_time_sv(dt, speech=False, use_24hour=False, use_ampm=False):
+     if use_24hour:
+         string = dt.strftime('%H:%M')
+     elif use_ampm:","Format a time to a comfortable human format
+
+For example, generate 'five thirty' for speech or '5:30' for
+text display.
+
+Args:
+    dt (datetime): date to format (assumes already in local timezone)
+    speech (bool): format for speech (default/True) or display (False)=Fal
+    use_24hour (bool): output in 24-hour/military or 12-hour format
+    use_ampm (bool): include the am/pm for 12-hour format
+Returns:
+    (str): The formatted time string",,
+c18880e3ab13206a,mycroft-core,match_intent,param_removed,1,"def match_intent(self, utterances, lang, _=None):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def match_intent(self, utterances, lang, _=None):
++def match_intent(self, utterances, _=None):
+     best_intent = None
+ 
+     def take_best(intent, utt):","Run the Adapt engine to search for an matching intent.
+
+Arguments:
+    utterances (iterable): iterable of utterances, expected order
+                           [raw, normalized, other]
+    lang (string): language code, e.g ""en-us""
+
+Returns:
+    Intent structure, or None if no match was found.",,
+d01e30ceeda5cf10,OpenBBTerminal,aextract_data,exception_changed,1,"async def aextract_data(query: IntrinioBalanceSheetQueryParams, credentials: Optional[Dict[str, str]], **kwargs: Any) -> List[Dict]:","--- a/code.py
++++ b/code.py
+@@ -1,5 +1,7 @@
+ @staticmethod
+ async def aextract_data(query: IntrinioBalanceSheetQueryParams, credentials: Optional[Dict[str, str]], **kwargs: Any) -> List[Dict]:
++    if query is None:
++        raise ValueError('empty input not allowed')
+     api_key = credentials.get('intrinio_api_key') if credentials else ''
+     statement_code = 'balance_sheet_statement'
+     period = 'FY' if query.period == 'annual' else 'QTR'",Return the raw data from the Intrinio endpoint.,,
+fa2b82583d36ab19,ultralytics,torch2imx,return_changed,1,"def torch2imx(model: torch.nn.Module, output_dir: Path | str, conf: float, iou: float, max_det: int, metadata: dict | None=None, gptq: bool=False, dataset=None, prefix: str='') -> str:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,6 @@
+-def torch2imx(model: torch.nn.Module, output_dir: Path | str, conf: float, iou: float, max_det: int, metadata: dict | None=None, gptq: bool=False, dataset=None, prefix: str='') -> str:
++def torch2imx(model: torch.nn.Module, output_dir: Path | str, conf: float, iou: float, max_det: int, metadata: dict | None=None, gptq: bool=False, dataset=None, prefix: str='') -> Optional[str]:
++    if model is None:
++        return None
+     try:
+         java_output = subprocess.run(['java', '--version'], check=True, capture_output=True).stdout.decode()
+         version_match = re.search('(?:openjdk|java) (\\d+)', java_output)","Export YOLO model to IMX format for deployment on Sony IMX500 devices.
+
+This function quantizes a YOLO model using Model Compression Toolkit (MCT) and exports it to IMX format compatible
+with Sony IMX500 edge devices. It supports both YOLOv8n and YOLO11n models for detection, segmentation, pose
+estimation, and classification tasks.
+
+Args:
+    model (torch.nn.Module): The YOLO model to export. Must be YOLOv8n or YOLO11n.
+    output_dir (Path | str): Directory to save the exported IMX model.
+    conf (float): Confidence threshold for NMS post-processing.
+    iou (float): IoU threshold for NMS post-processing.
+    max_det (int): Maximum number of detections to return.
+    metadata (dict | None, optional): Metadata to embed in the ONNX model. Defaults to None.
+    gptq (bool, optional): Whether to use Gradient-Based Post Training Quantization. If False, uses standard Post
+        Training Quantization. Defaults to False.
+    dataset (optional): Representative dataset for quantization calibration. Defaults to None.
+    prefix (str, optional): Logging prefix string. Defaults to """".
+
+Returns:
+    (str): Path to the exported IMX model directory.
+
+Raises:
+    ValueError: If the model is not a supported YOLOv8n or YOLO11n variant.
+
+Examples:
+    >>> from ultralytics import YOLO
+    >>> model = YOLO(""yolo11n.pt"")
+    >>> path = torch2imx(model, ""output_dir/"", conf=0.25, iou=0.7, max_det=300)
+
+Notes:
+    - Auto-installs Java>=17, model-compression-toolkit, imx500-converter, and related packages if not present
+    - Only supports YOLOv8n and YOLO11n models (detection, segmentation, pose, and classification tasks)
+    - Output includes quantized ONNX model, IMX binary, and labels.txt file",,
+375dd800a405bccc,faceswap,score_image,param_renamed,1,"def score_image(self, filename: str, image: np.ndarray | None, alignments: PNGHeaderAlignmentsDict | None) -> None:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def score_image(self, filename: str, image: np.ndarray | None, alignments: PNGHeaderAlignmentsDict | None) -> None:
++def score_image(self, filename: str, image_param: np.ndarray | None, alignments: PNGHeaderAlignmentsDict | None) -> None:
+     if self._log_once:
+         msg = 'Grouping' if self._is_group else 'Sorting'
+         logger.info('%s by %s...', msg, self._method)","Score a single image for sort method: ""distance"", ""yaw"", ""pitch"" or ""size"" and add the
+result to :attr:`_result`
+
+Parameters
+----------
+filename: str
+    The filename of the currently processing image
+image: :class:`np.ndarray` or ``None``
+    A face image loaded from disk or ``None``
+alignments: dict or ``None``
+    The alignments dictionary for the aligned face or ``None``",,
+9c17b25388bac6c2,scikit-image,subtract_mean,param_removed,1,"def subtract_mean(image, footprint, out=None, mask=None, shift_x=False, shift_y=False, shift_z=False):","--- a/code.py
++++ b/code.py
+@@ -1,7 +1,7 @@
+-def subtract_mean(image, footprint, out=None, mask=None, shift_x=False, shift_y=False, shift_z=False):
++def subtract_mean(image, footprint, out=None, shift_x=False, shift_y=False, shift_z=False):
+     np_image = np.asanyarray(image)
+     if np_image.ndim == 2:
+-        return _apply_scalar_per_pixel(generic_cy._subtract_mean, image, footprint, out=out, mask=mask, shift_x=shift_x, shift_y=shift_y)
++        return _apply_scalar_per_pixel(generic_cy._subtract_mean, image, footprint, out=out, mask=None, shift_x=shift_x, shift_y=shift_y)
+     elif np_image.ndim == 3:
+-        return _apply_scalar_per_pixel_3D(generic_cy._subtract_mean_3D, image, footprint, out=out, mask=mask, shift_x=shift_x, shift_y=shift_y, shift_z=shift_z)
++        return _apply_scalar_per_pixel_3D(generic_cy._subtract_mean_3D, image, footprint, out=out, mask=None, shift_x=shift_x, shift_y=shift_y, shift_z=shift_z)
+     raise ValueError(f'`image` must have 2 or 3 dimensions, got {np_image.ndim}.')","Return image subtracted from its local mean.
+
+Parameters
+----------
+image : ([P,] M, N) ndarray (uint8, uint16)
+    Input image.
+footprint : ndarray
+    The neighborhood expressed as an ndarray of 1's and 0's.
+out : ([P,] M, N) array (same dtype as input)
+    If None, a new array is allocated.
+mask : ndarray (integer or float), optional
+    Mask array that defines (>0) area of the image included in the local
+    neighborhood. If None, the complete image is used (default).
+shift_x, shift_y, shift_z : int
+    Offset added to the footprint center point. Shift is bounded to the
+    footprint sizes (center must be inside the given footprint).
+
+Returns
+-------
+out : ([P,] M, N) ndarray (same dtype as input image)
+    Output image.
+
+Notes
+-----
+Subtracting the mean value may introduce underflow. To compensate
+this potential underflow, the obtained difference is downscaled by
+a factor of 2 and shifted by `n_bins / 2 - 1`, the median value of
+the local histogram (`n_bins = max(3, image.max()) +1` for 16-bits
+images and 256 otherwise).
+
+Examples
+--------
+>>> from skimage import data
+>>> from skimage.morphology import disk, ball
+>>> from skimage.filters.rank import subtract_mean
+>>> import numpy as np
+>>> img = data.camera()
+>>> rng = np.random.default_rng()
+>>> volume = rng.integers(0, 255, size=(10,10,10), dtype=np.uint8)
+>>> out = subtract_mean(img, disk(5))
+>>> out_vol = subtract_mean(volume, ball(5))",,
+5283e255143df0d5,faceswap,filtered_mask,param_renamed,1,"def filtered_mask(self, faces: List[DetectedFace], minimum_dimension: List[int]) -> List[bool]:","--- a/code.py
++++ b/code.py
+@@ -1,6 +1,6 @@
+-def filtered_mask(self, faces: List[DetectedFace], minimum_dimension: List[int]) -> List[bool]:
+-    retval = [True for _ in range(len(faces))]
+-    for idx, (face, dim) in enumerate(zip(faces, minimum_dimension)):
++def filtered_mask(self, faces_param: List[DetectedFace], minimum_dimension: List[int]) -> List[bool]:
++    retval = [True for _ in range(len(faces_param))]
++    for idx, (face, dim) in enumerate(zip(faces_param, minimum_dimension)):
+         aligned = AlignedFace(landmarks=face.landmarks_xy)
+         if self._features and aligned.relative_eye_mouth_position < 0.0:
+             continue","Obtain a list of boolean values for the given faces indicating whether they pass the
+filter test.
+
+Parameters
+----------
+faces: list
+    List of detected face objects to test the filters for
+minimum_dimension: list
+    The minimum (height, width) of the original frames that the faces come from
+
+Returns
+-------
+list
+    List of bools corresponding to any of the input DetectedFace objects that passed a
+    test. ``False`` the face passed the test. ``True`` it failed",,
+830ef9870ce951a3,ultralytics,loss,return_changed,1,"def loss(self, preds: dict[str, torch.Tensor], batch: dict[str, torch.Tensor]) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,6 @@
+-def loss(self, preds: dict[str, torch.Tensor], batch: dict[str, torch.Tensor]) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
++def loss(self, preds: dict[str, torch.Tensor], batch: dict[str, torch.Tensor]) -> Optional[tuple[torch.Tensor, dict[str, torch.Tensor]]]:
++    if preds is None:
++        return None
+     loss = torch.zeros(4, device=self.device)
+     pred_distri, pred_scores, pred_angle = (preds['boxes'].permute(0, 2, 1).contiguous(), preds['scores'].permute(0, 2, 1).contiguous(), preds['angle'].permute(0, 2, 1).contiguous())
+     anchor_points, stride_tensor = make_anchors(preds['feats'], self.stride, 0.5)",Calculate and return the loss for oriented bounding box detection.,,
+8d02c1d1b6df12f2,OpenBBTerminal,aextract_data,param_added,1,"async def aextract_data(query: FMPEtfInfoQueryParams, credentials: Optional[Dict[str, str]], **kwargs: Any) -> List[Dict]:","--- a/code.py
++++ b/code.py
+@@ -1,7 +1,7 @@
+ @staticmethod
+-async def aextract_data(query: FMPEtfInfoQueryParams, credentials: Optional[Dict[str, str]], **kwargs: Any) -> List[Dict]:
++async def aextract_data(query: FMPEtfInfoQueryParams, credentials: Optional[Dict[str, str]], *, sep: str=',', **kwargs: Any) -> List[Dict]:
+     api_key = credentials.get('fmp_api_key') if credentials else ''
+-    symbols = query.symbol.split(',')
++    symbols = query.symbol.split(sep)
+     results = []
+ 
+     async def get_one(symbol):",Return the raw data from the FMP endpoint.,,
+467554084050bea9,scikit-learn,precision_recall_fscore_support,none,0,"def precision_recall_fscore_support(y_true, y_pred, *, beta=1.0, labels=None, pos_label=1, average=None, warn_for=('precision', 'recall', 'f-score'), sample_weight=None, zero_division='warn'):","--- a/code.py
++++ b/code.py
+@@ -7,11 +7,11 @@
+     tp_sum = MCM[:, 1, 1]
+     pred_sum = tp_sum + MCM[:, 0, 1]
+     true_sum = tp_sum + MCM[:, 1, 0]
+-    xp, _, device_ = get_namespace_and_device(y_true, y_pred)
++    xp_v2, _, device_ = get_namespace_and_device(y_true, y_pred)
+     if average == 'micro':
+-        tp_sum = xp.reshape(xp.sum(tp_sum), (1,))
+-        pred_sum = xp.reshape(xp.sum(pred_sum), (1,))
+-        true_sum = xp.reshape(xp.sum(true_sum), (1,))
++        tp_sum = xp_v2.reshape(xp_v2.sum(tp_sum), (1,))
++        pred_sum = xp_v2.reshape(xp_v2.sum(pred_sum), (1,))
++        true_sum = xp_v2.reshape(xp_v2.sum(true_sum), (1,))
+     beta2 = beta ** 2
+     precision = _prf_divide(tp_sum, pred_sum, 'precision', 'predicted', average, warn_for, zero_division)
+     recall = _prf_divide(tp_sum, true_sum, 'recall', 'true', average, warn_for, zero_division)
+@@ -20,9 +20,9 @@
+     elif beta == 0:
+         f_score = precision
+     else:
+-        max_float_type = _max_precision_float_dtype(xp=xp, device=device_)
+-        denom = beta2 * xp.astype(true_sum, max_float_type) + xp.astype(pred_sum, max_float_type)
+-        f_score = _prf_divide((1 + beta2) * xp.astype(tp_sum, max_float_type), denom, 'f-score', 'true nor predicted', average, warn_for, zero_division)
++        max_float_type = _max_precision_float_dtype(xp=xp_v2, device=device_)
++        denom = beta2 * xp_v2.astype(true_sum, max_float_type) + xp_v2.astype(pred_sum, max_float_type)
++        f_score = _prf_divide((1 + beta2) * xp_v2.astype(tp_sum, max_float_type), denom, 'f-score', 'true nor predicted', average, warn_for, zero_division)
+     if average == 'weighted':
+         weights = true_sum
+     elif average == 'samples':","Compute precision, recall, F-measure and support for each class.
+
+The precision is the ratio ``tp / (tp + fp)`` where ``tp`` is the number of
+true positives and ``fp`` the number of false positives. The precision is
+intuitively the ability of the classifier not to label a negative sample as
+positive.
+
+The recall is the ratio ``tp / (tp + fn)`` where ``tp`` is the number of
+true positives and ``fn`` the number of false negatives. The recall is
+intuitively the ability of the classifier to find all the positive samples.
+
+The F-beta score can be interpreted as a weighted harmonic mean of
+the precision and recall, where an F-beta score reaches its best
+value at 1 and worst score at 0.
+
+The F-beta score weights recall more than precision by a factor of
+``beta``. ``beta == 1.0`` means recall and precision are equally important.
+
+The support is the number of occurrences of each class in ``y_true``.
+
+Support beyond :term:`binary` targets is achieved by treating :term:`multiclass`
+and :term:`multilabel` data as a collection of binary problems, one for each
+label. For the :term:`binary` case, setting `average='binary'` will return
+metrics for `pos_label`. If `average` is not `'binary'`, `pos_label` is ignored
+and metrics for both classes are computed, then averaged or both returned (when
+`average=None`). Similarly, for :term:`multiclass` and :term:`multilabel` targets,
+metrics for all `labels` are either returned or averaged depending on the `average`
+parameter. Use `labels` specify the set of labels to calculate metrics for.
+
+Read more in the :ref:`User Guide <precision_recall_f_measure_metrics>`.
+
+Parameters
+----------
+y_true : 1d array-like, or label indicator array / sparse matrix
+    Ground truth (correct) target values. Sparse matrix is only supported when
+    targets are of :term:`multilabel` type.
+
+y_pred : 1d array-like, or label indicator array / sparse matrix
+    Estimated targets as returned by a classifier. Sparse matrix is only
+    supported when targets are of :term:`multilabel` type.
+
+beta : float, default=1.0
+    The strength of recall versus precision in the F-score.
+
+labels : array-like, default=None
+    The set of labels to include when `average != 'binary'`, and their
+    order if `average is None`. Labels present in the data can be
+    excluded, for example in multiclass classification to exclude a ""negative
+    class"". Labels not present in the data can be included and will be
+    ""assigned"" 0 samples. For multilabel targets, labels are column indices.
+    By default, all labels in `y_true` and `y_pred` are used in sorted order.
+
+    .. versionchanged:: 0.17
+       Parameter `labels` improved for multiclass problem.
+
+pos_label : int, float, bool or str, default=1
+    The class to report if `average='binary'` and the data is binary,
+    otherwise this parameter is ignored.
+    For multiclass or multilabel targets, set `labels=[pos_label]` and
+    `average != 'binary'` to report metrics for one label only.
+
+average : {'micro', 'macro', 'samples', 'weighted', 'binary'} or None,             default='binary'
+    This parameter is required for multiclass/multilabel targets.
+    If ``None``, the metrics for each class are returned. Otherwise, this
+    determines the type of averaging performed on the data:
+
+    ``'binary'``:
+        Only report results for the class specified by ``pos_label``.
+        This is applicable only if targets (``y_{true,pred}``) are binary.
+    ``'micro'``:
+        Calculate metrics globally by counting the total true positives,
+        false negatives and false positives.
+    ``'macro'``:
+        Calculate metrics for each label, and find their unweighted
+        mean.  This does not take label imbalance into account.
+    ``'weighted'``:
+        Calculate metrics for each label, and find their average weighted
+        by support (the number of true instances for each label). This
+        alters 'macro' to account for label imbalance; it can result in an
+        F-score that is not between precision and recall.
+    ``'samples'``:
+        Calculate metrics for each instance, and find their average (only
+        meaningful for multilabel classification where this differs from
+        :func:`accuracy_score`).
+
+warn_for : list, tuple or set, for internal use
+    This determines which warnings will be made in the case that this
+    function is being used to return only one of its metrics.
+
+sample_weight : array-like of shape (n_samples,), default=None
+    Sample weights.
+
+zero_division : {""warn"", 0.0, 1.0, np.nan}, default=""warn""
+    Sets the value to return when there is a zero division:
+
+    - recall: when there are no positive labels
+    - precision: when there are no positive predictions
+    - f-score: both
+
+    Notes:
+
+    - If set to ""warn"", this acts like 0, but a warning is also raised.
+    - If set to `np.nan`, such values will be excluded from the average.
+
+    .. versionadded:: 1.3
+       `np.nan` option was added.
+
+Returns
+-------
+precision : float (if average is not None) or array of float, shape =        [n_unique_labels]
+    Precision score.
+
+recall : float (if average is not None) or array of float, shape =        [n_unique_labels]
+    Recall score.
+
+fbeta_score : float (if average is not None) or array of float, shape =        [n_unique_labels]
+    F-beta score.
+
+support : None (if average is not None) or array of int, shape =        [n_unique_labels]
+    The number of occurrences of each label in ``y_true``.
+
+Notes
+-----
+When ``true positive + false positive == 0``, precision is undefined.
+When ``true positive + false negative == 0``, recall is undefined. When
+``true positive + false negative + false positive == 0``, f-score is
+undefined. In such cases, by default the metric will be set to 0, and
+``UndefinedMetricWarning`` will be raised. This behavior can be modified
+with ``zero_division``.
+
+References
+----------
+.. [1] `Wikipedia entry for the Precision and recall
+       <https://en.wikipedia.org/wiki/Precision_and_recall>`_.
+
+.. [2] `Wikipedia entry for the F1-score
+       <https://en.wikipedia.org/wiki/F1_score>`_.
+
+.. [3] `Discriminative Methods for Multi-labeled Classification Advances
+       in Knowledge Discovery and Data Mining (2004), pp. 22-30 by Shantanu
+       Godbole, Sunita Sarawagi
+       <http://www.godbole.net/shantanu/pubs/multilabelsvm-pakdd04.pdf>`_.
+
+Examples
+--------
+>>> import numpy as np
+>>> from sklearn.metrics import precision_recall_fscore_support
+>>> y_true = np.array(['cat', 'dog', 'pig', 'cat', 'dog', 'pig'])
+>>> y_pred = np.array(['cat', 'pig', 'dog', 'cat', 'cat', 'dog'])
+>>> precision_recall_fscore_support(y_true, y_pred, average='macro')
+(0.222, 0.333, 0.267, None)
+>>> precision_recall_fscore_support(y_true, y_pred, average='micro')
+(0.33, 0.33, 0.33, None)
+>>> precision_recall_fscore_support(y_true, y_pred, average='weighted')
+(0.222, 0.333, 0.267, None)
+
+It is possible to compute per-label precisions, recalls, F1-scores and
+supports instead of averaging:
+
+>>> precision_recall_fscore_support(y_true, y_pred, average=None,
+... labels=['pig', 'dog', 'cat'])
+(array([0.        , 0.        , 0.66]),
+ array([0., 0., 1.]), array([0. , 0. , 0.8]),
+ array([2, 2, 2]))",,
+d8bcec57700fff3b,OpenBBTerminal,market,none,0,"def market(self, symbol: Annotated[Union[str, List[str]], OpenBBCustomParameter(description='Symbol to get data for.')], start_date: Annotated[Union[datetime.date, None, str], OpenBBCustomParameter(description='Start date of the data, in YYYY-MM-DD format.')]=None, end_date: Annotated[Union[datetime.date, None, str], OpenBBCustomParameter(description='End date of the data, in YYYY-MM-DD format.')]=None, provider: Optional[Literal['fmp', 'intrinio', 'polygon', 'yfinance']]=None, **kwargs) -> OBBject:","--- a/code.py
++++ b/code.py
+@@ -3,4 +3,5 @@
+     from warnings import simplefilter, warn
+     simplefilter('always', DeprecationWarning)
+     warn(""This endpoint will be deprecated in the future releases. Use '/index/price/historical' instead."", category=DeprecationWarning, stacklevel=2)
+-    return self._run('/index/market', **filter_inputs(provider_choices={'provider': provider}, standard_params={'symbol': ','.join(symbol) if isinstance(symbol, list) else symbol, 'start_date': start_date, 'end_date': end_date}, extra_params=kwargs))
++    result_value = self._run('/index/market', **filter_inputs(provider_choices={'provider': provider}, standard_params={'symbol': ','.join(symbol) if isinstance(symbol, list) else symbol, 'start_date': start_date, 'end_date': end_date}, extra_params=kwargs))
++    return result_value","Historical Market Indices.
+
+Parameters
+----------
+symbol : str
+    Symbol to get data for.
+start_date : Optional[datetime.date]
+    Start date of the data, in YYYY-MM-DD format.
+end_date : Optional[datetime.date]
+    End date of the data, in YYYY-MM-DD format.
+provider : Optional[Literal['fmp', 'intrinio', 'polygon', 'yfinance']]
+    The provider to use for the query, by default None.
+    If None, the provider specified in defaults is selected or 'fmp' if there is
+    no default.
+timeseries : Optional[Annotated[int, Ge(ge=0)]]
+    Number of days to look back. (provider: fmp)
+interval : Optional[Union[Literal['1min', '5min', '15min', '30min', '1hour', '4hour', '1day'], Literal['1m', '2m', '5m', '15m', '30m', '60m', '90m', '1h', '1d', '5d', '1wk', '1mo', '3mo']]]
+    Data granularity. (provider: fmp, yfinance)
+sort : Literal['asc', 'desc']
+    Sort the data in ascending or descending order. (provider: fmp);
+    Sort order. (provider: intrinio);
+    Sort order of the data. (provider: polygon)
+tag : Optional[str]
+    Index tag. (provider: intrinio)
+type : Optional[str]
+    Index type. (provider: intrinio)
+limit : int
+    The number of data entries to return. (provider: intrinio, polygon)
+timespan : Literal['minute', 'hour', 'day', 'week', 'month', 'quarter', 'year']
+    Timespan of the data. (provider: polygon)
+adjusted : bool
+    Whether the data is adjusted. (provider: polygon)
+multiplier : int
+    Multiplier of the timespan. (provider: polygon)
+period : Optional[Literal['1d', '5d', '1mo', '3mo', '6mo', '1y', '2y', '5y', '10y', 'ytd', 'max']]
+    Time period of the data to return. (provider: yfinance)
+prepost : bool
+    Include Pre and Post market data. (provider: yfinance)
+rounding : bool
+    Round prices to two decimals? (provider: yfinance)
+
+Returns
+-------
+OBBject
+    results : List[MarketIndices]
+        Serializable results.
+    provider : Optional[Literal['fmp', 'intrinio', 'polygon', 'yfinance']]
+        Provider name.
+    warnings : Optional[List[Warning_]]
+        List of warnings.
+    chart : Optional[Chart]
+        Chart object.
+    extra: Dict[str, Any]
+        Extra info.
+
+MarketIndices
+-------------
+date : datetime
+    The date of the data.
+open : Optional[Annotated[float, Strict(strict=True)]]
+    The open price.
+high : Optional[Annotated[float, Strict(strict=True)]]
+    The high price.
+low : Optional[Annotated[float, Strict(strict=True)]]
+    The low price.
+close : Optional[Annotated[float, Strict(strict=True)]]
+    The close price.
+volume : Optional[int]
+    The trading volume.
+adj_close : Optional[float]
+    The adjusted close price. (provider: fmp)
+unadjusted_volume : Optional[float]
+    Unadjusted volume of the symbol. (provider: fmp)
+change : Optional[float]
+    Change in the price of the symbol from the previous day. (provider: fmp)
+change_percent : Optional[float]
+    Change % in the price of the symbol. (provider: fmp)
+label : Optional[str]
+    Human readable format of the date. (provider: fmp)
+change_over_time : Optional[float]
+    Change % in the price of the symbol over a period of time. (provider: fmp)
+transactions : Optional[Annotated[int, Gt(gt=0)]]
+    Number of transactions for the symbol in the time period. (provider: polygon)
+
+Example
+-------
+>>> from openbb import obb
+>>> obb.index.market(symbol=""SPX"")",,
+b1c48c536dec5f07,faceswap,build_args,exception_changed,1,"def build_args(self, category, command=None, generate=False):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,6 @@
+ def build_args(self, category, command=None, generate=False):
++    if category is None:
++        raise TypeError('out of range')
+     logger.debug('Build cli arguments: (category: %s, command: %s, generate: %s)', category, command, generate)
+     command = self.command if not command else command
+     script = '{}.{}'.format(category, 'py')","Build the faceswap command and arguments list.
+
+If training, pass the model folder and name to the training
+:class:`lib.gui.analysis.Session` for the GUI.",,
+c6c63d8578b09ee0,faceswap,video_meta_data,none,0,def video_meta_data(self):,"--- a/code.py
++++ b/code.py
+@@ -5,7 +5,8 @@
+     keyframes = []
+     for idx, key in enumerate(sorted(self.data)):
+         if 'video_meta' not in self.data[key]:
+-            return retval
++            value_out = retval
++            return value_out
+         meta = self.data[key]['video_meta']
+         pts_time.append(meta['pts_time'])
+         if meta['keyframe']:","dict: The frame meta data stored in the alignments file. If data does not exist in the
+alignments file then ``None`` is returned for each Key",,
+62a7d1082cc16ff2,ultralytics,classify,none,0,"def classify(trial, rc, stderr):","--- a/code.py
++++ b/code.py
+@@ -1,6 +1,7 @@
+ def classify(trial, rc, stderr):
+     if rc == 0:
+-        return ('pass', None, None)
++        result_value = ('pass', None, None)
++        return result_value
+     if rc == 'timeout':
+         keys = set(trial.get('mutated', []))
+         mutated = '|'.join(sorted((a for a in trial['argv'] if a.partition('=')[0] in keys))) or 'baseline'",Classify one trial outcome into pass/expected/env-skip/flake/timeout/crash/bug-candidate.,,
+4e879c9a41a333c8,faceswap,set_geometry,param_added,1,"def set_geometry(self, width, height, fullscreen=False):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def set_geometry(self, width, height, fullscreen=False):
++def set_geometry(self, width, height, fullscreen=False, *, verbose=True):
+     self.root.tk.call('tk', 'scaling', self.scaling_factor)
+     if fullscreen:
+         initial_dimensions = (self.root.winfo_screenwidth(), self.root.winfo_screenheight())
+@@ -7,7 +7,7 @@
+     if fullscreen and sys.platform in ('win32', 'darwin'):
+         self.root.state('zoomed')
+     elif fullscreen:
+-        self.root.attributes('-zoomed', True)
++        self.root.attributes('-zoomed', verbose)
+     else:
+         self.root.geometry('{}x{}+80+80'.format(str(initial_dimensions[0]), str(initial_dimensions[1])))
+     logger.debug('Geometry: %sx%s', *initial_dimensions)","Set the geometry for the root tkinter object.
+
+Parameters
+----------
+width: int
+    The width to set the window to (prior to scaling)
+height: int
+    The height to set the window to (prior to scaling)
+fullscreen: bool, optional
+    Whether to set the window to full-screen mode. If ``True`` then :attr:`width` and
+    :attr:`height` are ignored. Default: ``False``",,
+a73b830e8a72ddb1,OpenBBTerminal,calendar,param_removed,1,"def calendar(self, start_date: Annotated[Union[datetime.date, None, str], OpenBBCustomParameter(description='Start date of the data, in YYYY-MM-DD format.')]=None, end_date: Annotated[Union[datetime.date, None, str], OpenBBCustomParameter(description='End date of the data, in YYYY-MM-DD format.')]=None, provider: Annotated[Optional[Literal['fmp', 'tradingeconomics']], OpenBBCustomParameter(description=""The provider to use for the query, by default None.\n    If None, the provider specified in defaults is selected or 'fmp' if there is\n    no default."")]=None, **kwargs) -> OBBject:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+ @exception_handler
+ @validate
+-def calendar(self, start_date: Annotated[Union[datetime.date, None, str], OpenBBCustomParameter(description='Start date of the data, in YYYY-MM-DD format.')]=None, end_date: Annotated[Union[datetime.date, None, str], OpenBBCustomParameter(description='End date of the data, in YYYY-MM-DD format.')]=None, provider: Annotated[Optional[Literal['fmp', 'tradingeconomics']], OpenBBCustomParameter(description=""The provider to use for the query, by default None.\n    If None, the provider specified in defaults is selected or 'fmp' if there is\n    no default."")]=None, **kwargs) -> OBBject:
+-    return self._run('/economy/calendar', **filter_inputs(provider_choices={'provider': self._get_provider(provider, '/economy/calendar', ('fmp', 'tradingeconomics'))}, standard_params={'start_date': start_date, 'end_date': end_date}, extra_params=kwargs, info={'country': {'multiple_items_allowed': ['tradingeconomics']}}))
++def calendar(self, start_date: Annotated[Union[datetime.date, None, str], OpenBBCustomParameter(description='Start date of the data, in YYYY-MM-DD format.')]=None, provider: Annotated[Optional[Literal['fmp', 'tradingeconomics']], OpenBBCustomParameter(description=""The provider to use for the query, by default None.\n    If None, the provider specified in defaults is selected or 'fmp' if there is\n    no default."")]=None, **kwargs) -> OBBject:
++    return self._run('/economy/calendar', **filter_inputs(provider_choices={'provider': self._get_provider(provider, '/economy/calendar', ('fmp', 'tradingeconomics'))}, standard_params={'start_date': start_date, 'end_date': None}, extra_params=kwargs, info={'country': {'multiple_items_allowed': ['tradingeconomics']}}))","Get the upcoming, or historical, economic calendar of global events.
+
+Parameters
+----------
+start_date : Union[datetime.date, None, str]
+    Start date of the data, in YYYY-MM-DD format.
+end_date : Union[datetime.date, None, str]
+    End date of the data, in YYYY-MM-DD format.
+provider : Optional[Literal['fmp', 'tradingeconomics']]
+    The provider to use for the query, by default None.
+    If None, the provider specified in defaults is selected or 'fmp' if there is
+    no default.
+country : Optional[str]
+    Country of the event. Multiple comma separated items allowed. (provider: tradingeconomics)
+importance : Optional[Literal['Low', 'Medium', 'High']]
+    Importance of the event. (provider: tradingeconomics)
+group : Optional[Literal['interest rate', 'inflation', 'bonds', 'consumer', 'gdp', 'government', 'housing', 'labour', 'markets', 'money', 'prices', 'trade', 'business']]
+    Grouping of events (provider: tradingeconomics)
+
+Returns
+-------
+OBBject
+    results : List[EconomicCalendar]
+        Serializable results.
+    provider : Optional[Literal['fmp', 'tradingeconomics']]
+        Provider name.
+    warnings : Optional[List[Warning_]]
+        List of warnings.
+    chart : Optional[Chart]
+        Chart object.
+    extra : Dict[str, Any]
+        Extra info.
+
+EconomicCalendar
+----------------
+date : Optional[datetime]
+    The date of the data.
+country : Optional[str]
+    Country of event.
+event : Optional[str]
+    Event name.
+reference : Optional[str]
+    Abbreviated period for which released data refers to.
+source : Optional[str]
+    Source of the data.
+sourceurl : Optional[str]
+    Source URL.
+actual : Optional[Union[str, float]]
+    Latest released value.
+previous : Optional[Union[str, float]]
+    Value for the previous period after the revision (if revision is applicable).
+consensus : Optional[Union[str, float]]
+    Average forecast among a representative group of economists.
+forecast : Optional[Union[str, float]]
+    Trading Economics projections
+url : Optional[str]
+    Trading Economics URL
+importance : Optional[Union[Literal[0, 1, 2, 3], str]]
+    Importance of the event. 1-Low, 2-Medium, 3-High
+currency : Optional[str]
+    Currency of the data.
+unit : Optional[str]
+    Unit of the data.
+change : Optional[float]
+    Value change since previous. (provider: fmp)
+change_percent : Optional[float]
+    Percentage change since previous. (provider: fmp)
+updated_at : Optional[datetime]
+    Last updated timestamp. (provider: fmp)
+created_at : Optional[datetime]
+    Created at timestamp. (provider: fmp)
+
+Examples
+--------
+>>> from openbb import obb
+>>> # By default, the calendar will be forward-looking.
+>>> obb.economy.calendar(provider='fmp')
+>>> obb.economy.calendar(provider='fmp', start_date='2020-03-01', end_date='2020-03-31')",,
+956b930f39260b26,OpenBBTerminal,logout,default_changed,1,"def logout(self, return_settings: bool=False) -> Optional[UserSettings]:","--- a/code.py
++++ b/code.py
+@@ -1,5 +1,5 @@
+ @_log_account_command
+-def logout(self, return_settings: bool=False) -> Optional[UserSettings]:
++def logout(self, return_settings: bool=True) -> Optional[UserSettings]:
+     if not self._hub_service:
+         raise OpenBBError('Not connected to hub.')
+     self._hub_service.disconnect()","Logout from hub.
+
+Parameters
+----------
+return_settings : bool, optional
+    Return user settings, by default False
+
+Returns
+-------
+Optional[UserSettings]
+    User settings: profile, credentials, preferences",,
