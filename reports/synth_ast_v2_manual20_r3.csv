@@ -34,7 +34,7 @@ Notes:
     - With Nesterov: update = beta * momentum + (1-beta) * grad.
     - Without Nesterov: update = momentum.
     - Tensors with more than 2 dimensions are reshaped to 2D with the first dimension preserved.
-    - Final updates are scaled by sqrt(max(1, dim[-2] / dim[-1])) to account for parameter dimensions.",,
+    - Final updates are scaled by sqrt(max(1, dim[-2] / dim[-1])) to account for parameter dimensions.",разумно,"beta 0.95 → 0.475, док фиксирует «Default: 0.95» — документированный дефолт изменился (A)."
 7c720a0dc0f17088,Python,calculate_hypothesis_value,param_renamed,1,"def calculate_hypothesis_value(example_no, data_set):","--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,6 @@
@@ -56,7 +56,7 @@ Notes:
 >>> calculate_hypothesis_value(0, ""test"")
 2149
 >>> calculate_hypothesis_value(0, ""unknown"") is None
-True",,
+True",разумно,"example_no → example_no_arg, док описывает example_no — имя стало неверным (A)."
 87a100816b500de8,Python,wheatstone_solver,param_renamed,1,"def wheatstone_solver(resistance_1: float, resistance_2: float, resistance_3: float) -> float:","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,5 @@
@@ -87,7 +87,7 @@ ValueError: All resistance values must be positive
 >>> wheatstone_solver(resistance_1=0, resistance_2=0, resistance_3=2)
 Traceback (most recent call last):
     ...
-ValueError: All resistance values must be positive",,
+ValueError: All resistance values must be positive",разумно,"resistance_3 → resistance_3_arg, пример в доке использует старое имя (A)."
 ec2081409c0b34e9,faceswap,summary,default_changed,1,"def summary(self, decimal_places: int=6, interval: int=1) -> None:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -102,7 +102,7 @@ Parameters
 decimal_places: int, optional
     The number of decimal places to display the summary elapsed times to
 interval: int, optional
-    How many times summary must be called before printing to console. Default: 1",,
+    How many times summary must be called before printing to console. Default: 1",разумно,"interval 1 → 0, док фиксирует «Default: 1» — дефолт изменился (A)."
 58788ce2f3e19e7b,ultralytics,convert_ndjson_to_yolo_if_needed,none,0,def convert_ndjson_to_yolo_if_needed(data: str | Path) -> str | Path:,"--- a/code.py
 +++ b/code.py
 @@ -4,5 +4,6 @@
@@ -112,7 +112,7 @@ interval: int, optional
 -        return asyncio.run(convert_ndjson_to_yolo(check_file(data)))
 +        result_value = asyncio.run(convert_ndjson_to_yolo(check_file(data)))
 +        return result_value
-     return data",Convert an NDJSON dataset or Platform dataset URI to YOLO format.,,
+     return data",Convert an NDJSON dataset or Platform dataset URI to YOLO format.,разумно,"Вынос return во временную result_value, поведение то же (C)."
 78da84dfe858e63e,ultralytics,inject_nan,exception_changed,1,def inject_nan(trainer):,"--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,6 @@
@@ -121,7 +121,7 @@ interval: int, optional
 +        raise TypeError('invalid value')
      if trainer.epoch == 1 and trainer.tloss is not None and (not nan_injected[0]):
          trainer.tloss[next(iter(trainer.tloss))] *= float('nan')
-         nan_injected[0] = True",Inject NaN into loss during batch processing to test recovery mechanism.,,
+         nan_injected[0] = True",Inject NaN into loss during batch processing to test recovery mechanism.,разумно,Гард if trainer is None: raise TypeError — живой (is None falsifiable); новое исключение в доке не описано (B).
 fd150efcf321ebe5,core,async_setup_entry,param_added,1,"async def async_setup_entry(hass: HomeAssistant, entry: EheimDigitalConfigEntry) -> bool:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -129,7 +129,7 @@ fd150efcf321ebe5,core,async_setup_entry,param_added,1,"async def async_setup_ent
 +async def async_setup_entry(hass: HomeAssistant, entry: EheimDigitalConfigEntry, *, limit_: int=50) -> bool:
      coordinator = EheimDigitalUpdateCoordinator(hass, entry)
      await coordinator.async_config_entry_first_refresh()
-     entry.runtime_data = coordinator",Set up EHEIM Digital from a config entry.,,
+     entry.runtime_data = coordinator",Set up EHEIM Digital from a config entry.,разумно,"Добавлен limit_: int=50, в доке не упомянут — новое в сигнатуре (B)."
 a3b5b7fbe19bebe1,OpenBBTerminal,log,exception_changed,1,"def log(self, user_settings: UserSettings, system_settings: SystemSettings, route: str, func: Callable, kwargs: Dict[str, Any], exec_info: Union[Tuple[Type[BaseException], BaseException, TracebackType], Tuple[None, None, None]], custom_headers: Optional[Dict[str, Any]]=None):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,6 @@
@@ -156,7 +156,7 @@ exec_info : Union[
     Tuple[Type[BaseException], BaseException, TracebackType],
     Tuple[None, None, None],
 ]
-    Exception information, by default None",,
+    Exception information, by default None",разумно,Гард if user_settings is None: raise ValueError — живой; новое исключение не описано (B).
 412f82e92ceb77c7,OpenBBTerminal,surface3d,return_changed,1,"def surface3d(X: 'Series', Y: 'Series', Z: 'Series', xtitle: str | None='DTE', ytitle: str | None='Strike', ztitle: str | None='IV', colorscale: str | list | None=None, title: str | None=None, layout_kwargs: dict[str, Any] | None=None, theme: Literal['dark', 'light'] | None=None) -> Union['OpenBBFigure', 'Figure']:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,6 @@
@@ -192,7 +192,7 @@ layout_kwargs : Optional[dict[str, Any]], optional
 Returns
 -------
 OpenBBFigure
-    The OpenBBFigure object.",,
+    The OpenBBFigure object.",разумно,"Optional[...] + return None при X is None, док обещает OpenBBFigure — форма результата изменилась (A)."
 dca4171f4cd2636b,mycroft-core,isFractional_nl,param_renamed,1,"def isFractional_nl(input_str, short_scale=True):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -215,7 +215,7 @@ Args:
     input_str (str): the string to check if fractional
     short_scale (bool): use short scale if True, long scale if False
 Returns:
-    (bool) or (float): False if not a fraction, otherwise the fraction",,
+    (bool) or (float): False if not a fraction, otherwise the fraction",разумно,"input_str → input_str_val, док описывает input_str (A)"
 a33852c251b2940c,scikit-learn,confusion_matrix,param_removed,1,"def confusion_matrix(y_true, y_pred, *, labels=None, sample_weight=None, normalize=None):","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,5 @@
@@ -321,7 +321,7 @@ In the binary case, we can extract true positives, etc. as follows:
 
 >>> tn, fp, fn, tp = confusion_matrix([0, 1, 0, 1], [1, 1, 1, 0]).ravel().tolist()
 >>> (tn, fp, fn, tp)
-(0, 2, 1, 1)",,
+(0, 2, 1, 1)",разумно,"Удалён normalize, док его описывает (A)"
 6dfbc0ef0e7109c0,OpenBBTerminal,to_chart,default_changed,1,"def to_chart(self, data: Optional[Union[list, dict, pd.DataFrame, List[pd.DataFrame], pd.Series, List[pd.Series], np.ndarray, Data]]=None, target: Optional[str]=None, index: Optional[str]=None, indicators: Optional[Dict[str, Dict[str, Any]]]=None, symbol: str='', candles: bool=True, volume: bool=True, volume_ticks_x: int=7, render: bool=True, **kwargs):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -375,7 +375,7 @@ Get all the available indicators
 
 >>> res = obb.equity.price.historical(""AAPL"")
 >>> indicators = res.charting.indicators()
->>> indicators?",,
+>>> indicators?",разумно,"volume_ticks_x 7 → 8, док «by default 7» (A)."
 8572fb025112b7f9,faceswap,control_to_optionsframe,param_added,1,def control_to_optionsframe(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -383,7 +383,7 @@ Get all the available indicators
 +def control_to_optionsframe(self, *, sep=','):
      logger.debug(""Add control to Options Frame: (widget: '%s', control: %s, choices: %s)"", self.option.name, self.option.control, self.option.choices)
      if self.option.sysbrowser is not None:
-         self.filebrowser = FileBrowser(self.option.name, self.option.tk_var, self.frame, self.option.sysbrowser)",Standard non-check buttons sit in the main options frame,,
+         self.filebrowser = FileBrowser(self.option.name, self.option.tk_var, self.frame, self.option.sysbrowser)",Standard non-check buttons sit in the main options frame,разумно,"Добавлен sep=',', в доке не упомянут (B)"
 1364f69c0d7fb93e,ultralytics,split_classify_dataset,return_changed,1,"def split_classify_dataset(source_dir: str | Path, train_ratio: float=0.8) -> Path:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,6 @@
@@ -441,7 +441,7 @@ Examples:
     >>> split_classify_dataset(""path/to/caltech"")
 
     Split with custom ratio
-    >>> split_classify_dataset(""path/to/caltech"", 0.75)",,
+    >>> split_classify_dataset(""path/to/caltech"", 0.75)",разумно,"Optional[Path] + return None при пустом source_dir, док обещает Path (A)"
 93530fc382c33071,faceswap,pack_widget_clones,exception_changed,1,"def pack_widget_clones(self, widget_dicts, old_children=None, new_children=None):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,6 @@
@@ -451,7 +451,7 @@ Examples:
      for widget_dict in widget_dicts:
          logger.debug('Cloning widget: %s', widget_dict)
          old_children = [] if old_children is None else old_children","Widgets cannot be given a new parent so we need to clone
-them and then pack the new widget",,
+them and then pack the new widget",разумно,Гард if widget_dicts is None: raise ValueError — живой; новое исключение не описано (B)
 5c6c2cf8787d65c0,OpenBBTerminal,risk_premium,param_removed,1,"def risk_premium(self, provider: Optional[Literal['fmp']]=None, **kwargs) -> OBBject:","--- a/code.py
 +++ b/code.py
 @@ -1,3 +1,3 @@
@@ -496,7 +496,7 @@ country_risk_premium : Optional[Annotated[float, Ge(ge=0)]]
 Example
 -------
 >>> from openbb import obb
->>> obb.economy.risk_premium().to_df()",,
+>>> obb.economy.risk_premium().to_df()",разумно,"Удалён provider, док его описывает (A)"
 e987e25f7c1f4c50,ultralytics,plot_images,none,0,"def plot_images(labels: dict[str, Any], images: torch.Tensor | np.ndarray=np.zeros((0, 3, 640, 640), dtype=np.float32), paths: list[str] | None=None, fname: str='images.jpg', names: dict[int, str] | None=None, on_plot: Callable | None=None, max_size: int=1920, max_subplots: int=16, save: bool=True, conf_thres: float=0.25, show_labels: bool=True, show_conf: bool=True) -> np.ndarray | None:","--- a/code.py
 +++ b/code.py
 @@ -120,9 +120,9 @@
@@ -539,7 +539,7 @@ Notes:
     - 1 channel: Grayscale
     - 2 channels: Third channel added as zeros
     - 3 channels: Used as-is (standard RGB)
-    - 4+ channels: Cropped to first 3 channels",,
+    - 4+ channels: Cropped to first 3 channels",разумно,"Переименование локальной sub_annotator → sub_annotator_val, поведение то же (C)"
 3605dba2772556c0,faceswap,get_batch,param_added,1,"def get_batch(self, queue):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -578,7 +578,7 @@ Returns
 exhausted, bool
     ``True`` if queue is exhausted, ``False`` if not
 batch, dict
-    A dictionary of lists of :attr:`~plugins.extract._base.Extractor.batchsize`:",,
+    A dictionary of lists of :attr:`~plugins.extract._base.Extractor.batchsize`:",разумно,"Добавлен sep=',', в доке не упомянут (B)"
 8e91ddd263e07ccc,faceswap,step_end,param_removed,1,"def step_end(self, name: str, record: bool=True) -> None:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -596,7 +596,7 @@ name: str
 record: bool, optional
     ``True`` to record the step time, ``False`` to not record it.
     Used for when you have conditional code to time, but do not want to insert if/else
-    statements in the code. Default: `True`",,
+    statements in the code. Default: `True`",разумно,"Удалён record, док его описывает (A)."
 13d538b10cf3be5c,ultralytics,convert_ndjson_to_yolo,return_changed,1,"async def convert_ndjson_to_yolo(ndjson_path: str | Path, output_path=None, fraction=1.0) -> Path:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,6 @@
@@ -637,4 +637,4 @@ Examples:
     Use with YOLO training
     >>> from ultralytics import YOLO
     >>> model = YOLO(""yolo26n.pt"")
-    >>> model.train(data=""https://github.com/ultralytics/assets/releases/download/v0.0.0/coco8-ndjson.ndjson"")",,
+    >>> model.train(data=""https://github.com/ultralytics/assets/releases/download/v0.0.0/coco8-ndjson.ndjson"")",разумно,"Optional[Path] + return None при пустом ndjson_path, док обещает Path (A)"
