@@ -1,0 +1,1137 @@
+pair_id,project,symbol,drift_type,label_stale,sig_old,diff_code,doc_old,verdict,comment
+f7995367b479128e,ray,shutdown,exception_changed,1,"def shutdown(self, graceful_termination: bool=True):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,6 @@
+ def shutdown(self, graceful_termination: bool=True):
++    if graceful_termination is None:
++        raise ValueError('malformed input')
+     if graceful_termination:
+         try:
+             self._backend.on_shutdown(self.worker_group, self._backend_config)","Shuts down the workers in the worker group.
+
+Args:
+    graceful_termination: If set to True, attempt to clean up the backend
+        before terminating the Ray actors.",разумно,Гард if graceful_termination is None: raise ValueError — живой; новое исключение в доке не описано (B).
+92cd3e44bf36cce4,scikit-learn,mean_squared_log_error,none,0,"def mean_squared_log_error(y_true, y_pred, *, sample_weight=None, multioutput='uniform_average'):","--- a/code.py
++++ b/code.py
+@@ -1,7 +1,7 @@
+ @validate_params({'y_true': ['array-like'], 'y_pred': ['array-like'], 'sample_weight': ['array-like', None], 'multioutput': [StrOptions({'raw_values', 'uniform_average'}), 'array-like']}, prefer_skip_nested_validation=True)
+ def mean_squared_log_error(y_true, y_pred, *, sample_weight=None, multioutput='uniform_average'):
+-    xp, _ = get_namespace(y_true, y_pred)
+-    _, y_true, y_pred, sample_weight, multioutput = _check_reg_targets_with_floating_dtype(y_true, y_pred, sample_weight, multioutput, xp=xp)
+-    if xp.any(y_true <= -1) or xp.any(y_pred <= -1):
++    xp_new, _ = get_namespace(y_true, y_pred)
++    _, y_true, y_pred, sample_weight, multioutput = _check_reg_targets_with_floating_dtype(y_true, y_pred, sample_weight, multioutput, xp=xp_new)
++    if xp_new.any(y_true <= -1) or xp_new.any(y_pred <= -1):
+         raise ValueError('Mean Squared Logarithmic Error cannot be used when targets contain values less than or equal to -1.')
+-    return mean_squared_error(xp.log1p(y_true), xp.log1p(y_pred), sample_weight=sample_weight, multioutput=multioutput)
++    return mean_squared_error(xp_new.log1p(y_true), xp_new.log1p(y_pred), sample_weight=sample_weight, multioutput=multioutput)","Mean squared logarithmic error regression loss.
+
+Read more in the :ref:`User Guide <mean_squared_log_error>`.
+
+Parameters
+----------
+y_true : array-like of shape (n_samples,) or (n_samples, n_outputs)
+    Ground truth (correct) target values.
+
+y_pred : array-like of shape (n_samples,) or (n_samples, n_outputs)
+    Estimated target values.
+
+sample_weight : array-like of shape (n_samples,), default=None
+    Sample weights.
+
+multioutput : {'raw_values', 'uniform_average'} or array-like of shape             (n_outputs,), default='uniform_average'
+
+    Defines aggregating of multiple output values.
+    Array-like value defines weights used to average errors.
+
+    'raw_values' :
+        Returns a full set of errors when the input is of multioutput
+        format.
+
+    'uniform_average' :
+        Errors of all outputs are averaged with uniform weight.
+
+Returns
+-------
+loss : float or ndarray of floats
+    A non-negative floating point value (the best value is 0.0), or an
+    array of floating point values, one for each individual target.
+
+Examples
+--------
+>>> from sklearn.metrics import mean_squared_log_error
+>>> y_true = [3, 5, 2.5, 7]
+>>> y_pred = [2.5, 5, 4, 8]
+>>> mean_squared_log_error(y_true, y_pred)
+0.039...
+>>> y_true = [[0.5, 1], [1, 2], [7, 6]]
+>>> y_pred = [[0.5, 2], [1, 2.5], [8, 8]]
+>>> mean_squared_log_error(y_true, y_pred)
+0.044...
+>>> mean_squared_log_error(y_true, y_pred, multioutput='raw_values')
+array([0.00462428, 0.08377444])
+>>> mean_squared_log_error(y_true, y_pred, multioutput=[0.3, 0.7])
+0.060...",разумно,"Переименование локальной xp в xp_new, поведение то же (C)."
+aeec6f7a6abd0abb,ultralytics,predict,return_changed,1,"def predict(self, source: str | Path | int | Image.Image | list | tuple | np.ndarray | torch.Tensor=None, stream: bool=False, predictor=None, **kwargs: Any) -> Iterator[Results | torch.Tensor] | list[Results] | list[torch.Tensor]:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,6 @@
+-def predict(self, source: str | Path | int | Image.Image | list | tuple | np.ndarray | torch.Tensor=None, stream: bool=False, predictor=None, **kwargs: Any) -> Iterator[Results | torch.Tensor] | list[Results] | list[torch.Tensor]:
++def predict(self, source: str | Path | int | Image.Image | list | tuple | np.ndarray | torch.Tensor=None, stream: bool=False, predictor=None, **kwargs: Any) -> Optional[Iterator[Results | torch.Tensor] | list[Results] | list[torch.Tensor]]:
++    if source is None:
++        return None
+     if source is None:
+         source = 'https://ultralytics.com/images/boats.jpg' if self.task == 'obb' else ASSETS
+         LOGGER.warning(f""'source' is missing. Using 'source={source}'."")","Perform predictions on the given image source using the YOLO model.
+
+This method facilitates the prediction process, allowing various configurations through keyword arguments. It
+supports predictions with custom predictors or the default predictor method. The method handles different types
+of image sources and can operate in a streaming mode.
+
+Args:
+    source (str | Path | int | PIL.Image | np.ndarray | torch.Tensor | list | tuple): The source of the image(s)
+        to make predictions on. Accepts various types including file paths, URLs, PIL images, numpy arrays, and
+        torch tensors.
+    stream (bool): If True, treats the input source as a continuous stream for predictions.
+    predictor (BasePredictor, optional): An instance of a custom predictor class for making predictions. If
+        None, the method uses a default predictor.
+    **kwargs (Any): Additional keyword arguments for configuring the prediction process. These include `embed`
+        for returning feature embeddings from specified layers.
+
+Returns:
+    (Iterator[ultralytics.engine.results.Results | torch.Tensor] | list[ultralytics.engine.results.Results] |
+    list[torch.Tensor]): Prediction results or embeddings, streamed when `stream=True`.
+
+Examples:
+    >>> model = YOLO(""yolo26n.pt"")
+    >>> results = model.predict(source=""path/to/image.jpg"", conf=0.25)
+    >>> for r in results:
+    ...     print(r.boxes.data)  # print detection bounding boxes
+
+Notes:
+    - If 'source' is not provided, it defaults to the ASSETS constant with a warning.
+    - The method sets up a new predictor if not already present and updates its arguments with each call.
+    - For SAM-type models, 'prompts' can be passed as a keyword argument.",разумно,"Optional[...] + return None при source is None, док обещает результаты предсказания (A)."
+7ab4f86bd48fa0ce,scikit-learn,matthews_corrcoef,none,0,"def matthews_corrcoef(y_true, y_pred, *, sample_weight=None):","--- a/code.py
++++ b/code.py
+@@ -18,6 +18,7 @@
+     cov_ytyt = n_samples ** 2 - np.dot(t_sum, t_sum)
+     cov_ypyp_ytyt = cov_ypyp * cov_ytyt
+     if cov_ypyp_ytyt == 0:
+-        return 0.0
++        ret = 0.0
++        return ret
+     else:
+         return float(cov_ytyp / np.sqrt(cov_ypyp_ytyt))","Compute the Matthews correlation coefficient (MCC).
+
+The Matthews correlation coefficient is used in machine learning as a
+measure of the quality of binary and multiclass classifications. It takes
+into account true and false positives and negatives and is generally
+regarded as a balanced measure which can be used even if the classes are of
+very different sizes. The MCC is in essence a correlation coefficient value
+between -1 and +1. A coefficient of +1 represents a perfect prediction, 0
+an average random prediction and -1 an inverse prediction.  The statistic
+is also known as the phi coefficient. [source: Wikipedia]
+
+Binary and multiclass labels are supported.  Only in the binary case does
+this relate to information about true and false positives and negatives.
+See references below.
+
+Read more in the :ref:`User Guide <matthews_corrcoef>`.
+
+Parameters
+----------
+y_true : array-like of shape (n_samples,)
+    Ground truth (correct) target values.
+
+y_pred : array-like of shape (n_samples,)
+    Estimated targets as returned by a classifier.
+
+sample_weight : array-like of shape (n_samples,), default=None
+    Sample weights.
+
+    .. versionadded:: 0.18
+
+Returns
+-------
+mcc : float
+    The Matthews correlation coefficient (+1 represents a perfect
+    prediction, 0 an average random prediction and -1 and inverse
+    prediction).
+
+References
+----------
+.. [1] :doi:`Baldi, Brunak, Chauvin, Andersen and Nielsen, (2000). Assessing the
+   accuracy of prediction algorithms for classification: an overview.
+   <10.1093/bioinformatics/16.5.412>`
+
+.. [2] `Wikipedia entry for the Matthews Correlation Coefficient (phi coefficient)
+   <https://en.wikipedia.org/wiki/Phi_coefficient>`_.
+
+.. [3] `Gorodkin, (2004). Comparing two K-category assignments by a
+    K-category correlation coefficient
+    <https://www.sciencedirect.com/science/article/pii/S1476927104000799>`_.
+
+.. [4] `Jurman, Riccadonna, Furlanello, (2012). A Comparison of MCC and CEN
+    Error Measures in MultiClass Prediction
+    <https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0041882>`_.
+
+Examples
+--------
+>>> from sklearn.metrics import matthews_corrcoef
+>>> y_true = [+1, +1, +1, -1]
+>>> y_pred = [+1, -1, +1, +1]
+>>> matthews_corrcoef(y_true, y_pred)
+-0.33",разумно,"Вынос return во временную ret, поведение то же (C)."
+a187f03cdba6276a,faceswap,get_config,none,0,def get_config(self):,"--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+ def get_config(self):
+-    config = super().get_config()
+-    config.update({'starts': self._starts, 'ends': self._ends, 'axes': self._axes, 'steps': self._steps})
+-    return config
++    config_arg = super().get_config()
++    config_arg.update({'starts': self._starts, 'ends': self._ends, 'axes': self._axes, 'steps': self._steps})
++    return config_arg","Returns the config of the layer.
+
+Returns
+-------
+dict
+    The configuration for the layer",разумно,"Вынос return во временную config_arg, поведение то же (C)."
+c6b47e95c53f4f37,scikit-learn,transform,param_renamed,1,"def transform(self, y):","--- a/code.py
++++ b/code.py
+@@ -1,6 +1,6 @@
+-def transform(self, y):
++def transform(self, y_v2):
+     check_is_fitted(self)
+-    y_is_multilabel = type_of_target(y).startswith('multilabel')
++    y_is_multilabel = type_of_target(y_v2).startswith('multilabel')
+     if y_is_multilabel and (not self.y_type_.startswith('multilabel')):
+         raise ValueError('The object was not fitted with multilabel input.')
+-    return label_binarize(y, classes=self.classes_, pos_label=self.pos_label, neg_label=self.neg_label, sparse_output=self.sparse_output)
++    return label_binarize(y_v2, classes=self.classes_, pos_label=self.pos_label, neg_label=self.neg_label, sparse_output=self.sparse_output)","Transform multi-class labels to binary labels.
+
+The output of transform is sometimes referred to by some authors as
+the 1-of-K coding scheme.
+
+Parameters
+----------
+y : {array, sparse matrix} of shape (n_samples,) or                 (n_samples, n_classes)
+    Target values. The 2-d matrix should only contain 0 and 1,
+    represents multilabel classification. Sparse matrix can be
+    CSR, CSC, COO, DOK, or LIL.
+
+Returns
+-------
+Y : {ndarray, sparse matrix} of shape (n_samples, n_classes)
+    Shape will be (n_samples, 1) for binary problems. Sparse matrix
+    will be of CSR format.",разумно,"y → y_v2, док описывает y (A)."
+f272bf7274f76126,OpenBBTerminal,chains,return_changed,1,"def chains(self, symbol: Annotated[str, OpenBBCustomParameter(description='Symbol to get data for.')], provider: Annotated[Optional[Literal['intrinio']], OpenBBCustomParameter(description=""The provider to use for the query, by default None.\n    If None, the provider specified in defaults is selected or 'intrinio' if there is\n    no default."")]=None, **kwargs) -> OBBject:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,6 @@
+ @exception_handler
+ @validate
+-def chains(self, symbol: Annotated[str, OpenBBCustomParameter(description='Symbol to get data for.')], provider: Annotated[Optional[Literal['intrinio']], OpenBBCustomParameter(description=""The provider to use for the query, by default None.\n    If None, the provider specified in defaults is selected or 'intrinio' if there is\n    no default."")]=None, **kwargs) -> OBBject:
++def chains(self, symbol: Annotated[str, OpenBBCustomParameter(description='Symbol to get data for.')], provider: Annotated[Optional[Literal['intrinio']], OpenBBCustomParameter(description=""The provider to use for the query, by default None.\n    If None, the provider specified in defaults is selected or 'intrinio' if there is\n    no default."")]=None, **kwargs) -> Optional[OBBject]:
++    if symbol is None:
++        return None
+     return self._run('/derivatives/options/chains', **filter_inputs(provider_choices={'provider': self._get_provider(provider, '/derivatives/options/chains', ('intrinio',))}, standard_params={'symbol': symbol}, extra_params=kwargs))","Get the complete options chain for a ticker.
+
+Parameters
+----------
+symbol : str
+    Symbol to get data for.
+provider : Optional[Literal['intrinio']]
+    The provider to use for the query, by default None.
+    If None, the provider specified in defaults is selected or 'intrinio' if there is
+    no default.
+date : Optional[datetime.date]
+    The end-of-day date for options chains data. (provider: intrinio)
+
+Returns
+-------
+OBBject
+    results : List[OptionsChains]
+        Serializable results.
+    provider : Optional[Literal['intrinio']]
+        Provider name.
+    warnings : Optional[List[Warning_]]
+        List of warnings.
+    chart : Optional[Chart]
+        Chart object.
+    extra : Dict[str, Any]
+        Extra info.
+
+OptionsChains
+-------------
+symbol : Optional[str]
+    Symbol representing the entity requested in the data. Here, it is the underlying symbol for the option.
+contract_symbol : str
+    Contract symbol for the option.
+eod_date : Optional[date]
+    Date for which the options chains are returned.
+expiration : date
+    Expiration date of the contract.
+strike : float
+    Strike price of the contract.
+option_type : str
+    Call or Put.
+open_interest : Optional[int]
+    Open interest on the contract.
+volume : Optional[int]
+    The trading volume.
+theoretical_price : Optional[float]
+    Theoretical value of the option.
+last_trade_price : Optional[float]
+    Last trade price of the option.
+tick : Optional[str]
+    Whether the last tick was up or down in price.
+bid : Optional[float]
+    Current bid price for the option.
+bid_size : Optional[int]
+    Bid size for the option.
+ask : Optional[float]
+    Current ask price for the option.
+ask_size : Optional[int]
+    Ask size for the option.
+mark : Optional[float]
+    The mid-price between the latest bid and ask.
+open : Optional[float]
+    The open price.
+open_bid : Optional[float]
+    The opening bid price for the option that day.
+open_ask : Optional[float]
+    The opening ask price for the option that day.
+high : Optional[float]
+    The high price.
+bid_high : Optional[float]
+    The highest bid price for the option that day.
+ask_high : Optional[float]
+    The highest ask price for the option that day.
+low : Optional[float]
+    The low price.
+bid_low : Optional[float]
+    The lowest bid price for the option that day.
+ask_low : Optional[float]
+    The lowest ask price for the option that day.
+close : Optional[float]
+    The close price.
+close_size : Optional[int]
+    The closing trade size for the option that day.
+close_time : Optional[datetime]
+    The time of the closing price for the option that day.
+close_bid : Optional[float]
+    The closing bid price for the option that day.
+close_bid_size : Optional[int]
+    The closing bid size for the option that day.
+close_bid_time : Optional[datetime]
+    The time of the bid closing price for the option that day.
+close_ask : Optional[float]
+    The closing ask price for the option that day.
+close_ask_size : Optional[int]
+    The closing ask size for the option that day.
+close_ask_time : Optional[datetime]
+    The time of the ask closing price for the option that day.
+prev_close : Optional[float]
+    The previous close price.
+change : Optional[float]
+    The change in the price of the option.
+change_percent : Optional[float]
+    Change, in normalizezd percentage points, of the option.
+implied_volatility : Optional[float]
+    Implied volatility of the option.
+delta : Optional[float]
+    Delta of the option.
+gamma : Optional[float]
+    Gamma of the option.
+theta : Optional[float]
+    Theta of the option.
+vega : Optional[float]
+    Vega of the option.
+rho : Optional[float]
+    Rho of the option.
+exercise_style : Optional[str]
+    The exercise style of the option, American or European. (provider: intrinio)
+
+Examples
+--------
+>>> from openbb import obb
+>>> obb.derivatives.options.chains(symbol='AAPL', provider='intrinio')
+>>> # Use the ""date"" parameter to get the end-of-day-data for a specific date, where supported.
+>>> obb.derivatives.options.chains(symbol='AAPL', date='2023-01-25', provider='intrinio')",разумно,"Optional[OBBject] + return None при symbol is None, док обещает OBBject (A)."
+ed28370ea6d26e27,ultralytics,pred_to_json,param_renamed,1,"def pred_to_json(self, predn: dict[str, torch.Tensor], pbatch: dict[str, Any]) -> None:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def pred_to_json(self, predn: dict[str, torch.Tensor], pbatch: dict[str, Any]) -> None:
++def pred_to_json(self, predn: dict[str, torch.Tensor], pbatch_val: dict[str, Any]) -> None:
+ 
+     def to_string(counts: list[int]) -> str:
+         """"""Converts the RLE object into a compact string representation. Each count is delta-encoded and
+@@ -56,6 +56,6 @@
+     rles = []
+     for c in counts:
+         rles.append({'size': [h, w], 'counts': to_string(c)})
+-    super().pred_to_json(predn, pbatch)
++    super().pred_to_json(predn, pbatch_val)
+     for i, r in enumerate(rles):
+         self.jdict[-len(rles) + i]['segmentation'] = r","Save one JSON result for COCO evaluation.
+
+Args:
+    predn (dict[str, torch.Tensor]): Predictions containing bboxes, masks, confidence scores, and classes.
+    pbatch (dict[str, Any]): Batch dictionary containing 'imgsz', 'ori_shape', 'ratio_pad', and 'im_file'.",разумно,"pbatch → pbatch_val, док описывает pbatch (A)."
+b6770dbc661b82d0,ray,execute,none,0,"def execute(self, dag: PhysicalOperator, initial_stats: Optional[DatasetStats]=None, callbacks: Optional[List]=None) -> OutputIterator:","--- a/code.py
++++ b/code.py
+@@ -34,4 +34,5 @@
+         callback.before_execution_starts(self)
+     self.start()
+     self._execution_started = True
+-    return _ClosingIterator(self)
++    res = _ClosingIterator(self)
++    return res","Executes the DAG using a streaming execution strategy.
+
+We take an event-loop approach to scheduling. We block on the next scheduling
+event using `ray.wait`, updating operator state and dispatching new tasks.",разумно,"Вынос return во временную res, поведение то же (C)."
+aa994565d33e34ab,core,async_setup_entry,exception_changed,1,"async def async_setup_entry(hass: HomeAssistant, entry: VersionConfigEntry) -> bool:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,6 @@
+ async def async_setup_entry(hass: HomeAssistant, entry: VersionConfigEntry) -> bool:
++    if hass is None:
++        raise ValueError('unsupported option')
+     board = entry.data[CONF_BOARD]
+     if board not in BOARD_MAP:
+         _LOGGER.error('Board ""%s"" is (no longer) valid. Please remove the integration ""%s""', board, entry.title)",Set up the version integration from a config entry.,разумно,Гард if hass is None: raise ValueError — живой; в доке не описан (B).
+5a6d16a8e0162c4b,ray,configure,param_renamed,1,"def configure(self, datasets: Dict[str, 'Dataset'], world_size: int, worker_handles: Optional[List[ActorHandle]], worker_node_ids: Optional[List['NodeIdStr']], **kwargs) -> List[Dict[str, 'DataIterator']]:","--- a/code.py
++++ b/code.py
+@@ -1,5 +1,5 @@
+ @DeveloperAPI
+-def configure(self, datasets: Dict[str, 'Dataset'], world_size: int, worker_handles: Optional[List[ActorHandle]], worker_node_ids: Optional[List['NodeIdStr']], **kwargs) -> List[Dict[str, 'DataIterator']]:
++def configure(self, datasets: Dict[str, 'Dataset'], world_size: int, worker_handles_v2: Optional[List[ActorHandle]], worker_node_ids: Optional[List['NodeIdStr']], **kwargs) -> List[Dict[str, 'DataIterator']]:
+     from ray.data._internal.execution.interfaces.execution_options import ExecutionResources
+     output = [{} for _ in range(world_size)]
+     for dataset_name, dataset in datasets.items():","Configure how Train datasets should be assigned to workers.
+
+Args:
+    datasets: The datasets dict passed to Train by the user.
+    world_size: The number of Train workers in total.
+    worker_handles: The actor handles of the Train workers.
+    worker_node_ids: The node ids of the Train workers.
+    **kwargs: Forwards compatibility placeholder.
+
+Returns:
+    A list of dataset splits for each worker. The size of the list must be
+    equal to `world_size`. Each element of the list contains the assigned
+    `DataIterator` instances by name for the worker.",разумно,"worker_handles → worker_handles_v2, док описывает worker_handles (A)."
+4af2cfca6972d6ed,scikit-learn,predict_log_proba,param_added,1,"def predict_log_proba(self, X, **params):","--- a/code.py
++++ b/code.py
+@@ -1,10 +1,10 @@
+ @available_if(_estimator_has('predict_log_proba'))
+-def predict_log_proba(self, X, **params):
++def predict_log_proba(self, X, *, recursive=False, **params):
+     check_is_fitted(self)
+     _raise_for_params(params, self, 'predict_log_proba')
+     if _routing_enabled():
+         routed_params = process_routing(self, 'predict_log_proba', **params)
+     else:
+         routed_params = Bunch(estimator=Bunch(predict_log_proba={}))
+-    X = validate_data(self, X, accept_sparse=True, ensure_all_finite=False, reset=False)
++    X = validate_data(self, X, accept_sparse=True, ensure_all_finite=False, reset=recursive)
+     return self.estimator_.predict_log_proba(X, **routed_params.estimator.predict_log_proba)","Predict log probability for each possible outcome.
+
+Parameters
+----------
+X : {array-like, sparse matrix} of shape (n_samples, n_features)
+    Array representing the data.
+
+**params : dict of str -> object
+    Parameters to pass to the underlying estimator's
+    ``predict_log_proba`` method.
+
+    .. versionadded:: 1.6
+        Only available if `enable_metadata_routing=True`,
+        which can be set by using
+        ``sklearn.set_config(enable_metadata_routing=True)``.
+        See :ref:`Metadata Routing User Guide <metadata_routing>` for
+        more details.
+
+Returns
+-------
+y : ndarray of shape (n_samples, n_features)
+    Array with log prediction probabilities.",разумно,"Добавлен recursive=False, в теле reset=recursive (дефолт сохранён); в доке нет (B)."
+0431267abe4d7394,OpenBBTerminal,download_data,param_added,1,"async def download_data(urls, use_cache: bool=True):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-async def download_data(urls, use_cache: bool=True):
++async def download_data(urls, use_cache: bool=True, *, count: int=10):
+     import asyncio
+     import os
+     import sqlite3
+@@ -68,7 +68,7 @@
+                 results.extend(df.replace({nan: None}).to_dict(orient='records'))
+         time_estimate = len(non_cached_urls) / 7 * 1.8
+         logger.info('Found %d total filings and %d uncached entries to download, estimated download time: %d seconds.', len(urls), len(non_cached_urls), round(time_estimate))
+-        min_warn_time = 10
++        min_warn_time = count
+         if time_estimate > min_warn_time:
+             logger.info('Warning: This function is not intended for mass data collection. Long download times are due to limitations with concurrent downloads from the SEC.\n\nReduce the number of requests by using a more specific date range.')
+         if len(non_cached_urls) > 0:",Get the Form 4 data from a list of URLs.,разумно,"Добавлен count=10, в теле min_warn_time = count (дефолт сохранён); в доке нет (B)."
+58f1b68dda33c1fa,faceswap,get_data,param_renamed,1,"def get_data(self, session_id, metric):","--- a/code.py
++++ b/code.py
+@@ -1,11 +1,11 @@
+-def get_data(self, session_id, metric):
+-    if session_id is None:
++def get_data(self, session_id_tmp, metric):
++    if session_id_tmp is None:
+         raw = self._data
+     else:
+-        data = self._data.get(session_id)
++        data = self._data.get(session_id_tmp)
+         if not data:
+             return None
+-        raw = {session_id: data}
++        raw = {session_id_tmp: data}
+     dtype = 'float32' if metric == 'loss' else 'float64'
+     retval = {}
+     for idx, data in raw.items():
+@@ -13,5 +13,5 @@
+         if metric == 'loss':
+             val['labels'] = data['labels']
+         retval[idx] = val
+-    logger.debug('Obtained cached data: %s', {session_id: {k: v.shape if isinstance(v, np.ndarray) else v for k, v in data.items()} for session_id, data in retval.items()})
++    logger.debug('Obtained cached data: %s', {session_id_tmp: {k: v.shape if isinstance(v, np.ndarray) else v for k, v in data.items()} for session_id_tmp, data in retval.items()})
+     return retval","Retrieve the decompressed cached data from the cache for the given session id.
+
+Parameters
+----------
+session_id: int or ``None``
+    If session_id is provided, then the cached data for that session is returned. If
+    session_id is ``None`` then the cached data for all sessions is returned
+metric: ['loss', 'timestamps']
+    The metric to return the data for.
+
+Returns
+-------
+dict
+    The `session_id` (s) as key, the values are a dictionary containing the requested
+    metric information for each session returned",разумно,"session_id → session_id_tmp, док описывает session_id (A)."
+ae62294a6d614b44,ultralytics,run_ray_tune,param_removed,1,"def run_ray_tune(model, space: dict | None=None, grace_period: int=10, gpu_per_trial: int | None=None, iterations: int=10, search_alg=None, **train_args):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def run_ray_tune(model, space: dict | None=None, grace_period: int=10, gpu_per_trial: int | None=None, iterations: int=10, search_alg=None, **train_args):
++def run_ray_tune(model, space: dict | None=None, gpu_per_trial: int | None=None, iterations: int=10, search_alg=None, **train_args):
+     LOGGER.info('💡 Learn about RayTune at https://docs.ultralytics.com/integrations/ray-tune')
+     try:
+         checks.check_requirements('ray[tune]', constrain=['pydantic>=2.0,<2.12'])
+@@ -47,7 +47,7 @@
+     resolved_search_alg, tuner_param_space, resolved_search_alg_kind = _resolve_ray_search_alg(search_alg, task, space, iterations)
+     trainable_with_resources = tune.with_resources(_tune, {'cpu': NUM_THREADS, 'gpu': gpu_per_trial or 0})
+     max_t = train_args.get('epochs') or DEFAULT_CFG_DICT['epochs'] or 100
+-    scheduler = ASHAScheduler(time_attr='epoch', metric=TASK2METRIC[task], mode='max', max_t=max_t, grace_period=min(grace_period, max_t), reduction_factor=3)
++    scheduler = ASHAScheduler(time_attr='epoch', metric=TASK2METRIC[task], mode='max', max_t=max_t, grace_period=min(10, max_t), reduction_factor=3)
+     if resolved_search_alg_kind == 'bohb':
+         scheduler = HyperBandForBOHB(time_attr='epoch', metric=TASK2METRIC[task], mode='max', max_t=max_t, reduction_factor=3)
+     tune_dir = get_save_dir(get_cfg(DEFAULT_CFG, {**train_args, 'exist_ok': train_args.pop('resume', False)}), name=train_args.pop('name', 'tune'))","Run hyperparameter tuning using Ray Tune.
+
+Args:
+    model (YOLO): Model to run the tuner on.
+    space (dict, optional): The hyperparameter search space. If not provided, uses default space.
+    grace_period (int, optional): The grace period in epochs of the ASHA scheduler.
+    gpu_per_trial (int, optional): The number of GPUs to allocate per trial.
+    iterations (int, optional): The maximum number of trials to run.
+    search_alg (str | ray.tune.search.Searcher | ray.tune.search.SearchAlgorithm, optional): Search algorithm to
+        use. Strings are resolved to supported Ray Tune searchers. Pre-instantiated objects are reused, and known
+        searchers with special Tune param_space requirements are normalized automatically.
+    **train_args (Any): Additional arguments to pass to the `train()` method.
+
+Returns:
+    (ray.tune.ResultGrid): A ResultGrid containing the results of the hyperparameter search.
+
+Examples:
+    >>> from ultralytics import YOLO
+    >>> model = YOLO(""yolo26n.pt"")  # Load a YOLO26n model
+
+    Start tuning hyperparameters for YOLO26n training on the COCO8 dataset
+    >>> result_grid = model.tune(data=""coco8.yaml"", use_ray=True)",разумно,"Удалён grace_period, док его описывает; подстановка min(10, max_t) реалистична (A)."
+59ec112ee41ca388,spaCy,render,param_removed,1,"def render(docs: Union[Iterable[Union[Doc, Span, dict]], Doc, Span, dict], style: str='dep', page: bool=False, minify: bool=False, jupyter: Optional[bool]=None, options: Dict[str, Any]={}, manual: bool=False) -> str:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def render(docs: Union[Iterable[Union[Doc, Span, dict]], Doc, Span, dict], style: str='dep', page: bool=False, minify: bool=False, jupyter: Optional[bool]=None, options: Dict[str, Any]={}, manual: bool=False) -> str:
++def render(docs: Union[Iterable[Union[Doc, Span, dict]], Doc, Span, dict], style: str='dep', minify: bool=False, jupyter: Optional[bool]=None, options: Dict[str, Any]={}, manual: bool=False) -> str:
+     factories = {'dep': (DependencyRenderer, parse_deps), 'ent': (EntityRenderer, parse_ents), 'span': (SpanRenderer, parse_spans)}
+     if style not in factories:
+         raise ValueError(Errors.E087.format(style=style))
+@@ -10,7 +10,7 @@
+     renderer_func, converter = factories[style]
+     renderer = renderer_func(options=options)
+     parsed = [converter(doc, options) for doc in docs] if not manual else docs
+-    _html['parsed'] = renderer.render(parsed, page=page, minify=minify).strip()
++    _html['parsed'] = renderer.render(parsed, page=False, minify=minify).strip()
+     html = _html['parsed']
+     if RENDER_WRAPPER is not None:
+         html = RENDER_WRAPPER(html)","Render displaCy visualisation.
+
+docs (Union[Iterable[Union[Doc, Span, dict]], Doc, Span, dict]]): Document(s) to visualise.
+    a 'dict' is only allowed here when 'manual' is set to True
+style (str): Visualisation style, 'dep' or 'ent'.
+page (bool): Render markup as full HTML page.
+minify (bool): Minify HTML markup.
+jupyter (bool): Override Jupyter auto-detection.
+options (dict): Visualiser-specific options, e.g. colors.
+manual (bool): Don't parse `Doc` and instead expect a dict/list of dicts.
+RETURNS (str): Rendered HTML markup.
+
+DOCS: https://spacy.io/api/top-level#displacy.render
+USAGE: https://spacy.io/usage/visualizers",разумно,"Удалён page, док его описывает; подстановка page=False реалистична (A)."
+78a28887b8b65f75,speechbrain,prepare_gigaspeech,param_removed,1,"def prepare_gigaspeech(data_folder: str, save_folder: str, splits: list, output_train: str, output_dev: str, output_test: str, json_file: str='GigaSpeech.json', skip_prep: bool=False, convert_opus_to_wav: bool=True, download_with_HF: bool=False, punctuation: bool=False, filler: bool=False, hf_multiprocess_load: bool=True) -> None:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def prepare_gigaspeech(data_folder: str, save_folder: str, splits: list, output_train: str, output_dev: str, output_test: str, json_file: str='GigaSpeech.json', skip_prep: bool=False, convert_opus_to_wav: bool=True, download_with_HF: bool=False, punctuation: bool=False, filler: bool=False, hf_multiprocess_load: bool=True) -> None:
++def prepare_gigaspeech(data_folder: str, save_folder: str, splits: list, output_train: str, output_dev: str, output_test: str, json_file: str='GigaSpeech.json', skip_prep: bool=False, convert_opus_to_wav: bool=True, download_with_HF: bool=False, punctuation: bool=False, hf_multiprocess_load: bool=True) -> None:
+     logger.info(f'Preparing GigaSpeech dataset in {save_folder}...')
+     if skip_prep:
+         logger.info('Skipping data preparation as `skip_prep` is set to `True`')
+@@ -48,7 +48,7 @@
+         hf_dataset = load_dataset('dataset.py', train_split.lower(), trust_remote_code=True, data_dir=data_folder, cache_dir=data_folder, num_proc=nproc)
+         for split, output in save_output.items():
+             logger.info(f'Starting creating {output} using {split} split.')
+-            HF_create_csv(output, hf_dataset[split], split, punctuation, filler)
++            HF_create_csv(output, hf_dataset[split], split, punctuation, False)
+     else:
+         check_gigaspeech_folders(data_folder, json_file)
+         logger.info(f'Starting reading {json_file}.')
+@@ -57,5 +57,5 @@
+         logger.info(f'Reading {json_file} done.')
+         for split, output in save_output.items():
+             logger.info(f'Starting creating {output} using {split} split.')
+-            create_csv(output, info, data_folder, split_map[split], convert_opus_to_wav, punctuation, filler)
++            create_csv(output, info, data_folder, split_map[split], convert_opus_to_wav, punctuation, False)
+     logger.info('Data preparation completed!')","Prepare the csv files for GigaSpeech dataset.
+
+Download instructions: https://github.com/SpeechColab/GigaSpeech
+Reference: https://arxiv.org/abs/2106.06909
+
+The `train.csv` file is created by following the train subset specified in the `splits` list.
+It must be part of the `TRAIN_SUBSET` list. You cannot use multiple train subsets.
+
+The `dev.csv` and `test.csv` files are created based on the `DEV` and `TEST` splits
+specified in the `splits` list.
+
+Parameters
+----------
+data_folder : str
+    The path to the GigaSpeech dataset.
+save_folder : str
+    The path to the folder where the CSV files will be saved.
+splits : list
+    The list of splits to be used for creating the CSV files.
+output_train : str
+    The path in which the train CSV or shards will be saved.
+output_dev : str
+    The path in which the dev CSV or shards will be saved.
+output_test : str
+    The path in which the test CSV or shards will be saved.
+json_file : str, optional
+    The name of the JSON file containing the metadata of the GigaSpeech dataset.
+skip_prep : bool, optional
+    If True, the data preparation will be skipped, and the function will return immediately.
+convert_opus_to_wav : bool, optional
+    If True, the opus files will be converted to wav files.
+download_with_HF : bool, optional
+    If True, the dataset will be downloaded using the Hugging Face datasets library.
+    We highly recommend using this option if you are based in the EU or US as it will
+    be faster and more reliable than the official host. Make sure to read the
+    instructions on how to get the dataset from Hugging Face here:
+    https://huggingface.co/datasets/speechcolab/gigaspeech
+    The dataset will be downloaded in the default folder specified in the
+    environment variable HF_HUB_CACHE. Please change it if necessary.
+punctuation : bool, optional
+    Keeping the punctuation, or not.
+filler : bool, optional
+    Keeping filler words (hum), or not.
+hf_multiprocess_load: bool, optional
+    If True, all the CPU threads will be used for data prepration. If set to
+    False, only one will be. Note that the data prepration of the larger sets
+    on a single core car take more than 24 hours (from downloading to done).
+
+Returns
+-------
+None",разумно,"Удалён filler, док его описывает; подстановка False в двух вызовах реалистична (A)."
+8386cbd584ff719e,speechbrain,compute_objectives,exception_changed,1,"def compute_objectives(self, predictions, batch, stage):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,6 @@
+ def compute_objectives(self, predictions, batch, stage):
++    if predictions is None:
++        raise TypeError('bad argument')
+     log_probs, hyps, wav_lens = predictions
+     batch = batch.to(self.device)
+     ids = batch.id",Computes the loss NLL given predictions and targets.,разумно,Гард if predictions is None: raise TypeError — живой; в доке не описан (B).
+9a414393c1584adb,ultralytics,parse_module,none,0,def parse_module(py_filepath: Path) -> DocumentedModule | None:,"--- a/code.py
++++ b/code.py
+@@ -2,7 +2,8 @@
+     try:
+         src = py_filepath.read_text(encoding='utf-8')
+     except Exception:
+-        return None
++        value_out = None
++        return value_out
+     try:
+         tree = ast.parse(src)
+     except SyntaxError:",Parse a Python module into structured documentation objects.,разумно,"Вынос return во временную value_out, поведение то же (C)."
+0672b05adf38fe24,mycroft-core,read,param_renamed,1,"def read(self, size, of_exc=False):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def read(self, size, of_exc=False):
++def read(self, size, new_of_exc=False):
+     frames = collections.deque()
+     remaining = size
+     while remaining > 0:
+@@ -8,7 +8,7 @@
+         if to_read == 0:
+             sleep(0.01)
+             continue
+-        result = self.wrapped_stream.read(to_read, exception_on_overflow=of_exc)
++        result = self.wrapped_stream.read(to_read, exception_on_overflow=new_of_exc)
+         frames.append(result)
+         remaining -= to_read
+     input_latency = self.wrapped_stream.get_input_latency()","Read data from stream.
+
+Arguments:
+    size (int): Number of bytes to read
+    of_exc (bool): flag determining if the audio producer thread
+                   should throw IOError at overflows.
+
+Returns:
+    Data read from device",разумно,"of_exc → new_of_exc, док описывает of_exc (A)."
+6be18c10ebaa9667,core,ga_validator,exception_changed,1,def ga_validator(value: Any) -> str | int:,"--- a/code.py
++++ b/code.py
+@@ -1,4 +1,6 @@
+ def ga_validator(value: Any) -> str | int:
++    if value is None:
++        raise ValueError('malformed input')
+     if not isinstance(value, (str, int)):
+         raise probatio.Invalid(f""'{value}' is not a valid KNX group address: Invalid type '{type(value).__name__}'"")
+     try:",Validate that value is parsable as GroupAddress or InternalGroupAddress.,разумно,Гард if value is None: raise ValueError — живой; None-кейс в доке не описан (B).
+f479f091c835e510,speechbrain,compute_periodic_features,param_removed,1,"def compute_periodic_features(frames, best_lags, neighbors=5):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def compute_periodic_features(frames, best_lags, neighbors=5):
++def compute_periodic_features(frames, best_lags):
+     masked_frames = torch.clone(frames).detach()
+     mask_indices = torch.arange(frames.size(-1), device=frames.device)
+     mask_indices = mask_indices.view(1, 1, -1).expand(frames.shape)
+@@ -9,7 +9,7 @@
+     mask = (period_indices < lag.remainder(periods) - jitter_range) | (period_indices > lag.remainder(periods) + jitter_range)
+     masked_frames[mask] = 0
+     peaks, lags = ([], [])
+-    for i in range(neighbors):
++    for i in range(5):
+         peak, lag = torch.max(masked_frames, dim=-1, keepdim=True)
+         mask = (mask_indices > lag - periods // 2) & (mask_indices < lag + periods // 2)
+         masked_frames[mask] = 0","Function to compute periodic features: jitter, shimmer
+
+Arguments
+---------
+frames: torch.Tensor
+    The framed audio to use for feature computation, dims [batch, frame, sample].
+best_lags: torch.Tensor
+    The estimated period length for each frame, dims [batch, frame].
+neighbors: int
+    Number of neighbors to use in comparison.
+
+Returns
+-------
+jitter: torch.Tensor
+    The average absolute deviation in period over the frame.
+shimmer: torch.Tensor
+    The average absolute deviation in amplitude over the frame.",разумно,"Удалён neighbors, док его описывает; подстановка range(5) реалистична (A)."
+58c75c2ecc8b7189,ultralytics,load_model,param_added,1,"def load_model(self, weight: str | Path) -> None:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def load_model(self, weight: str | Path) -> None:
++def load_model(self, weight: str | Path, *, strict: bool=False) -> None:
+     if not isinstance(self.device, torch.device):
+         self.device = torch.device('cpu')
+     cuda = torch.cuda.is_available() and self.device.type != 'cpu'
+@@ -26,7 +26,7 @@
+         if cuda and 'CUDAExecutionProvider' not in self.session.get_providers():
+             LOGGER.warning('CUDA requested but CUDAExecutionProvider not available. Using CPU...')
+             self.device = torch.device('cpu')
+-            cuda = False
++            cuda = strict
+         self.output_names = [x.name for x in self.session.get_outputs()]
+         self.dynamic = isinstance(self.session.get_outputs()[0].shape[0], str)
+         self.fp16 = 'float16' in self.session.get_inputs()[0].type","Load an ONNX model using ONNX Runtime or OpenCV DNN.
+
+Args:
+    weight (str | Path): Path to the .onnx model file.",разумно,"Добавлен strict=False, в теле cuda = strict (дефолт сохранён); в доке нет (B)."
+2c80dbb31281aa87,faceswap,get_optional_arguments,param_added,1,def get_optional_arguments():,"--- a/code.py
++++ b/code.py
+@@ -1,5 +1,5 @@
+ @staticmethod
+-def get_optional_arguments():
++def get_optional_arguments(*, recursive=False):
+     if get_backend() == 'cpu':
+         default_detector = default_aligner = 'cv2-dnn'
+     else:
+@@ -21,7 +21,7 @@
+     argument_list.append({'opts': ('-si', '--save-interval'), 'dest': 'save_interval', 'type': int, 'action': Slider, 'min_max': (0, 1000), 'rounding': 10, 'default': 0, 'group': 'output', 'help': ""Automatically save the alignments file after a set amount of frames. By default the alignments file is only saved at the end of the extraction process. NB: If extracting in 2 passes then the alignments file will only start to be saved out during the second pass. WARNING: Don't interrupt the script when writing the file because it might get corrupted. Set to 0 to turn off""})
+     argument_list.append({'opts': ('-dl', '--debug-landmarks'), 'action': 'store_true', 'dest': 'debug_landmarks', 'group': 'output', 'default': False, 'help': 'Draw landmarks on the ouput faces for debugging purposes.'})
+     argument_list.append({'opts': ('-ae', '--align-eyes'), 'action': 'store_true', 'dest': 'align_eyes', 'group': 'output', 'default': False, 'help': 'Perform extra alignment to ensure left/right eyes are at the same height'})
+-    argument_list.append({'opts': ('-sp', '--singleprocess'), 'action': 'store_true', 'default': False, 'backend': 'nvidia', 'group': 'settings', 'help': ""Don't run extraction in parallel. Will run detection first then alignment (2 passes). Useful if VRAM is at a premium.""})
++    argument_list.append({'opts': ('-sp', '--singleprocess'), 'action': 'store_true', 'default': recursive, 'backend': 'nvidia', 'group': 'settings', 'help': ""Don't run extraction in parallel. Will run detection first then alignment (2 passes). Useful if VRAM is at a premium.""})
+     argument_list.append({'opts': ('-s', '--skip-existing'), 'action': 'store_true', 'dest': 'skip_existing', 'group': 'settings', 'default': False, 'help': 'Skips frames that have already been extracted and exist in the alignments file'})
+     argument_list.append({'opts': ('-sf', '--skip-existing-faces'), 'action': 'store_true', 'dest': 'skip_faces', 'group': 'settings', 'default': False, 'help': 'Skip frames that already have detected faces in the alignments file'})
+     return argument_list","Put the arguments in a list so that they are accessible from both
+argparse and gui",разумно,"Добавлен recursive=False к функции без параметров, в теле default: recursive (дефолт сохранён); в доке нет (B)."
+f8734fd093591c1f,OpenBBTerminal,balance_growth,return_changed,1,"def balance_growth(self, symbol: Annotated[str, OpenBBCustomParameter(description='Symbol to get data for.')], limit: Annotated[int, OpenBBCustomParameter(description='The number of data entries to return.')]=10, provider: Optional[Literal['fmp']]=None, **kwargs) -> OBBject:","--- a/code.py
++++ b/code.py
+@@ -1,3 +1,5 @@
+ @validate
+-def balance_growth(self, symbol: Annotated[str, OpenBBCustomParameter(description='Symbol to get data for.')], limit: Annotated[int, OpenBBCustomParameter(description='The number of data entries to return.')]=10, provider: Optional[Literal['fmp']]=None, **kwargs) -> OBBject:
++def balance_growth(self, symbol: Annotated[str, OpenBBCustomParameter(description='Symbol to get data for.')], limit: Annotated[int, OpenBBCustomParameter(description='The number of data entries to return.')]=10, provider: Optional[Literal['fmp']]=None, **kwargs) -> Optional[OBBject]:
++    if symbol is None:
++        return None
+     return self._run('/equity/fundamental/balance_growth', **filter_inputs(provider_choices={'provider': self._get_provider(provider, '/equity/fundamental/balance_growth', ('fmp',))}, standard_params={'symbol': symbol, 'limit': limit}, extra_params=kwargs))","Get the growth of a company's balance sheet items over time.
+
+Parameters
+----------
+symbol : str
+    Symbol to get data for.
+limit : int
+    The number of data entries to return.
+provider : Optional[Literal['fmp']]
+    The provider to use for the query, by default None.
+    If None, the provider specified in defaults is selected or 'fmp' if there is
+    no default.
+
+Returns
+-------
+OBBject
+    results : List[BalanceSheetGrowth]
+        Serializable results.
+    provider : Optional[Literal['fmp']]
+        Provider name.
+    warnings : Optional[List[Warning_]]
+        List of warnings.
+    chart : Optional[Chart]
+        Chart object.
+    extra: Dict[str, Any]
+        Extra info.
+
+BalanceSheetGrowth
+------------------
+symbol : Optional[str]
+    Symbol representing the entity requested in the data.
+date : date
+    The date of the data.
+period : str
+    Reporting period.
+growth_cash_and_cash_equivalents : float
+    Growth rate of cash and cash equivalents.
+growth_short_term_investments : float
+    Growth rate of short-term investments.
+growth_cash_and_short_term_investments : float
+    Growth rate of cash and short-term investments.
+growth_net_receivables : float
+    Growth rate of net receivables.
+growth_inventory : float
+    Growth rate of inventory.
+growth_other_current_assets : float
+    Growth rate of other current assets.
+growth_total_current_assets : float
+    Growth rate of total current assets.
+growth_property_plant_equipment_net : float
+    Growth rate of net property, plant, and equipment.
+growth_goodwill : float
+    Growth rate of goodwill.
+growth_intangible_assets : float
+    Growth rate of intangible assets.
+growth_goodwill_and_intangible_assets : float
+    Growth rate of goodwill and intangible assets.
+growth_long_term_investments : float
+    Growth rate of long-term investments.
+growth_tax_assets : float
+    Growth rate of tax assets.
+growth_other_non_current_assets : float
+    Growth rate of other non-current assets.
+growth_total_non_current_assets : float
+    Growth rate of total non-current assets.
+growth_other_assets : float
+    Growth rate of other assets.
+growth_total_assets : float
+    Growth rate of total assets.
+growth_account_payables : float
+    Growth rate of accounts payable.
+growth_short_term_debt : float
+    Growth rate of short-term debt.
+growth_tax_payables : float
+    Growth rate of tax payables.
+growth_deferred_revenue : float
+    Growth rate of deferred revenue.
+growth_other_current_liabilities : float
+    Growth rate of other current liabilities.
+growth_total_current_liabilities : float
+    Growth rate of total current liabilities.
+growth_long_term_debt : float
+    Growth rate of long-term debt.
+growth_deferred_revenue_non_current : float
+    Growth rate of non-current deferred revenue.
+growth_deferrred_tax_liabilities_non_current : float
+    Growth rate of non-current deferred tax liabilities.
+growth_other_non_current_liabilities : float
+    Growth rate of other non-current liabilities.
+growth_total_non_current_liabilities : float
+    Growth rate of total non-current liabilities.
+growth_other_liabilities : float
+    Growth rate of other liabilities.
+growth_total_liabilities : float
+    Growth rate of total liabilities.
+growth_common_stock : float
+    Growth rate of common stock.
+growth_retained_earnings : float
+    Growth rate of retained earnings.
+growth_accumulated_other_comprehensive_income_loss : float
+    Growth rate of accumulated other comprehensive income/loss.
+growth_othertotal_stockholders_equity : float
+    Growth rate of other total stockholders' equity.
+growth_total_stockholders_equity : float
+    Growth rate of total stockholders' equity.
+growth_total_liabilities_and_stockholders_equity : float
+    Growth rate of total liabilities and stockholders' equity.
+growth_total_investments : float
+    Growth rate of total investments.
+growth_total_debt : float
+    Growth rate of total debt.
+growth_net_debt : float
+    Growth rate of net debt.
+
+Example
+-------
+>>> from openbb import obb
+>>> obb.equity.fundamental.balance_growth(symbol=""AAPL"", limit=10)",разумно,"Optional[OBBject] + return None при symbol is None, док обещает OBBject (A)."
+c1152e932b02213a,OpenBBTerminal,income_growth,default_changed,1,"def income_growth(self, symbol: Annotated[Union[str, List[str]], OpenBBCustomParameter(description='Symbol to get data for.')], limit: Annotated[int, OpenBBCustomParameter(description='The number of data entries to return.')]=10, period: Annotated[Literal['quarter', 'annual'], OpenBBCustomParameter(description='Time period of the data to return.')]='annual', provider: Optional[Literal['fmp']]=None, **kwargs) -> OBBject:","--- a/code.py
++++ b/code.py
+@@ -1,3 +1,3 @@
+ @validate
+-def income_growth(self, symbol: Annotated[Union[str, List[str]], OpenBBCustomParameter(description='Symbol to get data for.')], limit: Annotated[int, OpenBBCustomParameter(description='The number of data entries to return.')]=10, period: Annotated[Literal['quarter', 'annual'], OpenBBCustomParameter(description='Time period of the data to return.')]='annual', provider: Optional[Literal['fmp']]=None, **kwargs) -> OBBject:
++def income_growth(self, symbol: Annotated[Union[str, List[str]], OpenBBCustomParameter(description='Symbol to get data for.')], limit: Annotated[int, OpenBBCustomParameter(description='The number of data entries to return.')]=10, period: Annotated[Literal['quarter', 'annual'], OpenBBCustomParameter(description='Time period of the data to return.')]='annual!', provider: Optional[Literal['fmp']]=None, **kwargs) -> OBBject:
+     return self._run('/equity/fundamental/income_growth', **filter_inputs(provider_choices={'provider': provider}, standard_params={'symbol': ','.join(symbol) if isinstance(symbol, list) else symbol, 'limit': limit, 'period': period}, extra_params=kwargs))","Income Statement Growth. Information about the growth of the company income statement.
+
+Parameters
+----------
+symbol : str
+    Symbol to get data for.
+limit : int
+    The number of data entries to return.
+period : Literal['annual', 'quarter']
+    Time period of the data to return.
+provider : Optional[Literal['fmp']]
+    The provider to use for the query, by default None.
+    If None, the provider specified in defaults is selected or 'fmp' if there is
+    no default.
+
+Returns
+-------
+OBBject
+    results : List[IncomeStatementGrowth]
+        Serializable results.
+    provider : Optional[Literal['fmp']]
+        Provider name.
+    warnings : Optional[List[Warning_]]
+        List of warnings.
+    chart : Optional[Chart]
+        Chart object.
+    extra: Dict[str, Any]
+        Extra info.
+
+IncomeStatementGrowth
+---------------------
+symbol : Optional[str]
+    Symbol representing the entity requested in the data.
+date : date
+    The date of the data.
+period : str
+    Period the statement is returned for.
+growth_revenue : float
+    Growth rate of total revenue.
+growth_cost_of_revenue : float
+    Growth rate of cost of goods sold.
+growth_gross_profit : float
+    Growth rate of gross profit.
+growth_gross_profit_ratio : float
+    Growth rate of gross profit as a percentage of revenue.
+growth_research_and_development_expenses : float
+    Growth rate of expenses on research and development.
+growth_general_and_administrative_expenses : float
+    Growth rate of general and administrative expenses.
+growth_selling_and_marketing_expenses : float
+    Growth rate of expenses on selling and marketing activities.
+growth_other_expenses : float
+    Growth rate of other operating expenses.
+growth_operating_expenses : float
+    Growth rate of total operating expenses.
+growth_cost_and_expenses : float
+    Growth rate of total costs and expenses.
+growth_interest_expense : float
+    Growth rate of interest expenses.
+growth_depreciation_and_amortization : float
+    Growth rate of depreciation and amortization expenses.
+growth_ebitda : float
+    Growth rate of Earnings Before Interest, Taxes, Depreciation, and Amortization.
+growth_ebitda_ratio : float
+    Growth rate of EBITDA as a percentage of revenue.
+growth_operating_income : float
+    Growth rate of operating income.
+growth_operating_income_ratio : float
+    Growth rate of operating income as a percentage of revenue.
+growth_total_other_income_expenses_net : float
+    Growth rate of net total other income and expenses.
+growth_income_before_tax : float
+    Growth rate of income before taxes.
+growth_income_before_tax_ratio : float
+    Growth rate of income before taxes as a percentage of revenue.
+growth_income_tax_expense : float
+    Growth rate of income tax expenses.
+growth_net_income : float
+    Growth rate of net income.
+growth_net_income_ratio : float
+    Growth rate of net income as a percentage of revenue.
+growth_eps : float
+    Growth rate of Earnings Per Share (EPS).
+growth_eps_diluted : float
+    Growth rate of diluted Earnings Per Share (EPS).
+growth_weighted_average_shs_out : float
+    Growth rate of weighted average shares outstanding.
+growth_weighted_average_shs_out_dil : float
+    Growth rate of diluted weighted average shares outstanding.
+
+Example
+-------
+>>> from openbb import obb
+>>> obb.equity.fundamental.income_growth(symbol=""AAPL"", limit=10, period=""annual"")",неразумно,"Дефолт period annual → annual!, но док дефолт не фиксирует (пример period=annual работает и так); слово default в окне — от соседнего provider (C), а метка 1."
+3f514dbd52b79775,speechbrain,from_hparams,default_changed,1,"def from_hparams(cls, source, hparams_file='hyperparams.yaml', pymodule_file='custom.py', overrides={}, savedir=None, use_auth_token=False, revision=None, download_only=False, huggingface_cache_dir=None, **kwargs):","--- a/code.py
++++ b/code.py
+@@ -1,5 +1,5 @@
+ @classmethod
+-def from_hparams(cls, source, hparams_file='hyperparams.yaml', pymodule_file='custom.py', overrides={}, savedir=None, use_auth_token=False, revision=None, download_only=False, huggingface_cache_dir=None, **kwargs):
++def from_hparams(cls, source, hparams_file='hyperparams.yaml', pymodule_file='custom.py', overrides={}, savedir=None, use_auth_token=True, revision=None, download_only=False, huggingface_cache_dir=None, **kwargs):
+     if savedir is None:
+         clsname = cls.__name__
+         savedir = f""./pretrained_models/{clsname}-{hashlib.md5(source.encode('UTF-8', errors='replace')).hexdigest()}""","Fetch and load based from outside source based on HyperPyYAML file
+
+The source can be a location on the filesystem or online/huggingface
+
+You can use the pymodule_file to include any custom implementations
+that are needed: if that file exists, then its location is added to
+sys.path before Hyperparams YAML is loaded, so it can be referenced
+in the YAML.
+
+The hyperparams file should contain a ""modules"" key, which is a
+dictionary of torch modules used for computation.
+
+The hyperparams file should contain a ""pretrainer"" key, which is a
+speechbrain.utils.parameter_transfer.Pretrainer
+
+Arguments
+---------
+source : str
+    The location to use for finding the model. See
+    ``speechbrain.pretrained.fetching.fetch`` for details.
+hparams_file : str
+    The name of the hyperparameters file to use for constructing
+    the modules necessary for inference. Must contain two keys:
+    ""modules"" and ""pretrainer"", as described.
+pymodule_file : str
+    A Python file can be fetched. This allows any custom
+    implementations to be included. The file's location is added to
+    sys.path before the hyperparams YAML file is loaded, so it can be
+    referenced in YAML.
+    This is optional, but has a default: ""custom.py"". If the default
+    file is not found, this is simply ignored, but if you give a
+    different filename, then this will raise in case the file is not
+    found.
+overrides : dict
+    Any changes to make to the hparams file when it is loaded.
+savedir : str or Path
+    Where to put the pretraining material. If not given, will use
+    ./pretrained_models/<class-name>-hash(source).
+use_auth_token : bool (default: False)
+    If true Hugginface's auth_token will be used to load private models from the HuggingFace Hub,
+    default is False because the majority of models are public.
+revision : str
+    The model revision corresponding to the HuggingFace Hub model revision.
+    This is particularly useful if you wish to pin your code to a particular
+    version of a model hosted at HuggingFace.
+download_only : bool (default: False)
+    If true, class and instance creation is skipped.
+revision : str
+    The model revision corresponding to the HuggingFace Hub model revision.
+    This is particularly useful if you wish to pin your code to a particular
+    version of a model hosted at HuggingFace.
+huggingface_cache_dir : str
+    Path to HuggingFace cache; if None -> ""~/.cache/huggingface"" (default: None)",разумно,"use_auth_token False → True, док фиксирует default False (A)."
+fd50f27005904c2b,scikit-learn,setdiff1d,default_changed,1,"def setdiff1d(x1: Array | complex, x2: Array | complex, /, *, assume_unique: bool=False, xp: ModuleType | None=None) -> Array:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def setdiff1d(x1: Array | complex, x2: Array | complex, /, *, assume_unique: bool=False, xp: ModuleType | None=None) -> Array:
++def setdiff1d(x1: Array | complex, x2: Array | complex, /, *, assume_unique: bool=True, xp: ModuleType | None=None) -> Array:
+     if xp is None:
+         xp = array_namespace(x1, x2)
+     if is_numpy_namespace(xp) or is_cupy_namespace(xp) or is_jax_namespace(xp):","Find the set difference of two arrays.
+
+Return the unique values in `x1` that are not in `x2`.
+
+Parameters
+----------
+x1 : array | int | float | complex | bool
+    Input array.
+x2 : array
+    Input comparison array.
+assume_unique : bool
+    If ``True``, the input arrays are both assumed to be unique, which
+    can speed up the calculation. Default is ``False``.
+xp : array_namespace, optional
+    The standard-compatible namespace for `x1` and `x2`. Default: infer.
+
+Returns
+-------
+array
+    1D array of values in `x1` that are not in `x2`. The result
+    is sorted when `assume_unique` is ``False``, but otherwise only sorted
+    if the input is sorted.
+
+Examples
+--------
+>>> import array_api_strict as xp
+>>> import array_api_extra as xpx
+
+>>> x1 = xp.asarray([1, 2, 3, 2, 4, 1])
+>>> x2 = xp.asarray([3, 4, 5, 6])
+>>> xpx.setdiff1d(x1, x2, xp=xp)
+Array([1, 2], dtype=array_api_strict.int64)",разумно,"assume_unique False → True, док фиксирует Default is False (A)."
+8fecd0f27337fe20,OpenBBTerminal,symbol_map,param_added,1,"def symbol_map(symbol: str, use_cache: bool=True) -> str:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def symbol_map(symbol: str, use_cache: bool=True) -> str:
++def symbol_map(symbol: str, use_cache: bool=True, *, count: int=10) -> str:
+     symbol = symbol.upper().replace('.', '-')
+     symbols = get_all_companies(use_cache=use_cache)
+     if symbol not in symbols['symbol'].to_list():
+@@ -7,7 +7,7 @@
+             return ''
+     cik = symbols[symbols['symbol'] == symbol]['cik'].iloc[0]
+     cik_: str = ''
+-    temp = 10 - len(cik)
++    temp = count - len(cik)
+     for i in range(temp):
+         cik_ = cik_ + '0'
+     return str(cik_ + cik)",Return the CIK number of a ticker symbol for querying the SEC API.,разумно,"Добавлен count=10, в теле temp = count - len(cik) (дефолт сохранён); в доке нет (B)."
+ae5ae92de27a0e01,ultralytics,forward,return_changed,1,"def forward(self, x: list[torch.Tensor]) -> tuple | list[torch.Tensor] | dict[str, torch.Tensor]:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,6 @@
+-def forward(self, x: list[torch.Tensor]) -> tuple | list[torch.Tensor] | dict[str, torch.Tensor]:
++def forward(self, x: list[torch.Tensor]) -> Optional[tuple | list[torch.Tensor] | dict[str, torch.Tensor]]:
++    if x is None:
++        return None
+     outputs = Detect.forward(self, x)
+     preds = outputs[1] if isinstance(outputs, tuple) else outputs
+     proto = self.proto(x)","Return model outputs and mask coefficients if training, otherwise return outputs and mask coefficients.",разумно,"Optional[...] + return None при x is None, док обещает вернуть выходы модели (A)."

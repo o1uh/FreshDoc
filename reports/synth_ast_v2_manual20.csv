@@ -1,0 +1,727 @@
+pair_id,project,symbol,drift_type,label_stale,sig_old,diff_code,doc_old,verdict,comment
+a4daddce460a85f5,scikit-image,random_noise,default_changed,1,"def random_noise(image, mode='gaussian', rng=None, clip=True, **kwargs):","--- a/code.py
++++ b/code.py
+@@ -1,5 +1,5 @@
+ @deprecate_kwarg({'seed': 'rng'}, deprecated_version='0.21', removed_version='0.23')
+-def random_noise(image, mode='gaussian', rng=None, clip=True, **kwargs):
++def random_noise(image, mode='gaussian', rng=None, clip=False, **kwargs):
+     mode = mode.lower()
+     if image.min() < 0:
+         low_clip = -1.0","Function to add random noise of various types to a floating-point image.
+
+Parameters
+----------
+image : ndarray
+    Input image data. Will be converted to float.
+mode : str, optional
+    One of the following strings, selecting the type of noise to add:
+
+    'gaussian' (default)
+        Gaussian-distributed additive noise.
+    'localvar'
+        Gaussian-distributed additive noise, with specified local variance
+        at each point of `image`.
+    'poisson'
+        Poisson-distributed noise generated from the data.
+    'salt'
+        Replaces random pixels with 1.
+    'pepper'
+        Replaces random pixels with 0 (for unsigned images) or -1 (for
+        signed images).
+    's&p'
+        Replaces random pixels with either 1 or `low_val`, where `low_val`
+        is 0 for unsigned images or -1 for signed images.
+    'speckle'
+        Multiplicative noise using ``out = image + n * image``, where ``n``
+        is Gaussian noise with specified mean & variance.
+rng : {`numpy.random.Generator`, int}, optional
+    Pseudo-random number generator.
+    By default, a PCG64 generator is used (see :func:`numpy.random.default_rng`).
+    If `rng` is an int, it is used to seed the generator.
+clip : bool, optional
+    If True (default), the output will be clipped after noise applied
+    for modes `'speckle'`, `'poisson'`, and `'gaussian'`. This is
+    needed to maintain the proper image data range. If False, clipping
+    is not applied, and the output may extend beyond the range [-1, 1].
+mean : float, optional
+    Mean of random distribution. Used in 'gaussian' and 'speckle'.
+    Default : 0.
+var : float, optional
+    Variance of random distribution. Used in 'gaussian' and 'speckle'.
+    Note: variance = (standard deviation) ** 2. Default : 0.01
+local_vars : ndarray, optional
+    Array of positive floats, same shape as `image`, defining the local
+    variance at every image point. Used in 'localvar'.
+amount : float, optional
+    Proportion of image pixels to replace with noise on range [0, 1].
+    Used in 'salt', 'pepper', and 'salt & pepper'. Default : 0.05
+salt_vs_pepper : float, optional
+    Proportion of salt vs. pepper noise for 's&p' on range [0, 1].
+    Higher values represent more salt. Default : 0.5 (equal amounts)
+
+Returns
+-------
+out : ndarray
+    Output floating-point image data on range [0, 1] or [-1, 1] if the
+    input `image` was unsigned or signed, respectively.
+
+Notes
+-----
+Speckle, Poisson, Localvar, and Gaussian noise may generate noise outside
+the valid image range. The default is to clip (not alias) these values,
+but they may be preserved by setting `clip=False`. Note that in this case
+the output may contain values outside the ranges [0, 1] or [-1, 1].
+Use this option with care.
+
+Because of the prevalence of exclusively positive floating-point images in
+intermediate calculations, it is not possible to intuit if an input is
+signed based on dtype alone. Instead, negative values are explicitly
+searched for. Only if found does this function assume signed input.
+Unexpected results only occur in rare, poorly exposes cases (e.g. if all
+values are above 50 percent gray in a signed `image`). In this event,
+manually scaling the input to the positive domain will solve the problem.
+
+The Poisson distribution is only defined for positive integers. To apply
+this noise type, the number of unique values in the image is found and
+the next round power of two is used to scale up the floating-point result,
+after which it is scaled back down to the floating-point image range.
+
+To generate Poisson noise against a signed image, the signed image is
+temporarily converted to an unsigned image in the floating point domain,
+Poisson noise is generated, then it is returned to the original range.",разумно,"Док фиксирует clip : bool, «If True (default)», код ставит clip=False — утверждение стало ложным (A)"
+94f4f7b6a486e193,ultralytics,postprocess,param_renamed,1,"def postprocess(self, preds, img, orig_imgs):","--- a/code.py
++++ b/code.py
+@@ -1,11 +1,11 @@
+-def postprocess(self, preds, img, orig_imgs):
+-    if isinstance(preds, (tuple, list)):
+-        preds = preds[0]
++def postprocess(self, tmp_preds, img, orig_imgs):
++    if isinstance(tmp_preds, (tuple, list)):
++        tmp_preds = tmp_preds[0]
+     if not isinstance(orig_imgs, list):
+         orig_imgs = ops.convert_torch2numpy_batch(orig_imgs)[..., ::-1]
+-    classes = torch.as_tensor(self.args.classes, device=preds.device).flatten() if self.args.classes is not None and len(self.model.names) > 1 else None
++    classes = torch.as_tensor(self.args.classes, device=tmp_preds.device).flatten() if self.args.classes is not None and len(self.model.names) > 1 else None
+     results = []
+-    for i, (pred, orig_img) in enumerate(zip(preds, orig_imgs)):
++    for i, (pred, orig_img) in enumerate(zip(tmp_preds, orig_imgs)):
+         img_path = self.batch[0][i] if isinstance(self.batch[0], list) else self.batch[0]
+         class_map_input = pred.ndim == 2
+         pred = (pred[None, None] if class_map_input else pred[None]).float()","Convert model output to semantic segmentation results.
+
+Args:
+    preds (torch.Tensor | tuple): Model output logits [B, nc, H, W] or baked class map [B, H, W].
+    img (torch.Tensor): Preprocessed input image tensor.
+    orig_imgs (list | torch.Tensor): Original images.
+
+Returns:
+    (list[Results]): List of Results objects with semantic masks.",разумно,"Параметр preds переименован в tmp_preds, док описывает preds — имя в доке стало неверным (A)"
+4ad265599ed3893a,OpenBBTerminal,print_rich_table,param_renamed,1,"def print_rich_table(df: pd.DataFrame, show_index: bool=False, title: str='', index_name: str='', headers: Optional[Union[List[str], pd.Index]]=None, floatfmt: Union[str, List[str]]='.2f', show_header: bool=True, automatic_coloring: bool=False, columns_to_auto_color: Optional[List[str]]=None, rows_to_auto_color: Optional[List[str]]=None, export: bool=False, limit: Optional[int]=1000, columns_keep_types: Optional[List[str]]=None, use_tabulate_df: bool=True):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def print_rich_table(df: pd.DataFrame, show_index: bool=False, title: str='', index_name: str='', headers: Optional[Union[List[str], pd.Index]]=None, floatfmt: Union[str, List[str]]='.2f', show_header: bool=True, automatic_coloring: bool=False, columns_to_auto_color: Optional[List[str]]=None, rows_to_auto_color: Optional[List[str]]=None, export: bool=False, limit: Optional[int]=1000, columns_keep_types: Optional[List[str]]=None, use_tabulate_df: bool=True):
++def print_rich_table(df: pd.DataFrame, show_index: bool=False, title: str='', index_name: str='', headers: Optional[Union[List[str], pd.Index]]=None, floatfmt: Union[str, List[str]]='.2f', show_header: bool=True, automatic_coloring: bool=False, columns_to_auto_color: Optional[List[str]]=None, rows_to_auto_color: Optional[List[str]]=None, export: bool=False, max_limit: Optional[int]=1000, columns_keep_types: Optional[List[str]]=None, use_tabulate_df: bool=True):
+     if export:
+         return
+     MAX_COLS = Session().settings.ALLOWED_NUMBER_OF_COLUMNS
+@@ -35,7 +35,7 @@
+         df_outgoing = df_outgoing.applymap(str)
+         _get_backend().send_table(df_table=df_outgoing, title=title, theme=Session().user.preferences.table_style)
+         return
+-    df = df.copy() if not limit else df.copy().iloc[:limit]
++    df = df.copy() if not max_limit else df.copy().iloc[:max_limit]
+     if automatic_coloring:
+         if columns_to_auto_color:
+             for col in columns_to_auto_color:","Prepare a table from df in rich.
+
+Parameters
+----------
+df: pd.DataFrame
+    Dataframe to turn into table
+show_index: bool
+    Whether to include index
+title: str
+    Title for table
+index_name : str
+    Title for index column
+headers: List[str]
+    Titles for columns
+floatfmt: Union[str, List[str]]
+    Float number formatting specs as string or list of strings. Defaults to "".2f""
+show_header: bool
+    Whether to show the header row.
+automatic_coloring: bool
+    Automatically color a table based on positive and negative values
+columns_to_auto_color: List[str]
+    Columns to automatically color
+rows_to_auto_color: List[str]
+    Rows to automatically color
+export: bool
+    Whether we are exporting the table to a file. If so, we don't want to print it.
+limit: Optional[int]
+    Limit the number of rows to show.
+columns_keep_types: Optional[List[str]]
+    Columns to keep their types, i.e. not convert to numeric",разумно,"limit переименован в max_limit, док описывает limit — параметра с таким именем больше нет (A)"
+d8d71903c9511e5c,scikit-image,rolling_ball,default_changed,1,"def rolling_ball(image, *, radius=100, kernel=None, nansafe=False, num_threads=None):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def rolling_ball(image, *, radius=100, kernel=None, nansafe=False, num_threads=None):
++def rolling_ball(image, *, radius=100, kernel=None, nansafe=True, num_threads=None):
+     image = np.asarray(image)
+     float_type = _supported_float_type(image.dtype)
+     img = image.astype(float_type, copy=False)","Estimate background intensity by rolling/translating a kernel.
+
+This rolling ball algorithm estimates background intensity for a
+ndimage in case of uneven exposure. It is a generalization of the
+frequently used rolling ball algorithm [1]_.
+
+Parameters
+----------
+image : ndarray
+    The image to be filtered.
+radius : int, optional
+    Radius of a ball shaped kernel to be rolled/translated in the image.
+    Used if ``kernel = None``.
+kernel : ndarray, optional
+    The kernel to be rolled/translated in the image. It must have the
+    same number of dimensions as ``image``. Kernel is filled with the
+    intensity of the kernel at that position.
+nansafe: bool, optional
+    If ``False`` (default) assumes that none of the values in ``image``
+    are ``np.nan``, and uses a faster implementation.
+num_threads: int, optional
+    The maximum number of threads to use. If ``None`` use the OpenMP
+    default value; typically equal to the maximum number of virtual cores.
+    Note: This is an upper limit to the number of threads. The exact number
+    is determined by the system's OpenMP library.
+
+Returns
+-------
+background : ndarray
+    The estimated background of the image.
+
+Notes
+-----
+For the pixel that has its background intensity estimated (without loss
+of generality at ``center``) the rolling ball method centers ``kernel``
+under it and raises the kernel until the surface touches the image umbra
+at some ``pos=(y,x)``. The background intensity is then estimated
+using the image intensity at that position (``image[pos]``) plus the
+difference of ``kernel[center] - kernel[pos]``.
+
+This algorithm assumes that dark pixels correspond to the background. If
+you have a bright background, invert the image before passing it to the
+function, e.g., using `utils.invert`. See the gallery example for details.
+
+This algorithm is sensitive to noise (in particular salt-and-pepper
+noise). If this is a problem in your image, you can apply mild
+gaussian smoothing before passing the image to this function.
+
+References
+----------
+.. [1] Sternberg, Stanley R. ""Biomedical image processing."" Computer 1
+       (1983): 22-34. :DOI:`10.1109/MC.1983.1654163`
+
+Examples
+--------
+>>> import numpy as np
+>>> from skimage import data
+>>> from skimage.restoration import rolling_ball
+>>> image = data.coins()
+>>> background = rolling_ball(data.coins())
+>>> filtered_image = image - background
+
+
+>>> import numpy as np
+>>> from skimage import data
+>>> from skimage.restoration import rolling_ball, ellipsoid_kernel
+>>> image = data.coins()
+>>> kernel = ellipsoid_kernel((101, 101), 75)
+>>> background = rolling_ball(data.coins(), kernel=kernel)
+>>> filtered_image = image - background",разумно,"Док фиксирует nansafe: bool, «If False (default)», код ставит True — дефолт в доке неверен (A)"
+b8d41efc97629cc1,OpenBBTerminal,timestamp_validate,none,0,"def timestamp_validate(cls, v):","--- a/code.py
++++ b/code.py
+@@ -5,5 +5,6 @@
+         dt = datetime.strptime(v, '%Y-%m-%dT%H:%M:%S.%f%z')
+         dt = dt.replace(microsecond=0)
+         timestamp = dt.timestamp()
+-        return datetime.fromtimestamp(timestamp, tz=timezone.utc)
++        res = datetime.fromtimestamp(timestamp, tz=timezone.utc)
++        return res
+     return None",Return the datetime string as a datetime object.,разумно,"Вынос return-выражения во временную res, поведение то же (C)"
+880258e591c8a6f3,OpenBBTerminal,execute,exception_changed,1,"async def execute(self, provider_name: str, model_name: str, params: Dict[str, Any], credentials: Optional[Dict[str, SecretStr]]=None, **kwargs: Any) -> Any:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,6 @@
+ async def execute(self, provider_name: str, model_name: str, params: Dict[str, Any], credentials: Optional[Dict[str, SecretStr]]=None, **kwargs: Any) -> Any:
++    if not provider_name:
++        raise TypeError('empty input not allowed')
+     provider = self.get_provider(provider_name)
+     fetcher = self.get_fetcher(provider, model_name)
+     filtered_credentials = self.filter_credentials(credentials, provider, fetcher.require_credentials)","Execute query.
+
+Parameters
+----------
+provider_name : str
+    Name of the provider, for example: ""fmp"".
+model_name : str
+    Name of the model, for example: ""EquityHistorical"".
+params : Dict[str, Any]
+    Query parameters, for example: {""symbol"": ""AAPL""}
+credentials : Optional[Dict[str, SecretStr]], optional
+    Credentials for the provider, by default None
+    For example, {""fmp_api_key"": SecretStr(""1234"")}.
+
+Returns
+-------
+Any
+    Query result.",разумно,"Добавлен raise TypeError для пустого provider_name, в доке раздела Raises нет — появилось важное, чего док не описывает (B)"
+5a5115ef3a08d9a2,ultralytics,inference_features,param_added,1,"def inference_features(self, features, src_shape, bboxes=None, labels=None, text: list[str] | None=None):","--- a/code.py
++++ b/code.py
+@@ -1,5 +1,5 @@
+ @smart_inference_mode()
+-def inference_features(self, features, src_shape, bboxes=None, labels=None, text: list[str] | None=None):
++def inference_features(self, features, src_shape, bboxes=None, labels=None, text: list[str] | None=None, *, retries: int=5):
+     import torchvision
+     prompts = self._prepare_geometric_prompts(src_shape[:2], bboxes, labels)
+     preds = self._inference_features(features, *prompts, text=text)","Perform prompts preprocessing and inference on provided image features using the SAM model.
+
+Args:
+    features (dict[str, Any]): Extracted image features from the SAM3 model image encoder.
+    src_shape (tuple[int, int]): The source shape (height, width) of the input image.
+    bboxes (np.ndarray | list[list[float]] | None): Bounding boxes in xyxy format with shape (N, 4). pixels.
+    labels (np.ndarray | list[int] | None): Point prompt labels with shape (N, ).
+    text (list[str] | None): List of text prompts corresponding to the classes.
+
+Returns:
+    pred_masks (torch.Tensor): The output masks in shape (C, H, W), where C is the number of generated masks.
+    pred_bboxes (torch.Tensor): Bounding boxes for each mask with shape (N, 6), where N is the number of boxes.
+        Each box is in xyxy format with additional columns for score and class.
+
+Notes:
+    - The input features is a torch.Tensor of shape (B, C, H, W) if performing on SAM, or a dict[str, Any] if performing on SAM2.",разумно,"Добавлен keyword-only retries: int=5, в Args он не упомянут — новое важное, чего док не описывает (B)"
+fda3889a1f938a20,ray,test_deployment_contains_utils,exception_changed,1,def test_deployment_contains_utils(serve_instance):,"--- a/code.py
++++ b/code.py
+@@ -1,5 +1,7 @@
+ @pytest.mark.skipif(sys.platform == 'win32', reason='File path incorrect on Windows.')
+ def test_deployment_contains_utils(serve_instance):
++    if not serve_instance:
++        raise ValueError('invalid value')
+     config_file = os.path.join(os.path.dirname(__file__), 'test_config_files', 'deployment_uses_utils_module.yaml')
+     subprocess.check_output(['serve', 'deploy', config_file], stderr=subprocess.STDOUT)
+     wait_for_condition(lambda: httpx.post(f'{get_application_url()}/').text == 'hello_from_utils')","Test when deployment contains utils module, it can be deployed successfully.
+
+When the deployment contains utils module, running serve deploy should successfully
+deployment the application and return the correct response.",неразумно,"Добавлена проверка if not serve_instance: raise ValueError('invalid value') — фиктивная: serve_instance это pytest-фикстура, объект никогда не falsy, сообщение generic. Doc остаётся верным"
+27cbbec8d828eef1,OpenBBTerminal,aextract_data,return_changed,1,"async def aextract_data(query: FMPIndexHistoricalQueryParams, credentials: Optional[Dict[str, str]], **kwargs: Any) -> List[Dict]:","--- a/code.py
++++ b/code.py
+@@ -1,5 +1,7 @@
+ @staticmethod
+-async def aextract_data(query: FMPIndexHistoricalQueryParams, credentials: Optional[Dict[str, str]], **kwargs: Any) -> List[Dict]:
++async def aextract_data(query: FMPIndexHistoricalQueryParams, credentials: Optional[Dict[str, str]], **kwargs: Any) -> Optional[List[Dict]]:
++    if not query:
++        return None
+     api_key = credentials.get('fmp_api_key') if credentials else ''
+     interval = get_interval(query.interval)
+     base_url = 'https://financialmodelingprep.com/api/v3'",Return the raw data from the FMP endpoint.,разумно,"Аннотация стала Optional[List[Dict]] и добавлен return None, док обещает «raw data» — форма результата изменилась (A)"
+d22d4ab90e5bf51d,OpenBBTerminal,historical,param_renamed,1,"def historical(self, symbol: Annotated[Union[str, List[str]], OpenBBCustomParameter(description='Symbol to get data for.')], period: Annotated[Literal['quarter', 'annual'], OpenBBCustomParameter(description='Time period of the data to return.')]='annual', limit: Annotated[int, OpenBBCustomParameter(description='The number of data entries to return.')]=30, provider: Optional[Literal['fmp']]=None, **kwargs) -> OBBject[List[Data]]:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+ @validate
+-def historical(self, symbol: Annotated[Union[str, List[str]], OpenBBCustomParameter(description='Symbol to get data for.')], period: Annotated[Literal['quarter', 'annual'], OpenBBCustomParameter(description='Time period of the data to return.')]='annual', limit: Annotated[int, OpenBBCustomParameter(description='The number of data entries to return.')]=30, provider: Optional[Literal['fmp']]=None, **kwargs) -> OBBject[List[Data]]:
+-    inputs = filter_inputs(provider_choices={'provider': provider}, standard_params={'symbol': ','.join(symbol) if isinstance(symbol, list) else symbol, 'period': period, 'limit': limit}, extra_params=kwargs)
++def historical(self, symbol: Annotated[Union[str, List[str]], OpenBBCustomParameter(description='Symbol to get data for.')], period: Annotated[Literal['quarter', 'annual'], OpenBBCustomParameter(description='Time period of the data to return.')]='annual', max_limit: Annotated[int, OpenBBCustomParameter(description='The number of data entries to return.')]=30, provider: Optional[Literal['fmp']]=None, **kwargs) -> OBBject[List[Data]]:
++    inputs = filter_inputs(provider_choices={'provider': provider}, standard_params={'symbol': ','.join(symbol) if isinstance(symbol, list) else symbol, 'period': period, 'limit': max_limit}, extra_params=kwargs)
+     return self._run('/equity/estimates/historical', **inputs)","Historical Analyst Estimates. Analyst stock recommendations.
+
+Parameters
+----------
+symbol : str
+    Symbol to get data for.
+period : Literal['quarter', 'annual']
+    Time period of the data to return.
+limit : int
+    The number of data entries to return.
+provider : Optional[Literal['fmp']]
+    The provider to use for the query, by default None.
+    If None, the provider specified in defaults is selected or 'fmp' if there is
+    no default.
+
+Returns
+-------
+OBBject
+    results : List[AnalystEstimates]
+        Serializable results.
+    provider : Optional[Literal['fmp']]
+        Provider name.
+    warnings : Optional[List[Warning_]]
+        List of warnings.
+    chart : Optional[Chart]
+        Chart object.
+    extra: Dict[str, Any]
+        Extra info.
+
+AnalystEstimates
+----------------
+symbol : str
+    Symbol representing the entity requested in the data.
+date : date
+    The date of the data.
+estimated_revenue_low : int
+    Estimated revenue low.
+estimated_revenue_high : int
+    Estimated revenue high.
+estimated_revenue_avg : int
+    Estimated revenue average.
+estimated_ebitda_low : int
+    Estimated EBITDA low.
+estimated_ebitda_high : int
+    Estimated EBITDA high.
+estimated_ebitda_avg : int
+    Estimated EBITDA average.
+estimated_ebit_low : int
+    Estimated EBIT low.
+estimated_ebit_high : int
+    Estimated EBIT high.
+estimated_ebit_avg : int
+    Estimated EBIT average.
+estimated_net_income_low : int
+    Estimated net income low.
+estimated_net_income_high : int
+    Estimated net income high.
+estimated_net_income_avg : int
+    Estimated net income average.
+estimated_sga_expense_low : int
+    Estimated SGA expense low.
+estimated_sga_expense_high : int
+    Estimated SGA expense high.
+estimated_sga_expense_avg : int
+    Estimated SGA expense average.
+estimated_eps_avg : float
+    Estimated EPS average.
+estimated_eps_high : float
+    Estimated EPS high.
+estimated_eps_low : float
+    Estimated EPS low.
+number_analyst_estimated_revenue : int
+    Number of analysts who estimated revenue.
+number_analysts_estimated_eps : int
+    Number of analysts who estimated EPS.
+
+Example
+-------
+>>> from openbb import obb
+>>> obb.equity.estimates.historical(symbol=""AAPL"", period=""annual"", limit=30)",разумно,"limit переименован в max_limit, док описывает limit — имя в доке стало неверным (A)"
+33fae4ec2d1a9195,ray,update,param_removed,1,"def update(self, *, batch: Optional[MultiAgentBatch]=None, batches: Optional[List[MultiAgentBatch]]=None, batch_refs: Optional[List[ray.ObjectRef]]=None, episodes: Optional[List[EpisodeType]]=None, episodes_refs: Optional[List[ray.ObjectRef]]=None, data_iterators: Optional[List[ray.data.DataIterator]]=None, training_data: Optional[TrainingData]=None, timesteps: Optional[Dict[str, Any]]=None, async_update: bool=False, return_state: bool=False, **kwargs) -> List[Dict[str, Any]]:","--- a/code.py
++++ b/code.py
+@@ -1,11 +1,11 @@
+-def update(self, *, batch: Optional[MultiAgentBatch]=None, batches: Optional[List[MultiAgentBatch]]=None, batch_refs: Optional[List[ray.ObjectRef]]=None, episodes: Optional[List[EpisodeType]]=None, episodes_refs: Optional[List[ray.ObjectRef]]=None, data_iterators: Optional[List[ray.data.DataIterator]]=None, training_data: Optional[TrainingData]=None, timesteps: Optional[Dict[str, Any]]=None, async_update: bool=False, return_state: bool=False, **kwargs) -> List[Dict[str, Any]]:
++def update(self, *, batch: Optional[MultiAgentBatch]=None, batches: Optional[List[MultiAgentBatch]]=None, batch_refs: Optional[List[ray.ObjectRef]]=None, episodes: Optional[List[EpisodeType]]=None, episodes_refs: Optional[List[ray.ObjectRef]]=None, data_iterators: Optional[List[ray.data.DataIterator]]=None, training_data: Optional[TrainingData]=None, timesteps: Optional[Dict[str, Any]]=None, return_state: bool=False, **kwargs) -> List[Dict[str, Any]]:
+     with TimerAndPrometheusLogger(self._metrics_update_time):
+         if training_data is None:
+             training_data = TrainingData(batch=batch, batches=batches, batch_refs=batch_refs, episodes=episodes, episodes_refs=episodes_refs, data_iterators=data_iterators)
+         training_data.validate()
+         defer_solve = kwargs.pop('defer_solve_refs_to_learner', False)
+         if self.is_local:
+-            if async_update:
++            if False:
+                 raise ValueError(""Can't call `update(async_update=True)` when running with `num_learners=0`! Set `config.num_learners > 0` to allow async updates."")
+             if not defer_solve:
+                 with TimerAndPrometheusLogger(self._metrics_local_learner_training_data_solve_refs):
+@@ -14,7 +14,7 @@
+                 kwargs['return_state'] = return_state
+             return [self._learner.update(training_data=training_data, timesteps=timesteps, **kwargs)]
+         remote_call_kwargs = [dict(training_data=td_shard, timesteps=timesteps, return_state=return_state and i == 0, **kw, **kwargs) for i, (td_shard, kw) in enumerate(training_data.shard(num_shards=len(self), len_lookback_buffer=self.config.episode_lookback_horizon, **kwargs))]
+-        if async_update:
++        if False:
+             results = self._worker_manager.fetch_ready_async_reqs(timeout_seconds=0.0)
+             num_sent_requests = self._worker_manager.foreach_actor_async('update', kwargs=remote_call_kwargs)
+             if num_sent_requests != len(self):","Performs gradient based updates on Learners in parallel.
+
+Updates are performed with data from any of the provided arguments
+(batch, batches, batch_refs, episodes, episodes_refs, data_iterators, training_data).
+
+Args:
+    batch: A data batch to use for the update. If there are more
+        than one Learner workers, the batch is split amongst these and one
+        shard is sent to each Learner.
+    batch_refs: A list of Ray ObjectRefs to the batches. If there are more
+        than one Learner workers, the list of batch refs is split amongst these and
+        one list shard is sent to each Learner.
+    episodes: A list of Episodes to process and perform the update
+        for. If there are more than one Learner workers, the list of episodes
+        is split amongst these and one list shard is sent to each Learner.
+    episodes_refs: A list of Ray ObjectRefs to the episodes. If there are more
+        than one Learner workers, the list of episode refs is split amongst these and
+        one list shard is sent to each Learner.
+    timesteps: A dictionary of timesteps to pass to the Learners's update method.
+        This is usually used for learning rate scheduling but can be used for any other purpose.
+    training_data: A TrainingData object to use for the update. If not provided,
+        a new TrainingData object will be created from the batch, batches, batch_refs,
+        episodes, and episodes_refs.
+    async_update: Whether the update request(s) to the Learner workers should be
+        sent asynchronously. If True, will return NOT the results from the
+        update on the given data, but all results from prior asynchronous update
+        requests that have not been returned thus far.
+    return_state: Whether to include one of the Learner worker's state from
+        after the update step in the returned results dict (under the
+        `_rl_module_state_after_update` key). Note that after an update, all
+        Learner workers' states should be identical, so we use the first
+        Learner's state here. Useful for avoiding an extra `get_weights()` call,
+        e.g. for synchronizing EnvRunner weights.
+    num_epochs: The number of complete passes over the entire train batch. Each
+        pass might be further split into n minibatches (if `minibatch_size`
+        provided).
+    minibatch_size: The size of minibatches to use to further split the train
+        `batch` into sub-batches. The `batch` is then iterated over n times
+        where n is `len(batch) // minibatch_size`.
+    shuffle_batch_per_epoch: Whether to shuffle the train batch once per epoch.
+        If the train batch has a time rank (axis=1), shuffling will only take
+        place along the batch axis to not disturb any intact (episode)
+        trajectories. Also, shuffling is always skipped if `minibatch_size` is
+        None, meaning the entire train batch is processed each epoch, making it
+        unnecessary to shuffle.
+    **kwargs:
+
+Returns:
+    If `async_update` is False, a dictionary with the reduced results of the
+    updates from the Learner(s) or a list of dictionaries of results from the
+    updates from the Learner(s).
+    If `async_update` is True, a list of list of dictionaries of results, where
+    the outer list corresponds to separate previous calls to this method, and
+    the inner list corresponds to the results from each Learner(s). Or if the
+    results are reduced, a list of dictionaries of the reduced results from each
+    call to async_update that is ready.",разумно,"Удалён параметр async_update, док подробно его описывает — утверждение стало ложным (A)"
+d657f00d9a95fb5f,OpenBBTerminal,ichimoku,default_changed,1,"def ichimoku(data: List[Data], index: str='date', conversion: PositiveInt=9, base: PositiveInt=26, lagging: PositiveInt=52, offset: PositiveInt=26, lookahead: bool=False) -> OBBject[List[Data]]:","--- a/code.py
++++ b/code.py
+@@ -1,5 +1,5 @@
+ @router.command(methods=['POST'], examples=[PythonEx(description='Get the Ichimoku Cloud.', code=[""stock_data = obb.equity.price.historical(symbol='TSLA', start_date='2023-01-01', provider='fmp')"", 'ichimoku_data = obb.technical.ichimoku(data=stock_data.results, conversion=9, base=26, lookahead=False)']), APIEx(parameters={'data': APIEx.mock_data('timeseries')})])
+-def ichimoku(data: List[Data], index: str='date', conversion: PositiveInt=9, base: PositiveInt=26, lagging: PositiveInt=52, offset: PositiveInt=26, lookahead: bool=False) -> OBBject[List[Data]]:
++def ichimoku(data: List[Data], index: str='date', conversion: PositiveInt=9, base: PositiveInt=26, lagging: PositiveInt=52, offset: PositiveInt=13, lookahead: bool=False) -> OBBject[List[Data]]:
+     df = basemodel_to_df(data, index=index)
+     df_target = get_target_columns(df, ['high', 'low', 'close'])
+     df_ichimoku, df_span = df_target.ta.ichimoku(tenkan=conversion, kijun=base, senkou=lagging, offset=offset, lookahead=lookahead)","Calculate the Ichimoku Cloud.
+
+Also known as Ichimoku Kinko Hyo, is a versatile indicator that defines support and
+resistance, identifies trend direction, gauges momentum and provides trading
+signals. Ichimoku Kinko Hyo translates into ""one look equilibrium chart"". With
+one look, chartists can identify the trend and look for potential signals within
+that trend.
+
+Parameters
+----------
+data : List[Data]
+    List of data to be used for the calculation.
+index : str, optional
+    Index column name to use with `data`, by default ""date"".
+conversion : PositiveInt, optional
+    Number of periods for the conversion line, by default 9.
+base : PositiveInt, optional
+    Number of periods for the base line, by default 26.
+lagging : PositiveInt, optional
+    Number of periods for the lagging span, by default 52.
+offset : PositiveInt, optional
+    Number of periods for the offset, by default 26.
+lookahead : bool, optional
+    drops the Chikou Span Column to prevent potential data leak
+
+Returns
+-------
+OBBject[List[Data]]
+    The calculated data.",разумно,"Док фиксирует offset, «by default 26», код ставит 13 — документированный дефолт изменился (A)"
+a98d4df640e1d567,core,test_coordinator_failure_counter_resets_on_success,param_added,1,"async def test_coordinator_failure_counter_resets_on_success(hass: HomeAssistant, init_integration: MockConfigEntry, mock_pyiss: MagicMock) -> None:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-async def test_coordinator_failure_counter_resets_on_success(hass: HomeAssistant, init_integration: MockConfigEntry, mock_pyiss: MagicMock) -> None:
++async def test_coordinator_failure_counter_resets_on_success(hass: HomeAssistant, init_integration: MockConfigEntry, mock_pyiss: MagicMock, *, verbose: bool=True) -> None:
+     coordinator = init_integration.runtime_data
+     mock_pyiss.number_of_people_in_space.side_effect = HTTPError('API Error')
+     for _ in range(2):",Test coordinator resets failure counter after successful fetch.,неразумно,"Добавлен verbose: bool=True в сигнатуру теста, но в теле не используется — поведение то же, doc не устаревает. Мутация-ерунда"
+9bcefc3fe25f0075,ultralytics,imread,return_changed,1,"def imread(filename: str | Path, flags: int=cv2.IMREAD_COLOR) -> np.ndarray | None:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,6 @@
+-def imread(filename: str | Path, flags: int=cv2.IMREAD_COLOR) -> np.ndarray | None:
++def imread(filename: str | Path, flags: int=cv2.IMREAD_COLOR) -> Optional[np.ndarray | None]:
++    if not filename:
++        return None
+     filename = str(filename)
+     try:
+         file_bytes = np.fromfile(filename, np.uint8)","Read an image from a file with multilanguage filename support.
+
+Args:
+    filename (str | Path): Path to the file to read.
+    flags (int, optional): Flag that can take values of cv2.IMREAD_*. Controls how the image is read.
+
+Returns:
+    (np.ndarray | None): The read image array, or None if reading fails.
+
+Examples:
+    >>> img = imread(""path/to/image.jpg"")
+    >>> img = imread(""path/to/image.jpg"", cv2.IMREAD_GRAYSCALE)",неразумно,"np.ndarray | None → Optional[np.ndarray | None] семантически эквивалентно, return None уже покрыт «or None if reading fails» — док не устарел, мутация-ерунда"
+ce2a2b297834c754,scikit-learn,test_probabilistic_metrics_array_api,exception_changed,1,"def test_probabilistic_metrics_array_api(prob_metric, str_y_true, use_sample_weight, array_namespace, device_name, dtype_name):","--- a/code.py
++++ b/code.py
+@@ -3,6 +3,8 @@
+ @pytest.mark.parametrize('use_sample_weight', [False, True])
+ @pytest.mark.parametrize('array_namespace, device_name, dtype_name', yield_namespace_device_dtype_combinations())
+ def test_probabilistic_metrics_array_api(prob_metric, str_y_true, use_sample_weight, array_namespace, device_name, dtype_name):
++    if not prob_metric:
++        raise TypeError('empty input not allowed')
+     xp, device = _array_api_for_tests(array_namespace, device_name)
+     sample_weight = np.array([1, 2, 3, 1]) if use_sample_weight else None
+     extra_kwargs = {}","Test that :func:`brier_score_loss`, :func:`log_loss`, :func:`d2_brier_score`
+and :func:`d2_log_loss_score` work correctly with the array API for binary
+and multi-class inputs.",не разумно,"Проверка if not prob_metric: raise TypeError(...) фиктивна — prob_metric функция-параметр, всегда truthy; doc не устаревает. Мутация-ерунда"
+034fb2d23f6472e8,scikit-image,compare_images,param_removed,1,"def compare_images(image0, image1=None, image2=DEPRECATED, *, method='diff', n_tiles=(8, 8)):","--- a/code.py
++++ b/code.py
+@@ -1,5 +1,5 @@
+ @deprecate_parameter('image2', new_name='image1', start_version='0.23', stop_version='0.25')
+-def compare_images(image0, image1=None, image2=DEPRECATED, *, method='diff', n_tiles=(8, 8)):
++def compare_images(image0, image1=None, image2=DEPRECATED, *, method='diff'):
+     if image2 is DEPRECATED:
+         image2 = image1
+         image1 = image0
+@@ -14,9 +14,9 @@
+     elif method == 'checkerboard':
+         shapex, shapey = img1.shape
+         mask = np.full((shapex, shapey), False)
+-        stepx = int(shapex / n_tiles[0])
+-        stepy = int(shapey / n_tiles[1])
+-        for i, j in product(range(n_tiles[0]), range(n_tiles[1])):
++        stepx = int(shapex / (8, 8)[0])
++        stepy = int(shapey / (8, 8)[1])
++        for i, j in product(range((8, 8)[0]), range((8, 8)[1])):
+             if (i + j) % 2 == 0:
+                 mask[i * stepx:(i + 1) * stepx, j * stepy:(j + 1) * stepy] = True
+         comparison = np.zeros_like(img1)","Return an image showing the differences between two images.
+
+.. versionadded:: 0.16
+
+Parameters
+----------
+image0 : ndarray, shape (M, N)
+    First input image.
+
+    .. versionadded:: 0.23
+image1 : ndarray, shape (M, N)
+    Second input image. Must be of the same shape as `image0`.
+
+    .. versionchanged:: 0.23
+        `image1` changed from being the name of the first image to that of
+        the second image.
+method : string, optional
+    Method used for the comparison.
+    Valid values are {'diff', 'blend', 'checkerboard'}.
+    Details are provided in the note section.
+
+.. versionchanged:: 0.23
+        This parameter is now keyword-only.
+n_tiles : tuple, optional
+    Used only for the `checkerboard` method. Specifies the number
+    of tiles (row, column) to divide the image.
+
+Other Parameters
+----------------
+image2 : DEPRECATED
+    Deprecated in favor of `image1`.
+
+    .. deprecated:: 0.23
+
+Returns
+-------
+comparison : ndarray, shape (M, N)
+    Image showing the differences.
+
+Notes
+-----
+``'diff'`` computes the absolute difference between the two images.
+``'blend'`` computes the mean value.
+``'checkerboard'`` makes tiles of dimension `n_tiles` that display
+alternatively the first and the second image.",разумно,"Удалён параметр n_tiles, док его описывает — параметра в сигнатуре больше нет (A)"
+50bd61c8d23e9200,OpenBBTerminal,bar_chart,none,0,"def bar_chart(data: Union[list, dict, 'DataFrame', List['DataFrame'], 'Series', List['Series'], 'ndarray', Data], x: str, y: Union[str, List[str]], barmode: Literal['group', 'stack', 'relative', 'overlay']='group', xtype: Literal['category', 'multicategory', 'date', 'log', 'linear']='category', title: Optional[str]=None, xtitle: Optional[str]=None, ytitle: Optional[str]=None, orientation: Literal['h', 'v']='v', colors: Optional[List[str]]=None, bar_kwargs: Optional[Dict[str, Any]]=None, layout_kwargs: Optional[Dict[str, Any]]=None, **kwargs) -> Union['OpenBBFigure', 'Figure']:","--- a/code.py
++++ b/code.py
+@@ -22,4 +22,5 @@
+         figure.update_layout(xaxis=dict(type='linear', showspikes=False), yaxis=dict(type='category', showspikes=False), hoverlabel=dict(font=dict(size=12)), hovermode='y unified')
+     if layout_kwargs:
+         figure.update_layout(**layout_kwargs)
+-    return figure
++    tmp = figure
++    return tmp","Create a vertical bar chart on a single x-axis with one or more values for the y-axis.
+
+Parameters
+----------
+data : Union[
+    list, dict, ""DataFrame"", List[""DataFrame""], ""Series"", List[""Series""], ""ndarray"", Data
+]
+    Data to plot.
+x : str
+    The x-axis column name.
+y : Union[str, List[str]]
+    The y-axis column name(s).
+barmode : Literal[""group"", ""stack"", ""relative"", ""overlay""], optional
+    The bar mode, by default ""group"".
+xtype : Literal[""category"", ""multicategory"", ""date"", ""log"", ""linear""], optional
+    The x-axis type, by default ""category"".
+title : str, optional
+    The title of the chart, by default None.
+xtitle : str, optional
+    The x-axis title, by default None.
+ytitle : str, optional
+    The y-axis title, by default None.
+colors: List[str], optional
+    Manually set the colors to cycle through for each column in 'y', by default None.
+bar_kwargs : Dict[str, Any], optional
+    Additional keyword arguments to apply with figure.add_bar(), by default None.
+layout_kwargs : Dict[str, Any], optional
+    Additional keyword arguments to apply with figure.update_layout(), by default None.
+
+Returns
+-------
+OpenBBFigure
+    The OpenBBFigure object.",разумно,"figure через временную tmp и обратно, поведение то же (C)"
+bb3237f9f1d1be4a,core,async_setup_entry,param_added,1,"async def async_setup_entry(hass: HomeAssistant, entry: IndevoltConfigEntry) -> bool:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-async def async_setup_entry(hass: HomeAssistant, entry: IndevoltConfigEntry) -> bool:
++async def async_setup_entry(hass: HomeAssistant, entry: IndevoltConfigEntry, *, mode: str='strict') -> bool:
+     coordinator = IndevoltCoordinator(hass, entry)
+     await coordinator.async_config_entry_first_refresh()
+     entry.runtime_data = coordinator",Set up indevolt integration entry using given configuration.,разумно,"Добавлен keyword-only mode: str='strict', в доке он не упомянут — новое важное, чего док не описывает (B)"
+599dfa7c62545a74,speechbrain,prepare_aishell1mix,param_removed,1,"def prepare_aishell1mix(datapath, savepath, n_spks=2, skip_prep=False, aishell1mix_addnoise=False, fs=8000, datafreqs=['8k', '16k'], datamodes=['max', 'min'], datatypes=['mix_clean', 'mix_both', 'mix_single']):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def prepare_aishell1mix(datapath, savepath, n_spks=2, skip_prep=False, aishell1mix_addnoise=False, fs=8000, datafreqs=['8k', '16k'], datamodes=['max', 'min'], datatypes=['mix_clean', 'mix_both', 'mix_single']):
++def prepare_aishell1mix(datapath, savepath, n_spks=2, skip_prep=False, fs=8000, datafreqs=['8k', '16k'], datamodes=['max', 'min'], datatypes=['mix_clean', 'mix_both', 'mix_single']):
+     if skip_prep:
+         return
+     if not os.path.exists(datapath):
+@@ -58,10 +58,10 @@
+     if 'Aishell1' in aishell1mix_outdir:
+         if n_spks == 2:
+             assert 'Aishell1Mix2' in aishell1mix_outdir, 'Inconsistent number of speakers and datapath'
+-            create_aishell1mix2_csv(aishell1mix_outdir, savepath, addnoise=aishell1mix_addnoise)
++            create_aishell1mix2_csv(aishell1mix_outdir, savepath, addnoise=False)
+         elif n_spks == 3:
+             assert 'Aishell1Mix3' in aishell1mix_outdir, 'Inconsistent number of speakers and datapath'
+-            create_aishell1mix3_csv(aishell1mix_outdir, savepath, addnoise=aishell1mix_addnoise)
++            create_aishell1mix3_csv(aishell1mix_outdir, savepath, addnoise=False)
+         else:
+             raise ValueError('Unsupported Number of Speakers')
+     else:","Prepare .csv files for aishell1mix
+
+Arguments:
+----------
+    datapath (str) : path for the aishell1mix dataset.
+    savepath (str) : path where we save the csv file.
+    n_spks (int): number of speakers
+    skip_prep (bool): If True, skip data preparation
+    aishell1mix_addnoise: If True, add whamnoise to aishell1mix datasets",разумно,"Удалён aishell1mix_addnoise, док описывает его как аргумент — утверждение стало ложным (A)"
+080978dd5a87c52f,OpenBBTerminal,aextract_data,return_changed,1,"async def aextract_data(query: SecEtfHoldingsQueryParams, credentials: Optional[Dict[str, str]], **kwargs: Any) -> Dict:","--- a/code.py
++++ b/code.py
+@@ -1,5 +1,7 @@
+ @staticmethod
+-async def aextract_data(query: SecEtfHoldingsQueryParams, credentials: Optional[Dict[str, str]], **kwargs: Any) -> Dict:
++async def aextract_data(query: SecEtfHoldingsQueryParams, credentials: Optional[Dict[str, str]], **kwargs: Any) -> Optional[Dict]:
++    if query is None:
++        return None
+     retries = 3
+     for i in range(retries):
+         filings = []",Return the raw data from the SEC endpoint.,разумно,"Аннотация стала Optional[Dict] и добавлен return None при query is None, док обещает «raw data» — форма результата изменилась (A)"

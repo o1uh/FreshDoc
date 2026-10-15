@@ -1,0 +1,640 @@
+pair_id,project,symbol,drift_type,label_stale,sig_old,diff_code,doc_old,verdict,comment
+5a68cf1fbd3da527,ultralytics,muon_update,default_changed,1,"def muon_update(grad: torch.Tensor | list[torch.Tensor], momentum: torch.Tensor | list[torch.Tensor], beta: float=0.95, nesterov: bool=True) -> torch.Tensor | list[torch.Tensor]:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def muon_update(grad: torch.Tensor | list[torch.Tensor], momentum: torch.Tensor | list[torch.Tensor], beta: float=0.95, nesterov: bool=True) -> torch.Tensor | list[torch.Tensor]:
++def muon_update(grad: torch.Tensor | list[torch.Tensor], momentum: torch.Tensor | list[torch.Tensor], beta: float=0.475, nesterov: bool=True) -> torch.Tensor | list[torch.Tensor]:
+     single = isinstance(grad, torch.Tensor)
+     grads, momentums = ([grad], [momentum]) if single else (grad, momentum)
+     torch._foreach_mul_(momentums, beta)","Compute Muon optimizer updates with momentum and orthogonalization.
+
+This function applies momentum to the gradients, optionally uses Nesterov acceleration, and then orthogonalizes the
+updates using Newton-Schulz iterations. Matrices with the same row count are zero-padded and orthogonalized in a
+single batched call, and momentum math uses fused foreach ops, avoiding per-parameter kernel launch overhead.
+Higher-rank tensors are reshaped before orthogonalization, and each update is scaled based on parameter dimensions.
+
+Args:
+    grad (torch.Tensor | list[torch.Tensor]): Gradient tensor(s) to update. Each must have at least two dimensions.
+    momentum (torch.Tensor | list[torch.Tensor]): Momentum buffer tensor(s), modified in-place.
+    beta (float, optional): Momentum coefficient for exponential moving average. Default: 0.95.
+    nesterov (bool, optional): Whether to use Nesterov momentum acceleration. Default: True.
+
+Returns:
+    (torch.Tensor | list[torch.Tensor]): Orthogonalized update tensor(s), each with the gradient's shape and dtype.
+
+Examples:
+    >>> grad = torch.randn(64, 128)
+    >>> momentum = torch.zeros_like(grad)
+    >>> update = muon_update(grad, momentum, beta=0.95, nesterov=True)
+    >>> print(update.shape)
+    torch.Size([64, 128])
+
+Notes:
+    - Momentum buffers are updated in-place: momentum = beta * momentum + (1-beta) * grad.
+    - With Nesterov: update = beta * momentum + (1-beta) * grad.
+    - Without Nesterov: update = momentum.
+    - Tensors with more than 2 dimensions are reshaped to 2D with the first dimension preserved.
+    - Final updates are scaled by sqrt(max(1, dim[-2] / dim[-1])) to account for parameter dimensions.",разумно,"beta 0.95 → 0.475, док фиксирует «Default: 0.95» — документированный дефолт изменился (A)."
+7c720a0dc0f17088,Python,calculate_hypothesis_value,param_renamed,1,"def calculate_hypothesis_value(example_no, data_set):","--- a/code.py
++++ b/code.py
+@@ -1,6 +1,6 @@
+-def calculate_hypothesis_value(example_no, data_set):
++def calculate_hypothesis_value(example_no_arg, data_set):
+     if data_set == 'train':
+-        return _hypothesis_value(train_data[example_no][0])
++        return _hypothesis_value(train_data[example_no_arg][0])
+     elif data_set == 'test':
+-        return _hypothesis_value(test_data[example_no][0])
++        return _hypothesis_value(test_data[example_no_arg][0])
+     return None","Calculates hypothesis value for a given example
+:param data_set: test data or train_data
+:param example_no: example whose hypothesis value is to be calculated
+:return: hypothesis value for that example
+
+>>> calculate_hypothesis_value(0, ""train"")
+39
+>>> calculate_hypothesis_value(0, ""test"")
+2149
+>>> calculate_hypothesis_value(0, ""unknown"") is None
+True",разумно,"example_no → example_no_arg, док описывает example_no — имя стало неверным (A)."
+87a100816b500de8,Python,wheatstone_solver,param_renamed,1,"def wheatstone_solver(resistance_1: float, resistance_2: float, resistance_3: float) -> float:","--- a/code.py
++++ b/code.py
+@@ -1,5 +1,5 @@
+-def wheatstone_solver(resistance_1: float, resistance_2: float, resistance_3: float) -> float:
+-    if resistance_1 <= 0 or resistance_2 <= 0 or resistance_3 <= 0:
++def wheatstone_solver(resistance_1: float, resistance_2: float, resistance_3_arg: float) -> float:
++    if resistance_1 <= 0 or resistance_2 <= 0 or resistance_3_arg <= 0:
+         raise ValueError('All resistance values must be positive')
+     else:
+-        return float(resistance_2 / resistance_1 * resistance_3)
++        return float(resistance_2 / resistance_1 * resistance_3_arg)","This function can calculate the unknown resistance in an wheatstone network,
+given that the three other resistances in the network are known.
+The formula to calculate the same is:
+
+---------------
+|Rx=(R2/R1)*R3|
+---------------
+
+Usage examples:
+>>> wheatstone_solver(resistance_1=2, resistance_2=4, resistance_3=5)
+10.0
+>>> wheatstone_solver(resistance_1=356, resistance_2=234, resistance_3=976)
+641.5280898876405
+>>> wheatstone_solver(resistance_1=2, resistance_2=-1, resistance_3=2)
+Traceback (most recent call last):
+    ...
+ValueError: All resistance values must be positive
+>>> wheatstone_solver(resistance_1=0, resistance_2=0, resistance_3=2)
+Traceback (most recent call last):
+    ...
+ValueError: All resistance values must be positive",разумно,"resistance_3 → resistance_3_arg, пример в доке использует старое имя (A)."
+ec2081409c0b34e9,faceswap,summary,default_changed,1,"def summary(self, decimal_places: int=6, interval: int=1) -> None:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def summary(self, decimal_places: int=6, interval: int=1) -> None:
++def summary(self, decimal_places: int=6, interval: int=0) -> None:
+     interval = max(1, interval)
+     if interval != self._interval:
+         self._interval += 1","Output a summary of step times.
+
+Parameters
+----------
+decimal_places: int, optional
+    The number of decimal places to display the summary elapsed times to
+interval: int, optional
+    How many times summary must be called before printing to console. Default: 1",разумно,"interval 1 → 0, док фиксирует «Default: 1» — дефолт изменился (A)."
+58788ce2f3e19e7b,ultralytics,convert_ndjson_to_yolo_if_needed,none,0,def convert_ndjson_to_yolo_if_needed(data: str | Path) -> str | Path:,"--- a/code.py
++++ b/code.py
+@@ -4,5 +4,6 @@
+     if clean_url(data_str).endswith('.ndjson') or (data_str.startswith('ul://') and '/datasets/' in data_str):
+         import asyncio
+         from ultralytics.data.converter import convert_ndjson_to_yolo
+-        return asyncio.run(convert_ndjson_to_yolo(check_file(data)))
++        result_value = asyncio.run(convert_ndjson_to_yolo(check_file(data)))
++        return result_value
+     return data",Convert an NDJSON dataset or Platform dataset URI to YOLO format.,разумно,"Вынос return во временную result_value, поведение то же (C)."
+78da84dfe858e63e,ultralytics,inject_nan,exception_changed,1,def inject_nan(trainer):,"--- a/code.py
++++ b/code.py
+@@ -1,4 +1,6 @@
+ def inject_nan(trainer):
++    if trainer is None:
++        raise TypeError('invalid value')
+     if trainer.epoch == 1 and trainer.tloss is not None and (not nan_injected[0]):
+         trainer.tloss[next(iter(trainer.tloss))] *= float('nan')
+         nan_injected[0] = True",Inject NaN into loss during batch processing to test recovery mechanism.,разумно,Гард if trainer is None: raise TypeError — живой (is None falsifiable); новое исключение в доке не описано (B).
+fd150efcf321ebe5,core,async_setup_entry,param_added,1,"async def async_setup_entry(hass: HomeAssistant, entry: EheimDigitalConfigEntry) -> bool:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-async def async_setup_entry(hass: HomeAssistant, entry: EheimDigitalConfigEntry) -> bool:
++async def async_setup_entry(hass: HomeAssistant, entry: EheimDigitalConfigEntry, *, limit_: int=50) -> bool:
+     coordinator = EheimDigitalUpdateCoordinator(hass, entry)
+     await coordinator.async_config_entry_first_refresh()
+     entry.runtime_data = coordinator",Set up EHEIM Digital from a config entry.,разумно,"Добавлен limit_: int=50, в доке не упомянут — новое в сигнатуре (B)."
+a3b5b7fbe19bebe1,OpenBBTerminal,log,exception_changed,1,"def log(self, user_settings: UserSettings, system_settings: SystemSettings, route: str, func: Callable, kwargs: Dict[str, Any], exec_info: Union[Tuple[Type[BaseException], BaseException, TracebackType], Tuple[None, None, None]], custom_headers: Optional[Dict[str, Any]]=None):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,6 @@
+ def log(self, user_settings: UserSettings, system_settings: SystemSettings, route: str, func: Callable, kwargs: Dict[str, Any], exec_info: Union[Tuple[Type[BaseException], BaseException, TracebackType], Tuple[None, None, None]], custom_headers: Optional[Dict[str, Any]]=None):
++    if user_settings is None:
++        raise ValueError('bad argument')
+     self._user_settings = user_settings
+     self._system_settings = system_settings
+     self._logging_settings = LoggingSettings(user_settings=self._user_settings, system_settings=self._system_settings)","Log command output and relevant information.
+
+Parameters
+----------
+user_settings : UserSettings
+    User Settings object.
+system_settings : SystemSettings
+    System Settings object.
+route : str
+    Route for the command.
+func : Callable
+    Callable representing the executed function.
+kwargs : Dict[str, Any]
+    Keyword arguments passed to the function.
+exec_info : Union[
+    Tuple[Type[BaseException], BaseException, TracebackType],
+    Tuple[None, None, None],
+]
+    Exception information, by default None",разумно,Гард if user_settings is None: raise ValueError — живой; новое исключение не описано (B).
+412f82e92ceb77c7,OpenBBTerminal,surface3d,return_changed,1,"def surface3d(X: 'Series', Y: 'Series', Z: 'Series', xtitle: str | None='DTE', ytitle: str | None='Strike', ztitle: str | None='IV', colorscale: str | list | None=None, title: str | None=None, layout_kwargs: dict[str, Any] | None=None, theme: Literal['dark', 'light'] | None=None) -> Union['OpenBBFigure', 'Figure']:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,6 @@
+-def surface3d(X: 'Series', Y: 'Series', Z: 'Series', xtitle: str | None='DTE', ytitle: str | None='Strike', ztitle: str | None='IV', colorscale: str | list | None=None, title: str | None=None, layout_kwargs: dict[str, Any] | None=None, theme: Literal['dark', 'light'] | None=None) -> Union['OpenBBFigure', 'Figure']:
++def surface3d(X: 'Series', Y: 'Series', Z: 'Series', xtitle: str | None='DTE', ytitle: str | None='Strike', ztitle: str | None='IV', colorscale: str | list | None=None, title: str | None=None, layout_kwargs: dict[str, Any] | None=None, theme: Literal['dark', 'light'] | None=None) -> Optional[Union['OpenBBFigure', 'Figure']]:
++    if X is None:
++        return None
+     from openbb_core.app.model.abstract.error import OpenBBError
+     from openbb_charting.core.openbb_figure import OpenBBFigure
+     from numpy import vstack","Create a 3D surface chart.
+
+Parameters
+----------
+X : pd.Series
+    The x-axis data.
+Y : pd.Series
+    The y-axis data.
+Z : pd.Series
+    The z-axis data.
+xtitle : str, optional
+    The title for the x-axis, by default ""DTE"".
+ytitle : str, optional
+    The title for the y-axis, by default ""Strike"".
+ztitle : str, optional
+    The title for the z-axis, by default ""IV"".
+colorscale : Union[str, list], optional
+    The colorscale to use for the surface, by default None.
+title : str, optional
+    The title of the chart, by default None.
+layout_kwargs : Optional[dict[str, Any]], optional
+    Additional keyword arguments to apply with figure.update_layout(), by default None.
+
+Returns
+-------
+OpenBBFigure
+    The OpenBBFigure object.",разумно,"Optional[...] + return None при X is None, док обещает OpenBBFigure — форма результата изменилась (A)."
+dca4171f4cd2636b,mycroft-core,isFractional_nl,param_renamed,1,"def isFractional_nl(input_str, short_scale=True):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def isFractional_nl(input_str, short_scale=True):
++def isFractional_nl(input_str_val, short_scale=True):
+     fracts = {'heel': 1, 'half': 2, 'halve': 2, 'kwart': 4}
+     if short_scale:
+         for num in _SHORT_ORDINAL_STRING_NL:
+@@ -8,6 +8,6 @@
+         for num in _LONG_ORDINAL_STRING_EN:
+             if num > 2:
+                 fracts[_LONG_ORDINAL_STRING_EN[num]] = num
+-    if input_str.lower() in fracts:
+-        return 1.0 / fracts[input_str.lower()]
++    if input_str_val.lower() in fracts:
++        return 1.0 / fracts[input_str_val.lower()]
+     return False","This function takes the given text and checks if it is a fraction.
+
+Args:
+    input_str (str): the string to check if fractional
+    short_scale (bool): use short scale if True, long scale if False
+Returns:
+    (bool) or (float): False if not a fraction, otherwise the fraction",разумно,"input_str → input_str_val, док описывает input_str (A)"
+a33852c251b2940c,scikit-learn,confusion_matrix,param_removed,1,"def confusion_matrix(y_true, y_pred, *, labels=None, sample_weight=None, normalize=None):","--- a/code.py
++++ b/code.py
+@@ -1,5 +1,5 @@
+ @validate_params({'y_true': ['array-like'], 'y_pred': ['array-like'], 'labels': ['array-like', None], 'sample_weight': ['array-like', None], 'normalize': [StrOptions({'true', 'pred', 'all'}), None]}, prefer_skip_nested_validation=True)
+-def confusion_matrix(y_true, y_pred, *, labels=None, sample_weight=None, normalize=None):
++def confusion_matrix(y_true, y_pred, *, labels=None, sample_weight=None):
+     xp, _, device_ = get_namespace_and_device(y_true, y_pred, labels, sample_weight)
+     y_true = check_array(y_true, dtype=None, ensure_2d=False, ensure_all_finite=False, ensure_min_samples=0)
+     y_pred = check_array(y_pred, dtype=None, ensure_2d=False, ensure_all_finite=False, ensure_min_samples=0)
+@@ -44,11 +44,11 @@
+         dtype = np.float32 if str(device_).startswith('mps') else np.float64
+     cm = coo_array((sample_weight, (y_true, y_pred)), shape=(n_labels, n_labels), dtype=dtype).toarray()
+     with np.errstate(all='ignore'):
+-        if normalize == 'true':
++        if None == 'true':
+             cm = cm / cm.sum(axis=1, keepdims=True)
+-        elif normalize == 'pred':
++        elif None == 'pred':
+             cm = cm / cm.sum(axis=0, keepdims=True)
+-        elif normalize == 'all':
++        elif None == 'all':
+             cm = cm / cm.sum()
+         cm = xpx.nan_to_num(cm)
+     if cm.shape == (1, 1):","Compute confusion matrix to evaluate the accuracy of a classification.
+
+By definition a confusion matrix :math:`C` is such that :math:`C_{i, j}`
+is equal to the number of observations known to be in group :math:`i` and
+predicted to be in group :math:`j`.
+
+Thus in binary classification, the count of true negatives is
+:math:`C_{0,0}`, false negatives is :math:`C_{1,0}`, true positives is
+:math:`C_{1,1}` and false positives is :math:`C_{0,1}`.
+
+Read more in the :ref:`User Guide <confusion_matrix>`.
+
+Parameters
+----------
+y_true : array-like of shape (n_samples,)
+    Ground truth (correct) target values.
+
+y_pred : array-like of shape (n_samples,)
+    Estimated targets as returned by a classifier.
+
+labels : array-like of shape (n_classes,), default=None
+    List of labels to index the matrix. This may be used to reorder
+    or select a subset of labels.
+    If ``None`` is given, those that appear at least once
+    in ``y_true`` or ``y_pred`` are used in sorted order.
+
+sample_weight : array-like of shape (n_samples,), default=None
+    Sample weights.
+
+    .. versionadded:: 0.18
+
+normalize : {'true', 'pred', 'all'}, default=None
+    Normalizes confusion matrix over the true (rows), predicted (columns)
+    conditions or all the population. If None, confusion matrix will not be
+    normalized.
+
+Returns
+-------
+C : ndarray of shape (n_classes, n_classes)
+    Confusion matrix whose i-th row and j-th
+    column entry indicates the number of
+    samples with true label being i-th class
+    and predicted label being j-th class.
+
+See Also
+--------
+ConfusionMatrixDisplay.from_estimator : Plot the confusion matrix
+    given an estimator, the data, and the label.
+ConfusionMatrixDisplay.from_predictions : Plot the confusion matrix
+    given the true and predicted labels.
+ConfusionMatrixDisplay : Confusion Matrix visualization.
+confusion_matrix_at_thresholds : For binary classification, compute true negative,
+    false positive, false negative and true positive counts per threshold.
+
+References
+----------
+.. [1] `Wikipedia entry for the Confusion matrix
+       <https://en.wikipedia.org/wiki/Confusion_matrix>`_
+       (Wikipedia and other references may use a different
+       convention for axes).
+
+Examples
+--------
+>>> from sklearn.metrics import confusion_matrix
+>>> y_true = [2, 0, 2, 2, 0, 1]
+>>> y_pred = [0, 0, 2, 2, 0, 2]
+>>> confusion_matrix(y_true, y_pred)
+array([[2, 0, 0],
+       [0, 0, 1],
+       [1, 0, 2]])
+
+>>> y_true = [""cat"", ""ant"", ""cat"", ""cat"", ""ant"", ""bird""]
+>>> y_pred = [""ant"", ""ant"", ""cat"", ""cat"", ""ant"", ""cat""]
+>>> confusion_matrix(y_true, y_pred, labels=[""ant"", ""bird"", ""cat""])
+array([[2, 0, 0],
+       [0, 0, 1],
+       [1, 0, 2]])
+
+In the binary case, we can extract true positives, etc. as follows:
+
+>>> tn, fp, fn, tp = confusion_matrix([0, 1, 0, 1], [1, 1, 1, 0]).ravel().tolist()
+>>> (tn, fp, fn, tp)
+(0, 2, 1, 1)",разумно,"Удалён normalize, док его описывает (A)"
+6dfbc0ef0e7109c0,OpenBBTerminal,to_chart,default_changed,1,"def to_chart(self, data: Optional[Union[list, dict, pd.DataFrame, List[pd.DataFrame], pd.Series, List[pd.Series], np.ndarray, Data]]=None, target: Optional[str]=None, index: Optional[str]=None, indicators: Optional[Dict[str, Dict[str, Any]]]=None, symbol: str='', candles: bool=True, volume: bool=True, volume_ticks_x: int=7, render: bool=True, **kwargs):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def to_chart(self, data: Optional[Union[list, dict, pd.DataFrame, List[pd.DataFrame], pd.Series, List[pd.Series], np.ndarray, Data]]=None, target: Optional[str]=None, index: Optional[str]=None, indicators: Optional[Dict[str, Dict[str, Any]]]=None, symbol: str='', candles: bool=True, volume: bool=True, volume_ticks_x: int=7, render: bool=True, **kwargs):
++def to_chart(self, data: Optional[Union[list, dict, pd.DataFrame, List[pd.DataFrame], pd.Series, List[pd.Series], np.ndarray, Data]]=None, target: Optional[str]=None, index: Optional[str]=None, indicators: Optional[Dict[str, Dict[str, Any]]]=None, symbol: str='', candles: bool=True, volume: bool=True, volume_ticks_x: int=8, render: bool=True, **kwargs):
+     data_as_df, has_data = self._prepare_data_as_df(data)
+     if target is not None:
+         data_as_df = data_as_df[[target]]","Create an OpenBBFigure with user customizations (if any) and save it to the OBBject.
+
+This function is used to populate, or re-populate, the OBBject with a chart using the data within
+the OBBject or external data supplied via the `data` parameter.
+This function modifies the original OBBject by overwriting the existing chart.
+
+Parameters
+----------
+data : Union[Data, pd.DataFrame, pd.Series]
+    Data to be plotted.
+indicators : Dict[str, Dict[str, Any]], optional
+    Indicators to be plotted, by default None
+symbol : str, optional
+    Symbol to be plotted. This is used for labels and titles, by default """"
+candles : bool, optional
+    If True, candles will be plotted, by default True
+volume : bool, optional
+    If True, volume will be plotted, by default True
+volume_ticks_x : int, optional
+    Volume ticks, by default 7
+render : bool, optional
+    If True, the chart will be rendered, by default True
+kwargs: Dict[str, Any]
+    Extra parameters to be passed to the chart constructor.
+
+Examples
+--------
+Plotting a time series with TA indicators
+
+>>> from openbb import obb
+>>> res = obb.equity.price.historical(""AAPL"")
+>>> indicators = dict(
+>>>    sma=dict(length=[20,30,50]),
+>>>    adx=dict(length=14),
+>>>    rsi=dict(length=14),
+>>>    macd=dict(fast=12, slow=26, signal=9),
+>>>    bbands=dict(length=20, std=2),
+>>>    stoch=dict(length=14),
+>>>    ema=dict(length=[20,30,50]),
+>>> )
+>>> res.charting.to_chart(**{""indicators"": indicators})
+
+Get all the available indicators
+
+>>> res = obb.equity.price.historical(""AAPL"")
+>>> indicators = res.charting.indicators()
+>>> indicators?",разумно,"volume_ticks_x 7 → 8, док «by default 7» (A)."
+8572fb025112b7f9,faceswap,control_to_optionsframe,param_added,1,def control_to_optionsframe(self):,"--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def control_to_optionsframe(self):
++def control_to_optionsframe(self, *, sep=','):
+     logger.debug(""Add control to Options Frame: (widget: '%s', control: %s, choices: %s)"", self.option.name, self.option.control, self.option.choices)
+     if self.option.sysbrowser is not None:
+         self.filebrowser = FileBrowser(self.option.name, self.option.tk_var, self.frame, self.option.sysbrowser)",Standard non-check buttons sit in the main options frame,разумно,"Добавлен sep=',', в доке не упомянут (B)"
+1364f69c0d7fb93e,ultralytics,split_classify_dataset,return_changed,1,"def split_classify_dataset(source_dir: str | Path, train_ratio: float=0.8) -> Path:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,6 @@
+-def split_classify_dataset(source_dir: str | Path, train_ratio: float=0.8) -> Path:
++def split_classify_dataset(source_dir: str | Path, train_ratio: float=0.8) -> Optional[Path]:
++    if not source_dir:
++        return None
+     source_path = Path(source_dir)
+     split_path = Path(f'{source_path}_split')
+     train_path, val_path = (split_path / 'train', split_path / 'val')","Split classification dataset into train and val directories in a new directory.
+
+Creates a new directory '{source_dir}_split' with train/val subdirectories, preserving the original class structure
+with an 80/20 split by default. Only files with extensions matching IMG_FORMATS are copied.
+
+Directory structure:
+    Before:
+        caltech/
+        ├── class1/
+        │   ├── img1.jpg
+        │   ├── img2.jpg
+        │   └── ...
+        ├── class2/
+        │   ├── img1.jpg
+        │   └── ...
+        └── ...
+
+    After:
+        caltech_split/
+        ├── train/
+        │   ├── class1/
+        │   │   ├── img1.jpg
+        │   │   └── ...
+        │   ├── class2/
+        │   │   ├── img1.jpg
+        │   │   └── ...
+        │   └── ...
+        └── val/
+            ├── class1/
+            │   ├── img2.jpg
+            │   └── ...
+            ├── class2/
+            │   └── ...
+            └── ...
+
+Args:
+    source_dir (str | Path): Path to classification dataset root directory.
+    train_ratio (float): Ratio for train split, between 0 and 1.
+
+Returns:
+    (Path): Path to the created split directory.
+
+Examples:
+    Split dataset with default 80/20 ratio
+    >>> from ultralytics.data.split import split_classify_dataset
+    >>> split_classify_dataset(""path/to/caltech"")
+
+    Split with custom ratio
+    >>> split_classify_dataset(""path/to/caltech"", 0.75)",разумно,"Optional[Path] + return None при пустом source_dir, док обещает Path (A)"
+93530fc382c33071,faceswap,pack_widget_clones,exception_changed,1,"def pack_widget_clones(self, widget_dicts, old_children=None, new_children=None):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,6 @@
+ def pack_widget_clones(self, widget_dicts, old_children=None, new_children=None):
++    if widget_dicts is None:
++        raise ValueError('invalid value')
+     for widget_dict in widget_dicts:
+         logger.debug('Cloning widget: %s', widget_dict)
+         old_children = [] if old_children is None else old_children","Widgets cannot be given a new parent so we need to clone
+them and then pack the new widget",разумно,Гард if widget_dicts is None: raise ValueError — живой; новое исключение не описано (B)
+5c6c2cf8787d65c0,OpenBBTerminal,risk_premium,param_removed,1,"def risk_premium(self, provider: Optional[Literal['fmp']]=None, **kwargs) -> OBBject:","--- a/code.py
++++ b/code.py
+@@ -1,3 +1,3 @@
+ @validate
+-def risk_premium(self, provider: Optional[Literal['fmp']]=None, **kwargs) -> OBBject:
+-    return self._run('/economy/risk_premium', **filter_inputs(provider_choices={'provider': self._get_provider(provider, '/economy/risk_premium', ('fmp',))}, standard_params={}, extra_params=kwargs))
++def risk_premium(self, **kwargs) -> OBBject:
++    return self._run('/economy/risk_premium', **filter_inputs(provider_choices={'provider': self._get_provider(None, '/economy/risk_premium', ('fmp',))}, standard_params={}, extra_params=kwargs))","Market Risk Premium by country.
+
+Parameters
+----------
+provider : Optional[Literal['fmp']]
+    The provider to use for the query, by default None.
+    If None, the provider specified in defaults is selected or 'fmp' if there is
+    no default.
+
+Returns
+-------
+OBBject
+    results : List[RiskPremium]
+        Serializable results.
+    provider : Optional[Literal['fmp']]
+        Provider name.
+    warnings : Optional[List[Warning_]]
+        List of warnings.
+    chart : Optional[Chart]
+        Chart object.
+    extra: Dict[str, Any]
+        Extra info.
+
+RiskPremium
+-----------
+country : str
+    Market country.
+continent : Optional[str]
+    Continent of the country.
+total_equity_risk_premium : Optional[Annotated[float, Gt(gt=0)]]
+    Total equity risk premium for the country.
+country_risk_premium : Optional[Annotated[float, Ge(ge=0)]]
+    Country-specific risk premium.
+
+Example
+-------
+>>> from openbb import obb
+>>> obb.economy.risk_premium().to_df()",разумно,"Удалён provider, док его описывает (A)"
+e987e25f7c1f4c50,ultralytics,plot_images,none,0,"def plot_images(labels: dict[str, Any], images: torch.Tensor | np.ndarray=np.zeros((0, 3, 640, 640), dtype=np.float32), paths: list[str] | None=None, fname: str='images.jpg', names: dict[int, str] | None=None, on_plot: Callable | None=None, max_size: int=1920, max_subplots: int=16, save: bool=True, conf_thres: float=0.25, show_labels: bool=True, show_conf: bool=True) -> np.ndarray | None:","--- a/code.py
++++ b/code.py
+@@ -120,9 +120,9 @@
+             if mh != h or mw != w:
+                 mask = cv2.resize(mask.astype(np.uint8), (w, h), interpolation=cv2.INTER_NEAREST)
+             im = np.asarray(annotator.im).copy()
+-            sub_annotator = Annotator(np.ascontiguousarray(im[y:y + h, x:x + w]), line_width=1, pil=False)
+-            sub_annotator.semantic_mask(mask, alpha=0.4)
+-            im[y:y + h, x:x + w] = sub_annotator.im
++            sub_annotator_val = Annotator(np.ascontiguousarray(im[y:y + h, x:x + w]), line_width=1, pil=False)
++            sub_annotator_val.semantic_mask(mask, alpha=0.4)
++            im[y:y + h, x:x + w] = sub_annotator_val.im
+             annotator.fromarray(im)
+     if not save:
+         return np.asarray(annotator.im)","Plot image grid with labels, bounding boxes, masks, and keypoints.
+
+Args:
+    labels (dict[str, Any]): Dictionary containing detection data with keys like 'cls', 'bboxes', 'conf', 'masks',
+        'keypoints', 'batch_idx', 'img'.
+    images (torch.Tensor | np.ndarray): Batch of images to plot. Shape: (batch_size, channels, height, width).
+    paths (list[str] | None): List of file paths for each image in the batch.
+    fname (str): Output filename for the plotted image grid.
+    names (dict[int, str] | None): Dictionary mapping class indices to class names.
+    on_plot (Callable | None): Callback function to be called after saving the plot.
+    max_size (int): Maximum size of the output image grid.
+    max_subplots (int): Maximum number of subplots in the image grid.
+    save (bool): Whether to save the plotted image grid to a file.
+    conf_thres (float): Confidence threshold for displaying detections.
+    show_labels (bool): Whether to display class labels.
+    show_conf (bool): Whether to display confidence values.
+
+Returns:
+    (np.ndarray | None): Plotted image grid as a numpy array if save is False, None otherwise.
+
+Notes:
+    This function supports both tensor and numpy array inputs. It will automatically
+    convert tensor inputs to numpy arrays for processing.
+
+    Channel Support:
+    - 1 channel: Grayscale
+    - 2 channels: Third channel added as zeros
+    - 3 channels: Used as-is (standard RGB)
+    - 4+ channels: Cropped to first 3 channels",разумно,"Переименование локальной sub_annotator → sub_annotator_val, поведение то же (C)"
+3605dba2772556c0,faceswap,get_batch,param_added,1,"def get_batch(self, queue):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def get_batch(self, queue):
++def get_batch(self, queue, *, sep=','):
+     exhausted = False
+     batch = dict()
+     idx = 0","Get items for inputting into the aligner from the queue in batches
+
+Items are returned from the ``queue`` in batches of
+:attr:`~plugins.extract._base.Extractor.batchsize`
+
+Items are received as :class:`~plugins.extract.pipeline.ExtractMedia` objects and converted
+to ``dict`` for internal processing.
+
+To ensure consistent batch sizes for aligner the items are split into separate items for
+each :class:`~lib.faces_detect.DetectedFace` object.
+
+Remember to put ``'EOF'`` to the out queue after processing
+the final batch
+
+Outputs items in the following format. All lists are of length
+:attr:`~plugins.extract._base.Extractor.batchsize`:
+
+>>> {'filename': [<filenames of source frames>],
+>>>  'image': [<source images>],
+>>>  'detected_faces': [[<lib.faces_detect.DetectedFace objects]]}
+
+Parameters
+----------
+queue : queue.Queue()
+    The ``queue`` that the plugin will be fed from.
+
+Returns
+-------
+exhausted, bool
+    ``True`` if queue is exhausted, ``False`` if not
+batch, dict
+    A dictionary of lists of :attr:`~plugins.extract._base.Extractor.batchsize`:",разумно,"Добавлен sep=',', в доке не упомянут (B)"
+8e91ddd263e07ccc,faceswap,step_end,param_removed,1,"def step_end(self, name: str, record: bool=True) -> None:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def step_end(self, name: str, record: bool=True) -> None:
+-    if not record:
++def step_end(self, name: str) -> None:
++    if not True:
+         return
+     self._times.setdefault(name, []).append(time() - self._steps.pop(name))","Stop the timer and record elapsed time  for the given step name.
+
+Parameters
+----------
+name: str
+    The name of the step to end the timer for
+record: bool, optional
+    ``True`` to record the step time, ``False`` to not record it.
+    Used for when you have conditional code to time, but do not want to insert if/else
+    statements in the code. Default: `True`",разумно,"Удалён record, док его описывает (A)."
+13d538b10cf3be5c,ultralytics,convert_ndjson_to_yolo,return_changed,1,"async def convert_ndjson_to_yolo(ndjson_path: str | Path, output_path=None, fraction=1.0) -> Path:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,6 @@
+-async def convert_ndjson_to_yolo(ndjson_path: str | Path, output_path=None, fraction=1.0) -> Path:
++async def convert_ndjson_to_yolo(ndjson_path: str | Path, output_path=None, fraction=1.0) -> Optional[Path]:
++    if not ndjson_path:
++        return None
+     source = str(ndjson_path)
+     output_path = Path(output_path or DATASETS_DIR)
+     output_path.mkdir(parents=True, exist_ok=True)","Convert NDJSON dataset format to Ultralytics YOLO dataset structure.
+
+This function converts datasets stored in NDJSON (Newline Delimited JSON) format to the standard YOLO format. For
+detection/segmentation/pose/obb tasks, it creates separate directories for images and labels. Depth datasets use
+parallel images/ and depth/ trees with scaled uint16 PNG targets. Classification tasks use the ImageNet-style
+{split}/{class_name}/ folder structure. Downloads run concurrently.
+
+The NDJSON format consists of:
+- First line: Dataset metadata with class names, task type, and configuration
+- Subsequent lines: Individual image records with annotations and optional URLs
+
+Args:
+    ndjson_path (str | Path): Path to the input NDJSON file containing dataset information.
+    output_path (str | Path | None, optional): Directory where the converted YOLO dataset will be saved. If None,
+        uses the DATASETS_DIR directory. Defaults to None.
+    fraction (float | int | list): Train ratio/count or [train, val, test] ratios/counts to download.
+
+Returns:
+    (Path): Path to the generated data.yaml file (detection) or dataset directory (classification).
+
+Examples:
+    Convert a local NDJSON file:
+    >>> yaml_path = await convert_ndjson_to_yolo(""dataset.ndjson"")
+    >>> print(f""Dataset converted to: {yaml_path}"")
+
+    Convert with custom output directory:
+    >>> yaml_path = await convert_ndjson_to_yolo(""dataset.ndjson"", output_path=""./converted_datasets"")
+
+    Use with YOLO training
+    >>> from ultralytics import YOLO
+    >>> model = YOLO(""yolo26n.pt"")
+    >>> model.train(data=""https://github.com/ultralytics/assets/releases/download/v0.0.0/coco8-ndjson.ndjson"")",разумно,"Optional[Path] + return None при пустом ndjson_path, док обещает Path (A)"

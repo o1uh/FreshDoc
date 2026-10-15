@@ -10,6 +10,7 @@ from src.data.normalizer import (
 from src.synth.mutations import (
     MUTATIONS,
     mut_change_message,
+    mut_param_added,
     mut_param_removed,
     mut_return_changed,
 )
@@ -152,6 +153,20 @@ def test_param_removed_prose_mention_not_documented():
     assert mut_param_removed(fn_no_doc, doc, random.Random(0)) is None
 
 
+def test_param_renamed_prose_mention_not_documented():
+    from src.synth.mutations import mut_param_renamed
+
+    src = (
+        "def split_list(values, thresh):\n"
+        "    '''Split values with thresh into two groups of items here.'''\n"
+        "    return [v for v in values if v > thresh]\n"
+    )
+    fn = parse_function_ast(src)
+    assert fn is not None
+    doc, fn_no_doc = extract_docstring_and_clean_node(fn)
+    assert mut_param_renamed(fn_no_doc, doc, random.Random(0)) is None
+
+
 def test_exception_replace_undocumented_type_falls_back_to_guard():
     from src.data.normalizer import normalize_code_from_node
     from src.synth.mutations import mut_exception_changed
@@ -170,7 +185,8 @@ def test_exception_replace_undocumented_type_falls_back_to_guard():
     assert new_fn is not None
     code_new = normalize_code_from_node(new_fn)
     assert "ValueError" in code_new
-    assert "if not data:" in code_new
+    assert "if data is None:" in code_new
+    assert "if not data:" not in code_new
     from src.data.drift import derive_drift_type, extract_signature
     from src.synth.mutations import MUTATIONS as _M
 
@@ -255,7 +271,9 @@ def test_generate_neg_samples_types_with_replacement():
     df, stats = generate_for_pool(df_pool, seed=42)
     neg = df[df["label_stale"] == 0]
     # Применим только rename_local: без возвращения типов потолок был бы 5 пар.
-    assert len(neg) > 5
+    # Проверяем сырой объём (до балансировки min(pos,neg): на игрушечных
+    # функциях pos теперь даёт только exception_changed, и кап скрыл бы neg).
+    assert stats["neg_всего"] > 5
     assert neg["pair_id"].is_unique
 
 
@@ -353,6 +371,85 @@ def test_param_removed_none_binop_crash_guarded():
         "        scale: optional factor, None means auto.\n"
         "    '''\n"
         "    return 1000 // scale\n"
+    )
+    fn = parse_function_ast(src)
+    assert fn is not None
+    doc, fn_no_doc = extract_docstring_and_clean_node(fn)
+    assert mut_param_removed(fn_no_doc, doc, random.Random(0)) is None
+
+
+def test_return_changed_always_is_none():
+    doc, fn_no_doc = _setup()
+    for seed in range(10):
+        new_fn = mut_return_changed(fn_no_doc, doc, random.Random(seed))
+        assert new_fn is not None
+        code_new = normalize_code_from_node(new_fn)
+        assert "if url is None:" in code_new
+        # Предсуществующий `if not url:` один, добавленных truthiness-гардов нет.
+        assert code_new.count("if not url:") == 1
+
+
+def test_param_added_promotes_constant():
+    src = (
+        "def load(path, timeout=10):\n"
+        "    '''Load resource from path with timeout seconds limit.'''\n"
+        "    body = _get(path, timeout)\n"
+        "    return body.decode('utf-8')\n"
+    )
+    fn = parse_function_ast(src)
+    assert fn is not None
+    doc, fn_no_doc = extract_docstring_and_clean_node(fn)
+    new_fn = mut_param_added(fn_no_doc, doc, random.Random(0))
+    assert new_fn is not None
+    code_new = normalize_code_from_node(new_fn)
+    assert "encoding" in code_new.splitlines()[0]
+    assert "decode(encoding)" in code_new
+    assert code_new.count("'utf-8'") == 1
+    drift = derive_drift_type(extract_signature(fn_no_doc), extract_signature(new_fn))
+    assert drift == "param_added"
+
+
+def test_param_added_no_match_returns_none():
+    src = (
+        "def ident(aaa):\n"
+        "    '''Return aaa unchanged to the caller for chaining purposes.'''\n"
+        "    return aaa\n"
+    )
+    fn = parse_function_ast(src)
+    assert fn is not None
+    doc, fn_no_doc = extract_docstring_and_clean_node(fn)
+    assert mut_param_added(fn_no_doc, doc, random.Random(0)) is None
+
+
+def test_param_removed_decidable_compare_rejected():
+    src = (
+        "def classify(score, normalize=None):\n"
+        "    '''Classify score value with optional normalize mode flag.\n"
+        "\n"
+        "    Args:\n"
+        "        normalize: normalization mode or None for raw scores.\n"
+        "    '''\n"
+        "    if normalize == 'true':\n"
+        "        return adj(score)\n"
+        "    return score\n"
+    )
+    fn = parse_function_ast(src)
+    assert fn is not None
+    doc, fn_no_doc = extract_docstring_and_clean_node(fn)
+    assert mut_param_removed(fn_no_doc, doc, random.Random(0)) is None
+
+
+def test_param_removed_not_true_rejected():
+    src = (
+        "def step(name, record=True):\n"
+        "    '''Finish timing step and record elapsed time value here.\n"
+        "\n"
+        "    Args:\n"
+        "        record: True to record the step time right now.\n"
+        "    '''\n"
+        "    if not record:\n"
+        "        return\n"
+        "    return save(name)\n"
     )
     fn = parse_function_ast(src)
     assert fn is not None
