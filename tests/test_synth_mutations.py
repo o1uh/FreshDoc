@@ -170,7 +170,8 @@ def test_exception_replace_undocumented_type_falls_back_to_guard():
     assert new_fn is not None
     code_new = normalize_code_from_node(new_fn)
     assert "ValueError" in code_new
-    assert "if not data:" in code_new
+    assert "if data is None:" in code_new
+    assert "if not data:" not in code_new
     from src.data.drift import derive_drift_type, extract_signature
     from src.synth.mutations import MUTATIONS as _M
 

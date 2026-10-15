@@ -583,7 +583,7 @@ def mut_exception_changed(fn, doc_old: str, rng: random.Random):
     exc = rng.choice(["ValueError", "TypeError"])
     msg = rng.choice(EXC_MESSAGES)
     new_fn = copy.deepcopy(fn)
-    guard = ast.parse(f"if not {first}:\n    raise {exc}('{msg}')").body[0]
+    guard = ast.parse(f"if {first} is None:\n    raise {exc}('{msg}')").body[0]
     new_fn.body.insert(0, guard)
     ast.fix_missing_locations(new_fn)
     return new_fn
