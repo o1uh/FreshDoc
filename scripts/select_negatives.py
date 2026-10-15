@@ -38,8 +38,8 @@ OUT_NEG = PROJECT_ROOT / "data" / "interim" / "pairs_negatives.parquet"
 OUT_UN = PROJECT_ROOT / "data" / "interim" / "unlabeled_sigchange.parquet"
 OUT_DEF = PROJECT_ROOT / "reports" / "tables" / "neg_deficit.csv"
 OUT_FIG = PROJECT_ROOT / "reports" / "figures" / "neg_length_before_after.png"
-OUT_JSON = PROJECT_ROOT / "reports" / "neg_select.json"
-OUT_DROPPED = PROJECT_ROOT / "reports" / "neg_dropped_pair_ids.txt"
+OUT_JSON = PROJECT_ROOT / "reports" / "tables" / "neg_select.json"
+OUT_DROPPED = PROJECT_ROOT / "reports" / "tables" / "neg_dropped_pair_ids.txt"
 
 DEFICIT_LIMIT = 0.2
 
