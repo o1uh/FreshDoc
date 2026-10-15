@@ -11,6 +11,7 @@ from src.data.negatives import (
     assign_bin,
     build_r1_rows,
     ks_stat,
+    make_neg_pair_id,
     select_balanced,
 )
 
@@ -140,10 +141,63 @@ def test_no_leak_aux_in_output():
     cand, un, _, _ = build_r1_rows(df, {"p1": "train_pool"})
     for out in (cand, un):
         assert not [c for c in out.columns if c.startswith(("_leak", "_aux"))]
-        assert set(out.columns) <= set(R1_COLS)
+        assert set(out.columns) == set(R1_COLS)
     model_inputs = {"sig_old", "diff_code", "doc_old"}
     assert not model_inputs & {c for c in cand.columns
                                if c.startswith(("_leak", "_aux"))}
+
+
+def test_unknown_category_raises():
+    row = _neg_row(symbol="weird")
+    row["category"] = "renamed_function"
+    try:
+        build_r1_rows(pd.DataFrame([row]), {"p1": "train_pool"})
+    except ValueError as e:
+        assert "category" in str(e)
+    else:
+        raise AssertionError("Ожидалась ошибка категории")
+
+
+def test_pair_id_includes_code_new_and_doc():
+    a = make_neg_pair_id("p", "s", "c", "old", "new1", "doc")
+    b = make_neg_pair_id("p", "s", "c", "old", "new2", "doc")
+    c = make_neg_pair_id("p", "s", "c", "old", "new1", "doc other")
+    d = make_neg_pair_id("p", "s", "c", "old", "new1", "doc")
+    assert a != b  # разный дифф — разный id
+    assert a != c  # разный doc — разный id
+    assert a == d  # полные дубликаты схлопываются
+
+
+def test_vendoring_variants_kept_not_dropped():
+    base = _neg_row(symbol="f", sha="abc123")
+    r1 = dict(base)
+    r2 = dict(base)
+    r2["code_new"] = base["code_old"] + "\n    x = 1"
+    r2["diff_code"] = "@@\n-a\n+b2"
+    cand, un, stats, _ = build_r1_rows(
+        pd.DataFrame([r1, r2]), {"p1": "train_pool"})
+    assert len(cand) == 2  # раньше второй терялся (один pair_id)
+    assert cand["pair_id"].is_unique
+    assert stats["pair_id_dedup_dropped"] == 0
+
+
+def test_cand_un_no_cross_collision():
+    # Вендоринг-кейс из ревью: один symbol/commit/code_old,
+    # в одной копии только тело, в другой — сигнатура.
+    # С расширенным pair_id это разные id, ошибки нет.
+    body = _neg_row(category="body_changed", symbol="Cls.m",
+                    sha="deadbeef")
+    sig = _neg_row(category="signature_changed", symbol="Cls.m",
+                   sha="deadbeef")
+    sig["code_new"] = body["code_old"].replace(
+        "def fetch(a):", "def fetch(a, extra=1):")
+    sig["diff_code"] = "@@\n-def fetch(a):\n+def fetch(a, extra=1):"
+    cand, un, stats, _ = build_r1_rows(
+        pd.DataFrame([body, sig]), {"p1": "train_pool"})
+    assert len(cand) == 1 and len(un) == 1
+    assert not (set(cand["pair_id"]) & set(un["pair_id"]))
+    assert stats["cross_pair_id_collisions"] == 0
+    assert stats["pair_id_dedup_dropped_unique"] == 0
 
 
 def test_split_pool_preserved():

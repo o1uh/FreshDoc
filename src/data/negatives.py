@@ -16,11 +16,12 @@
 
 from __future__ import annotations
 
+import hashlib
 from typing import Dict, List, Tuple
 
 import pandas as pd
 
-from src.data.codocbench_adapter import make_function_hash, make_pair_id
+from src.data.codocbench_adapter import make_function_hash
 
 SOURCE = "history_neg"
 STRONG = "real_strong_neg"
@@ -81,6 +82,33 @@ def apply_r1_filters(df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str, int]]:
     return df.loc[~drop].copy(), stats
 
 
+EXPECTED_CATEGORIES = {"cosmetic", "body_changed", "signature_changed"}
+
+
+def make_neg_pair_id(
+    project: str,
+    symbol: str,
+    commit_sha: str,
+    code_old: str,
+    code_new: str,
+    doc_old: str,
+) -> str:
+    """pair_id для history_neg: включает code_new и doc_old.
+
+    Отличие от FD-04 (только code_old): у вендоринг-дублей один commit
+    правит ≥2 копий файла — одинаковый code_old при разном code_new
+    (другой дифф) или разном doc_old (другая документация). По старому
+    ключу такие варианты схлопывались в один pair_id и терялись (35 строк),
+    а 2 id коллизили между cand и unlabeled. Полные дубликаты
+    (всё одинаковое) по-прежнему схлопываются — это желательно.
+    """
+    key = (
+        f"{SOURCE}:{project}:{symbol}:{commit_sha}:"
+        f"{code_old}\x00{code_new}\x00{doc_old}"
+    )
+    return hashlib.sha256(key.encode("utf-8")).hexdigest()[:16]
+
+
 def _enrich(sub: pd.DataFrame, role: str) -> pd.DataFrame:
     sub = sub.copy()
     if role == "strong":
@@ -102,9 +130,14 @@ def _enrich(sub: pd.DataFrame, role: str) -> pd.DataFrame:
         sub["sig_type"] = sub["drift_type"].astype(str)
     sub["source"] = SOURCE
     sub["pair_id"] = [
-        make_pair_id(SOURCE, str(p), str(s), str(c), str(co))
-        for p, s, c, co in zip(
-            sub["project"], sub["symbol"], sub["commit_sha"], sub["code_old"]
+        make_neg_pair_id(str(p), str(s), str(c), str(co), str(cn), str(d))
+        for p, s, c, co, cn, d in zip(
+            sub["project"],
+            sub["symbol"],
+            sub["commit_sha"],
+            sub["code_old"],
+            sub["code_new"],
+            sub["doc_old"],
         )
     ]
     sub["function_hash"] = sub["code_old"].astype(str).map(make_function_hash)
@@ -124,6 +157,9 @@ def build_r1_rows(
     unknown = sorted(set(df["project"].astype(str)) - set(pool_of))
     if unknown:
         raise ValueError(f"Проекты без пула: {unknown}")
+    bad_cat = sorted(set(df["category"].astype(str)) - EXPECTED_CATEGORIES)
+    if bad_cat:
+        raise ValueError(f"Неизвестные category: {bad_cat}")
     df["split_pool"] = df["project"].astype(str).map(pool_of)
     n_doc_changed = int(df["doc_changed"].astype(bool).sum())
     df = df.loc[~df["doc_changed"].astype(bool)].copy()
@@ -145,16 +181,32 @@ def build_r1_rows(
     df_un, un_dup_ids, un_dup_n = _dedup(df_un)
     dropped_ids = sorted(set(cand_dup_ids) | set(un_dup_ids))
 
+    # Кросс-уникальность cand/un: при расширенном pair_id (code_new+doc_old)
+    # коллизий быть не должно — одинаковые code_old+code_new+doc_old дают
+    # одинаковый drift, т.е. не могут лежать в разных категориях.
+    # Fail fast для FD-13 (pair_id уникален на сборке FD-12).
+    cross_ids = sorted(
+        set(cand["pair_id"].astype(str)) & set(df_un["pair_id"].astype(str))
+    )
+    if cross_ids:
+        raise ValueError(f"pair_id в cand и unlabeled одновременно: {cross_ids}")
+
     stats = {
         "doc_changed_dropped": n_doc_changed,
         "cand_strong": int((cand["label_source"] == STRONG).sum()),
         "cand_weak": int((cand["label_source"] == WEAK).sum()),
         "unlabeled": int(len(df_un)),
         "pair_id_dedup_dropped": int(cand_dup_n + un_dup_n),
+        "pair_id_dedup_dropped_unique": int(len(dropped_ids)),
+        "cross_pair_id_collisions": 0,
     }
-    cols = [c for c in R1_COLS if c in cand.columns]
-    cols_un = [c for c in R1_COLS if c in df_un.columns]
-    return cand[cols].copy(), df_un[cols_un].copy(), stats, dropped_ids
+    missing = set(R1_COLS) - set(cand.columns)
+    missing_un = set(R1_COLS) - set(df_un.columns)
+    if missing or missing_un:
+        raise ValueError(
+            f"Нет колонок схемы R1: cand={sorted(missing)} un={sorted(missing_un)}"
+        )
+    return cand[R1_COLS].copy(), df_un[R1_COLS].copy(), stats, dropped_ids
 
 
 def select_balanced(
@@ -216,6 +268,11 @@ def select_balanced(
         picked_parts.append(taken)
     if picked_parts:
         selected = pd.concat(picked_parts, ignore_index=True)
+        # Перемешать итог, чтобы порядок parquet не был сгруппирован
+        # по (pool, bin) / strong→weak. Детерминировано тем же seed.
+        selected = selected.sample(frac=1.0, random_state=seed + 9999).reset_index(
+            drop=True
+        )
     else:
         selected = df_cand.iloc[0:0].copy()
     deficit_df = pd.DataFrame(

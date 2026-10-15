@@ -1,5 +1,6 @@
 {
   "seed": 42,
+  "pair_id_scheme": "history_neg: sha256(source:project:symbol:commit:code_old + code_new + doc_old)[:16]; полные дубликаты схлопываются, варианты с разным диффом/doc сохраняются",
   "filters": {
     "input": 26827,
     "underscore": 4860,
@@ -10,26 +11,31 @@
   },
   "roles": {
     "doc_changed_dropped": 0,
-    "cand_strong": 96,
-    "cand_weak": 12037,
-    "unlabeled": 3200,
-    "pair_id_dedup_dropped": 35
+    "cand_strong": 97,
+    "cand_weak": 12040,
+    "unlabeled": 3204,
+    "pair_id_dedup_dropped": 27,
+    "pair_id_dedup_dropped_unique": 22,
+    "cross_pair_id_collisions": 0
   },
+  "pair_id_dedup_dropped_rows": 27,
+  "pair_id_dedup_dropped_unique": 22,
+  "cross_pair_id_collisions": 0,
   "selected_total": 2997,
   "selected_by_pool": {
     "test_pool": 1521,
     "train_pool": 1476
   },
-  "selected_strong": 96,
-  "selected_weak": 2901,
+  "selected_strong": 97,
+  "selected_weak": 2900,
   "strong_target_total": 899,
-  "strong_deficit_total": 803,
-  "unlabeled_total": 3200,
+  "strong_deficit_total": 802,
+  "unlabeled_total": 3204,
   "ks_before": 0.064,
   "ks_after": 0.021,
   "ks_by_pool": {
     "test_pool": 0.0289,
-    "train_pool": 0.0278
+    "train_pool": 0.0271
   },
   "max_deficit_rate": 0.0,
   "deficit_over_20": false

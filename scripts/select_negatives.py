@@ -4,6 +4,9 @@
 
 Строго по R5: добор недостающего strong типом weak, дефицит фиксируется.
 Strong из synth_ast НЕ подмешивается (источник фальсифицировать нельзя).
+pair_id для history_neg расширенный: hash(source:project:symbol:commit:
+code_old + code_new + doc_old) — иначе вендоринг-дубли с разным диффом
+схлопывались и коллизии cand/unlabeled (см. src/data/negatives.py).
 Канон графиков — PNG через matplotlib (в requirements); без него — SVG.
 """
 
@@ -156,6 +159,10 @@ def main() -> None:
         ks_by_pool[str(pool)] = round(ks_stat(a, b), 4) if len(b) else None
 
     assert selected["pair_id"].is_unique, "Дубликаты pair_id в отборе!"
+    assert df_un["pair_id"].is_unique, "Дубликаты pair_id в unlabeled!"
+    assert not (
+        set(selected["pair_id"].astype(str)) & set(df_un["pair_id"].astype(str))
+    ), "pair_id одновременно в отборе и unlabeled (нарушение FD-13)!"
     assert set(selected["split_pool"]) <= set(df_pos["split_pool"]), \
         "Неизвестный пул в отборе"
 
@@ -176,8 +183,18 @@ def main() -> None:
     over_limit = bool((deficit["deficit_rate"] > DEFICIT_LIMIT).any())
     summary = {
         "seed": args.seed,
+        "pair_id_scheme": "history_neg: sha256(source:project:symbol:commit:"
+        "code_old + code_new + doc_old)[:16]; "
+        "полные дубликаты схлопываются, варианты с разным диффом/doc "
+        "сохраняются",
         "filters": filt_stats,
         "roles": role_stats,
+        "pair_id_dedup_dropped_rows": int(role_stats.get(
+            "pair_id_dedup_dropped", 0)),
+        "pair_id_dedup_dropped_unique": int(role_stats.get(
+            "pair_id_dedup_dropped_unique", len(dropped_ids))),
+        "cross_pair_id_collisions": int(role_stats.get(
+            "cross_pair_id_collisions", 0)),
         "selected_total": int(len(selected)),
         "selected_by_pool": {
             str(k): int(v)
@@ -201,7 +218,11 @@ def main() -> None:
 
     print(f"Фильтры R1: {filt_stats}")
     print(f"Роли: {role_stats}")
-    print(f"Дроп pair_id-дубликатов: {len(dropped_ids)} -> {args.out_dropped}")
+    print(f"Дроп pair_id-дубликатов: строк {summary['pair_id_dedup_dropped_rows']}, "
+          f"уникальных {summary['pair_id_dedup_dropped_unique']} "
+          f"-> {args.out_dropped} "
+          f"(файл — уникальные id; кросс-коллизий cand/un: "
+          f"{summary['cross_pair_id_collisions']})")
     print(f"Отобрано: {len(out_neg)} "
           f"(strong {summary['selected_strong']} из "
           f"{summary['strong_target_total']})")
