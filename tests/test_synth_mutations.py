@@ -153,6 +153,20 @@ def test_param_removed_prose_mention_not_documented():
     assert mut_param_removed(fn_no_doc, doc, random.Random(0)) is None
 
 
+def test_param_renamed_prose_mention_not_documented():
+    from src.synth.mutations import mut_param_renamed
+
+    src = (
+        "def split_list(values, thresh):\n"
+        "    '''Split values with thresh into two groups of items here.'''\n"
+        "    return [v for v in values if v > thresh]\n"
+    )
+    fn = parse_function_ast(src)
+    assert fn is not None
+    doc, fn_no_doc = extract_docstring_and_clean_node(fn)
+    assert mut_param_renamed(fn_no_doc, doc, random.Random(0)) is None
+
+
 def test_exception_replace_undocumented_type_falls_back_to_guard():
     from src.data.normalizer import normalize_code_from_node
     from src.synth.mutations import mut_exception_changed
@@ -257,7 +271,9 @@ def test_generate_neg_samples_types_with_replacement():
     df, stats = generate_for_pool(df_pool, seed=42)
     neg = df[df["label_stale"] == 0]
     # Применим только rename_local: без возвращения типов потолок был бы 5 пар.
-    assert len(neg) > 5
+    # Проверяем сырой объём (до балансировки min(pos,neg): на игрушечных
+    # функциях pos теперь даёт только exception_changed, и кап скрыл бы neg).
+    assert stats["neg_всего"] > 5
     assert neg["pair_id"].is_unique
 
 

@@ -243,7 +243,10 @@ def _annotation_for_default(default_code: str) -> Optional[ast.expr]:
 # ---------------------------------------------------------------------------
 
 def mut_param_renamed(fn, doc_old: str, rng: random.Random):
-    cands = [p for p in _regular_params(fn) if _mentioned_as_word(p.arg, doc_old)]
+    # Переименование делает док ложным, только если параметр задокументирован
+    # как аргумент (упоминания в прозе недостаточно: проза остаётся верной — C,
+    # а не A; замер v2r4: прозовых переименований было 25,2%).
+    cands = [p for p in _regular_params(fn) if _documented_as_param(p.arg, doc_old)]
     if not cands:
         return None
     # Скрытые привязки (except-as, match, global/nonlocal, alias, def/class
