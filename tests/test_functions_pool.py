@@ -179,3 +179,23 @@ def test_v2_final_leak_raises():
         assert "test-проекты" in str(e)
     else:
         raise AssertionError("Ожидалась ошибка утечки test-проекта в v2")
+
+
+def test_v2_excludes_test_functions_by_default():
+    df_v1, df_pools = _pools_v1()
+    df_neg = _pairs(
+        [
+            _neg("p1", _src(name="test_something")),
+            _neg("p1", _src()),
+        ]
+    )
+    df_v2, stats = build_functions_pool_v2(df_v1, df_neg, df_pools)
+    assert stats["отсев_test_функции"] == 1
+    assert stats["источник2_успех"] == 1
+    assert not df_v2["src"].str.contains("def test_").any()
+
+    df_v2b, statsb = build_functions_pool_v2(
+        df_v1, df_neg, df_pools, exclude_tests=False
+    )
+    assert statsb["отсев_test_функции"] == 0
+    assert statsb["источник2_успех"] == 2

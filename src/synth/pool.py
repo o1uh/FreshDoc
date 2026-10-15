@@ -120,6 +120,7 @@ def build_functions_pool_v2(
     df_pool_v1: pd.DataFrame,
     df_negatives: pd.DataFrame,
     df_pools: pd.DataFrame,
+    exclude_tests: bool = True,
 ) -> Tuple[pd.DataFrame, Dict[str, int]]:
     missing_v1 = {"project", "src", "function_hash"} - set(df_pool_v1.columns)
     if missing_v1:
@@ -140,6 +141,7 @@ def build_functions_pool_v2(
         "дубликаты_против_v1": 0,
         "не_разобралось": 0,
         "не_прошёл_фильтры": 0,
+        "отсев_test_функции": 0,
         "источник2_успех": 0,
         "успех_v2": 0,
     }
@@ -171,6 +173,9 @@ def build_functions_pool_v2(
         fn = parse_function_ast(src)
         if fn is None:
             stats["не_разобралось"] += 1
+            continue
+        if exclude_tests and fn.name.startswith("test_"):
+            stats["отсев_test_функции"] += 1
             continue
         doc, fn_no_doc = extract_docstring_and_clean_node(fn)
         doc = (doc or "").strip()

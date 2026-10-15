@@ -22,6 +22,8 @@ def main() -> None:
     parser.add_argument("--in_pool_v1", default="data/interim/functions_pool_v1.parquet")
     parser.add_argument("--in_negatives", default="data/interim/negatives_raw.parquet")
     parser.add_argument("--out_v2", default="data/interim/functions_pool_v2.parquet")
+    parser.add_argument("--include-tests", dest="include_tests", action="store_true",
+                        help="Не отсекать test_-функции источника 2 (по умолчанию отсекаются, FD-09)")
     args = parser.parse_args()
 
     if args.mode == "v1":
@@ -48,7 +50,9 @@ def main() -> None:
     df_pool_v1 = pd.read_parquet(args.in_pool_v1)
     df_negatives = pd.read_parquet(args.in_negatives)
     df_pools = pd.read_parquet(args.in_pools)
-    df_v2, stats = build_functions_pool_v2(df_pool_v1, df_negatives, df_pools)
+    df_v2, stats = build_functions_pool_v2(
+        df_pool_v1, df_negatives, df_pools, exclude_tests=not args.include_tests
+    )
 
     test_projects = set(df_pools[df_pools["pool"] == TEST_POOL]["project"])
     leak = set(df_v2["project"]) & test_projects
