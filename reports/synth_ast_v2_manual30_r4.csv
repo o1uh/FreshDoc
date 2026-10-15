@@ -6,7 +6,7 @@ pair_id,project,symbol,drift_type,label_stale,sig_old,diff_code,doc_old,verdict,
 -    coordinator = entry.runtime_data
 +async def async_setup_entry(hass: HomeAssistant, entry_new: OumanEh800ConfigEntry, async_add_entities: AddConfigEntryEntitiesCallback) -> None:
 +    coordinator = entry_new.runtime_data
-     async_add_entities((OumanEh800NumberEntity(coordinator, endpoint, description) for endpoint in coordinator.data if isinstance(endpoint, IntControlOumanEndpoint | FloatControlOumanEndpoint) and (description := NUMBER_DESCRIPTIONS.get(endpoint)) is not None))",Set up Ouman EH-800 number entities based on a config entry.,,
+     async_add_entities((OumanEh800NumberEntity(coordinator, endpoint, description) for endpoint in coordinator.data if isinstance(endpoint, IntControlOumanEndpoint | FloatControlOumanEndpoint) and (description := NUMBER_DESCRIPTIONS.get(endpoint)) is not None))",Set up Ouman EH-800 number entities based on a config entry.,неразумно,"Переименован entry в entry_new, но док (одна строка) параметров не описывает — entry там только в прозе a config entry; ложного утверждения нет (C), а метка датасета 1."
 d6ef107a7b838633,speechbrain,run_inference_sample,param_removed,1,"def run_inference_sample(self, name, epoch):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -27,7 +27,7 @@ epoch: int or str
 
 Returns
 -------
-None",,
+None",разумно,"Удалён epoch, док его описывает (A)."
 73d2decf98bddb7e,core,async_setup_entry,none,0,"async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:","--- a/code.py
 +++ b/code.py
 @@ -22,4 +22,5 @@
@@ -36,7 +36,7 @@ None",,
      entry.async_on_unload(coordinator.async_start())
 -    return True
 +    ret = True
-+    return ret",Set up Xiaomi BLE device from a config entry.,,
++    return ret",Set up Xiaomi BLE device from a config entry.,разумно,"Вынос return во временную ret, поведение то же (C)."
 bcf19343b3335821,scikit-image,sato,param_added,1,"def sato(image, sigmas=range(1, 10, 2), black_ridges=True, mode='reflect', cval=0):","--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,6 @@
@@ -89,7 +89,7 @@ References
     Koller, T., ..., Kikinis, R. (1998). Three-dimensional multi-scale line
     filter for segmentation and visualization of curvilinear structures in
     medical images. Medical image analysis, 2(2), 143-168.
-    :DOI:`10.1016/S1361-8415(98)80009-1`",,
+    :DOI:`10.1016/S1361-8415(98)80009-1`",разумно,"Добавлен strict=False, в теле copy=strict (дефолт сохранён); в доке не упомянут — новый параметр (B)."
 c7217c1b8552694b,Python,split,param_renamed,1,"def split(root: Node | None, value: int) -> tuple[Node | None, Node | None]:","--- a/code.py
 +++ b/code.py
 @@ -1,11 +1,11 @@
@@ -110,7 +110,7 @@ c7217c1b8552694b,Python,split,param_renamed,1,"def split(root: Node | None, valu
          return (root, right)","We split current tree into 2 trees with value:
 
 Left tree contains all values less than split value.
-Right tree contains all values greater or equal, than split value",,
+Right tree contains all values greater or equal, than split value",неразумно,"Переименован value в val, но док — проза без секции параметров (value только слова with value, split value); ложного утверждения нет (C), а метка 1."
 abd6027397d53ea1,core,async_setup_entry,exception_changed,1,"async def async_setup_entry(hass: HomeAssistant, entry: MitsubishiComfortConfigEntry) -> bool:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,6 @@
@@ -119,7 +119,7 @@ abd6027397d53ea1,core,async_setup_entry,exception_changed,1,"async def async_set
 +        raise TypeError('empty input not allowed')
      session = async_get_clientsession(hass)
      account = MitsubishiCloudAccount(entry.data[CONF_USERNAME], entry.data[CONF_PASSWORD], session=session)
-     cached_credentials: dict[str, dict[str, str]] = entry.data.get(CONF_CREDENTIALS, {})",Set up Mitsubishi Comfort from a config entry.,,
+     cached_credentials: dict[str, dict[str, str]] = entry.data.get(CONF_CREDENTIALS, {})",Set up Mitsubishi Comfort from a config entry.,разумно,Гард if hass is None: raise TypeError — живой; новое исключение в доке не описано (B).
 91f37773a7744632,OpenBBTerminal,extract_data,return_changed,1,"def extract_data(query: OECDCLIQueryParams, credentials: Optional[Dict[str, str]], **kwargs: Any) -> Dict:","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,7 @@
@@ -130,7 +130,7 @@ abd6027397d53ea1,core,async_setup_entry,exception_changed,1,"async def async_set
 +        return None
      url = 'https://sdmx.oecd.org/public/rest/data/OECD.SDD.STES,DSD_KEI@DF_KEI,4.0/..LI....'
      data = helpers.get_possibly_cached_data(url, function='economy_composite_leading_indicator')
-     if query.country != 'all':",Return the raw data from the OECD endpoint.,,
+     if query.country != 'all':",Return the raw data from the OECD endpoint.,разумно,"Optional[Dict] + return None при query is None, док обещает Dict (A)."
 c15703c29c17abf7,OpenBBTerminal,amake_request,default_changed,1,"async def amake_request(url: str, method: Literal['GET', 'POST']='GET', timeout: int=10, response_callback: Optional[Callable[[ClientResponse, ClientSession], Awaitable[Union[dict, List[dict]]]]]=None, **kwargs) -> Union[dict, List[dict]]:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -157,7 +157,7 @@ session : ClientSession, optional
 Returns
 -------
 Union[dict, List[dict]]
-    Response json",,
+    Response json",разумно,"timeout 10 → 20, док фиксирует by default 10 (A)."
 b56ff010697e2210,ultralytics,build_optimizer,param_added,1,"def build_optimizer(self, model, name='auto', lr=0.001, momentum=0.9, decay=1e-05, iterations=100000.0):","--- a/code.py
 +++ b/code.py
 @@ -1,10 +1,10 @@
@@ -184,7 +184,7 @@ Args:
     iterations (float, optional): The number of iterations, which determines the optimizer if name is 'auto'.
 
 Returns:
-    (torch.optim.Optimizer): The constructed optimizer.",,
+    (torch.optim.Optimizer): The constructed optimizer.",разумно,"Добавлен retries=5, в теле 0.002 * retries (дефолт сохранён); в доке нет (B)."
 c97d21dcaaa66fbb,ultralytics,apply_features,return_changed,1,"def apply_features(self, raw_frame: np.ndarray, detections: list | None=None) -> np.ndarray:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,6 @@
@@ -208,7 +208,7 @@ Examples:
     >>> raw_frame = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
     >>> transformation_matrix = gmc.apply_features(raw_frame)
     >>> print(transformation_matrix.shape)
-    (2, 3)",,
+    (2, 3)",разумно,"Optional[np.ndarray] + return None при raw_frame is None, док обещает np.ndarray (A)."
 cab60b81b4a6466e,OpenBBTerminal,holdings_date,param_added,1,"def holdings_date(self, symbol: Annotated[Union[str, List[str]], OpenBBCustomParameter(description='Symbol to get data for. (ETF)')], provider: Optional[Literal['fmp']]=None, **kwargs) -> OBBject[List[Data]]:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -252,7 +252,7 @@ date : date
 Example
 -------
 >>> from openbb import obb
->>> obb.etf.holdings_date(symbol=""AAPL"")",,
+>>> obb.etf.holdings_date(symbol=""AAPL"")",разумно,"Добавлен sep, в теле sep.join (дефолт сохранён); в доке нет (B)."
 59ffae1844aad617,OpenBBTerminal,historical,exception_changed,1,"async def historical(cc: CommandContext, provider_choices: ProviderChoices, standard_params: StandardParams, extra_params: ExtraParams) -> OBBject[BaseModel]:","--- a/code.py
 +++ b/code.py
 @@ -1,3 +1,5 @@
@@ -260,7 +260,7 @@ Example
  async def historical(cc: CommandContext, provider_choices: ProviderChoices, standard_params: StandardParams, extra_params: ExtraParams) -> OBBject[BaseModel]:
 +    if cc is None:
 +        raise TypeError('malformed input')
-     return await OBBject.from_query(Query(**locals()))",Equity Historical price. Load stock data for a specific ticker.,,
+     return await OBBject.from_query(Query(**locals()))",Equity Historical price. Load stock data for a specific ticker.,разумно,Гард if cc is None: raise TypeError — живой; в доке не описан (B).
 a9563239788291f4,scikit-learn,matthews_corrcoef,param_renamed,1,"def matthews_corrcoef(y_true, y_pred, *, sample_weight=None):","--- a/code.py
 +++ b/code.py
 @@ -1,15 +1,15 @@
@@ -345,7 +345,7 @@ Examples
 >>> y_true = [+1, +1, +1, -1]
 >>> y_pred = [+1, -1, +1, +1]
 >>> matthews_corrcoef(y_true, y_pred)
--0.33",,
+-0.33",разумно,"y_pred → y_pred_new, док описывает y_pred (A)."
 cf635890a8f300c4,mycroft-core,nice_time_sv,default_changed,1,"def nice_time_sv(dt, speech=True, use_24hour=False, use_ampm=False):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -364,7 +364,7 @@ Args:
     use_24hour (bool): output in 24-hour/military or 12-hour format
     use_ampm (bool): include the am/pm for 12-hour format
 Returns:
-    (str): The formatted time string",,
+    (str): The formatted time string",разумно,"speech True → False, док фиксирует default True (A)."
 c18880e3ab13206a,mycroft-core,match_intent,param_removed,1,"def match_intent(self, utterances, lang, _=None):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -380,7 +380,7 @@ Arguments:
     lang (string): language code, e.g ""en-us""
 
 Returns:
-    Intent structure, or None if no match was found.",,
+    Intent structure, or None if no match was found.",разумно,"Удалён lang, док его описывает (A)."
 d01e30ceeda5cf10,OpenBBTerminal,aextract_data,exception_changed,1,"async def aextract_data(query: IntrinioBalanceSheetQueryParams, credentials: Optional[Dict[str, str]], **kwargs: Any) -> List[Dict]:","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,7 @@
@@ -390,7 +390,7 @@ d01e30ceeda5cf10,OpenBBTerminal,aextract_data,exception_changed,1,"async def aex
 +        raise ValueError('empty input not allowed')
      api_key = credentials.get('intrinio_api_key') if credentials else ''
      statement_code = 'balance_sheet_statement'
-     period = 'FY' if query.period == 'annual' else 'QTR'",Return the raw data from the Intrinio endpoint.,,
+     period = 'FY' if query.period == 'annual' else 'QTR'",Return the raw data from the Intrinio endpoint.,разумно,Гард if query is None: raise ValueError — живой; в доке не описан (B).
 fa2b82583d36ab19,ultralytics,torch2imx,return_changed,1,"def torch2imx(model: torch.nn.Module, output_dir: Path | str, conf: float, iou: float, max_det: int, metadata: dict | None=None, gptq: bool=False, dataset=None, prefix: str='') -> str:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,6 @@
@@ -432,7 +432,7 @@ Examples:
 Notes:
     - Auto-installs Java>=17, model-compression-toolkit, imx500-converter, and related packages if not present
     - Only supports YOLOv8n and YOLO11n models (detection, segmentation, pose, and classification tasks)
-    - Output includes quantized ONNX model, IMX binary, and labels.txt file",,
+    - Output includes quantized ONNX model, IMX binary, and labels.txt file",разумно,"Optional[str] + return None при model is None, док обещает str (A)."
 375dd800a405bccc,faceswap,score_image,param_renamed,1,"def score_image(self, filename: str, image: np.ndarray | None, alignments: PNGHeaderAlignmentsDict | None) -> None:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -450,7 +450,7 @@ filename: str
 image: :class:`np.ndarray` or ``None``
     A face image loaded from disk or ``None``
 alignments: dict or ``None``
-    The alignments dictionary for the aligned face or ``None``",,
+    The alignments dictionary for the aligned face or ``None``",разумно,"image → image_param, док описывает image (A)."
 9c17b25388bac6c2,scikit-image,subtract_mean,param_removed,1,"def subtract_mean(image, footprint, out=None, mask=None, shift_x=False, shift_y=False, shift_z=False):","--- a/code.py
 +++ b/code.py
 @@ -1,7 +1,7 @@
@@ -503,7 +503,7 @@ Examples
 >>> rng = np.random.default_rng()
 >>> volume = rng.integers(0, 255, size=(10,10,10), dtype=np.uint8)
 >>> out = subtract_mean(img, disk(5))
->>> out_vol = subtract_mean(volume, ball(5))",,
+>>> out_vol = subtract_mean(volume, ball(5))",разумно,"Удалён mask, док его описывает; подстановка mask=None реалистична (A)."
 5283e255143df0d5,faceswap,filtered_mask,param_renamed,1,"def filtered_mask(self, faces: List[DetectedFace], minimum_dimension: List[int]) -> List[bool]:","--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,6 @@
@@ -529,7 +529,7 @@ Returns
 -------
 list
     List of bools corresponding to any of the input DetectedFace objects that passed a
-    test. ``False`` the face passed the test. ``True`` it failed",,
+    test. ``False`` the face passed the test. ``True`` it failed",разумно,"faces → faces_param, док описывает faces (A)."
 830ef9870ce951a3,ultralytics,loss,return_changed,1,"def loss(self, preds: dict[str, torch.Tensor], batch: dict[str, torch.Tensor]) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,6 @@
@@ -539,7 +539,7 @@ list
 +        return None
      loss = torch.zeros(4, device=self.device)
      pred_distri, pred_scores, pred_angle = (preds['boxes'].permute(0, 2, 1).contiguous(), preds['scores'].permute(0, 2, 1).contiguous(), preds['angle'].permute(0, 2, 1).contiguous())
-     anchor_points, stride_tensor = make_anchors(preds['feats'], self.stride, 0.5)",Calculate and return the loss for oriented bounding box detection.,,
+     anchor_points, stride_tensor = make_anchors(preds['feats'], self.stride, 0.5)",Calculate and return the loss for oriented bounding box detection.,разумно,"Optional[tuple] + return None при preds is None, док обещает вернуть loss (A)."
 8d02c1d1b6df12f2,OpenBBTerminal,aextract_data,param_added,1,"async def aextract_data(query: FMPEtfInfoQueryParams, credentials: Optional[Dict[str, str]], **kwargs: Any) -> List[Dict]:","--- a/code.py
 +++ b/code.py
 @@ -1,7 +1,7 @@
@@ -551,7 +551,7 @@ list
 +    symbols = query.symbol.split(sep)
      results = []
  
-     async def get_one(symbol):",Return the raw data from the FMP endpoint.,,
+     async def get_one(symbol):",Return the raw data from the FMP endpoint.,разумно,"Добавлен sep, в теле split(sep) (дефолт сохранён); в доке нет (B)."
 467554084050bea9,scikit-learn,precision_recall_fscore_support,none,0,"def precision_recall_fscore_support(y_true, y_pred, *, beta=1.0, labels=None, pos_label=1, average=None, warn_for=('precision', 'recall', 'f-score'), sample_weight=None, zero_division='warn'):","--- a/code.py
 +++ b/code.py
 @@ -7,11 +7,11 @@
@@ -745,7 +745,7 @@ supports instead of averaging:
 ... labels=['pig', 'dog', 'cat'])
 (array([0.        , 0.        , 0.66]),
  array([0., 0., 1.]), array([0. , 0. , 0.8]),
- array([2, 2, 2]))",,
+ array([2, 2, 2]))",разумно,"Переименование локальной xp в xp_v2, поведение то же (C)."
 d8bcec57700fff3b,OpenBBTerminal,market,none,0,"def market(self, symbol: Annotated[Union[str, List[str]], OpenBBCustomParameter(description='Symbol to get data for.')], start_date: Annotated[Union[datetime.date, None, str], OpenBBCustomParameter(description='Start date of the data, in YYYY-MM-DD format.')]=None, end_date: Annotated[Union[datetime.date, None, str], OpenBBCustomParameter(description='End date of the data, in YYYY-MM-DD format.')]=None, provider: Optional[Literal['fmp', 'intrinio', 'polygon', 'yfinance']]=None, **kwargs) -> OBBject:","--- a/code.py
 +++ b/code.py
 @@ -3,4 +3,5 @@
@@ -841,7 +841,7 @@ transactions : Optional[Annotated[int, Gt(gt=0)]]
 Example
 -------
 >>> from openbb import obb
->>> obb.index.market(symbol=""SPX"")",,
+>>> obb.index.market(symbol=""SPX"")",разумно,"Вынос return во временную result_value, поведение то же (C)."
 b1c48c536dec5f07,faceswap,build_args,exception_changed,1,"def build_args(self, category, command=None, generate=False):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,6 @@
@@ -853,7 +853,7 @@ b1c48c536dec5f07,faceswap,build_args,exception_changed,1,"def build_args(self, c
      script = '{}.{}'.format(category, 'py')","Build the faceswap command and arguments list.
 
 If training, pass the model folder and name to the training
-:class:`lib.gui.analysis.Session` for the GUI.",,
+:class:`lib.gui.analysis.Session` for the GUI.",разумно,Гард if category is None: raise TypeError — живой; в доке не описан (B).
 c6c63d8578b09ee0,faceswap,video_meta_data,none,0,def video_meta_data(self):,"--- a/code.py
 +++ b/code.py
 @@ -5,7 +5,8 @@
@@ -866,7 +866,7 @@ c6c63d8578b09ee0,faceswap,video_meta_data,none,0,def video_meta_data(self):,"---
          meta = self.data[key]['video_meta']
          pts_time.append(meta['pts_time'])
          if meta['keyframe']:","dict: The frame meta data stored in the alignments file. If data does not exist in the
-alignments file then ``None`` is returned for each Key",,
+alignments file then ``None`` is returned for each Key",разумно,"Вынос return во временную value_out, поведение то же (C)."
 62a7d1082cc16ff2,ultralytics,classify,none,0,"def classify(trial, rc, stderr):","--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,7 @@
@@ -877,7 +877,7 @@ alignments file then ``None`` is returned for each Key",,
 +        return result_value
      if rc == 'timeout':
          keys = set(trial.get('mutated', []))
-         mutated = '|'.join(sorted((a for a in trial['argv'] if a.partition('=')[0] in keys))) or 'baseline'",Classify one trial outcome into pass/expected/env-skip/flake/timeout/crash/bug-candidate.,,
+         mutated = '|'.join(sorted((a for a in trial['argv'] if a.partition('=')[0] in keys))) or 'baseline'",Classify one trial outcome into pass/expected/env-skip/flake/timeout/crash/bug-candidate.,разумно,"Вынос return во временную result_value, поведение то же (C)."
 4e879c9a41a333c8,faceswap,set_geometry,param_added,1,"def set_geometry(self, width, height, fullscreen=False):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -904,7 +904,7 @@ height: int
     The height to set the window to (prior to scaling)
 fullscreen: bool, optional
     Whether to set the window to full-screen mode. If ``True`` then :attr:`width` and
-    :attr:`height` are ignored. Default: ``False``",,
+    :attr:`height` are ignored. Default: ``False``",разумно,"Добавлен verbose=True, в теле attributes(..., verbose) (дефолт сохранён); в доке нет (B)."
 a73b830e8a72ddb1,OpenBBTerminal,calendar,param_removed,1,"def calendar(self, start_date: Annotated[Union[datetime.date, None, str], OpenBBCustomParameter(description='Start date of the data, in YYYY-MM-DD format.')]=None, end_date: Annotated[Union[datetime.date, None, str], OpenBBCustomParameter(description='End date of the data, in YYYY-MM-DD format.')]=None, provider: Annotated[Optional[Literal['fmp', 'tradingeconomics']], OpenBBCustomParameter(description=""The provider to use for the query, by default None.\n    If None, the provider specified in defaults is selected or 'fmp' if there is\n    no default."")]=None, **kwargs) -> OBBject:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -990,7 +990,7 @@ Examples
 >>> from openbb import obb
 >>> # By default, the calendar will be forward-looking.
 >>> obb.economy.calendar(provider='fmp')
->>> obb.economy.calendar(provider='fmp', start_date='2020-03-01', end_date='2020-03-31')",,
+>>> obb.economy.calendar(provider='fmp', start_date='2020-03-01', end_date='2020-03-31')",разумно,"Удалён end_date, док его описывает; подстановка end_date: None реалистична (A)."
 956b930f39260b26,OpenBBTerminal,logout,default_changed,1,"def logout(self, return_settings: bool=False) -> Optional[UserSettings]:","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,5 @@
@@ -1009,4 +1009,4 @@ return_settings : bool, optional
 Returns
 -------
 Optional[UserSettings]
-    User settings: profile, credentials, preferences",,
+    User settings: profile, credentials, preferences",разумно,"return_settings False → True, док фиксирует by default False (A)."
