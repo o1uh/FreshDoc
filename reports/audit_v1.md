@@ -65,6 +65,39 @@ freqtrade::main (`_CONF` при невалидном конфиге), timm::get_
 - Критерий приёмки FD-11 (≥200 принятых пар + аудит): 449 пар на минимуме,
   1071 на цели; аудит проведён — **выполнен** с замечанием по весу P1 выше.
 
+## Контрольный аудит P1 после ужесточения (FD-11 fix, 15.10.2026)
+
+Источник: `data/interim/synth_llm_main700.parquet` после фильтров
+(`thin_docstring` 154, `stale_not_linked_to_diff` 93, `stale_covers_docstring` 2;
+P1 580→331, P2 491 без изменений, итого 822 строки, схема R1 17 колонок).
+Выборка: `reports/llm_audit_sample_v2.csv` — 25 новых P1 (seed 12, без
+пересечения-гарантии со старой выборкой проверено частично: 1 повтор
+`da5f55` из v1, оставлен как якорь), разметка агентом по строгому A-бару R9.
+
+Итог: верно 10 / неверно 15 / не уверен 0 → доля ошибок **15/25 = 60%**
+(было 56% до фильтров). Порог ≤20% для возврата веса 1.0 **не достигнут**.
+
+Вывод: лексические фильтры (длина/покрытие/связность) срезали объём
+(580→331, критерий ≥200 сохранён), но прецизионность на строгом баре не
+выросла: остаточный шум — краевые дополнения без опровержимого утверждения
+в doc (пустой вход, `.pyc`, `mkdir parents`, `backup`, порядок без спеки).
+Это подтверждает риск ревью: обучение на 60%-шумных позитивах деградирует
+M2 на `sig_same`. Решение: вес `llm_p1` **остаётся 0.5** при сборке FD-12
+(как в исходном решении 13.10), вес `llm_p2` 0.5 без изменений. Возврат
+к 1.0 — только после семантического фильтра или ручной чистки.
+
+Подтверждённые (10): conan skip→validate, localstack инверсия
+include_response_metadata, promptflow run_aggregation, NGE -1→0, langchain
+blob-фильтр против tree-примера, gensim read-only→r+, ray or→and против
+«if any», luigi smtp→ses против «Default is smtp», theano g++→clang++,
+saleor инверсия excluded.
+
+Шум (15): thin/edge-дополнения без утверждения в doc (uiautomator2 missing
+→'', mycroft idx-base, detectron2 deepcopy, jina пустой devices, st2
+тривиальный assert, theano name-фильтр, scikit-rf z0=50, datasets .lock,
+langchain вердикт D, speechbrain set→sorted, conan .pyc, ultralytics mkdir,
+microk8s backup, readthedocs порядок OOM/timeout, black '' vs None).
+
 ## Раздел FD-14 (аудит 100 меток)
 
 Не заполнен — дописать после FD-12 (выборка 25×4 из `real_coupled`,
