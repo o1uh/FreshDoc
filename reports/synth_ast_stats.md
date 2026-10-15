@@ -1,5 +1,18 @@
 # FD-08: статистика synth_ast (R6, максимум: 6 pos + 3 neg)
 
+> Перегенерация v1 новым драйвером (решение по ревью FD-09, п. 4):
+> `synth_ast.parquet` — **5575 пар** (pos 2851 / neg 2724, дедуп 127).
+> Команда: `python scripts/generate_synth_ast.py
+> --in_pool data/interim/functions_pool_v1.parquet
+> --out data/interim/synth_ast.parquet --seed 42 --max_pairs 30000`
+> (пул v1 заморожен — 1474, включая 67 `test_`-функций; след в данных
+> доли процента, зафиксирован). Драйвер = v2r5 (promotion param_added,
+> is-None везде, removed-фильтр, documented-only rename) — однородно
+> с v2, артефакты 0 по всем grep-проверкам (см. ниже). Старый файл
+> (7379, драйвер FD-08) заменён; воспроизводится из истории git.
+> SHA-256 нового: `124d1ae3…fb712b` (полный — в `data_notes.md`).
+> Ниже — история первого прогона.
+
 - Команда: `python scripts/generate_synth_ast.py --seed 42 --max_pairs 30000`
 - Вход: `data/interim/functions_pool_v1.parquet` (1474 функции, 91 проект, только train_pool)
 - Выход: `data/interim/synth_ast.parquet` — **7379 пар** (pos 3804 / neg 3575)
