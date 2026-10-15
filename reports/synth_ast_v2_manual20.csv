@@ -88,7 +88,7 @@ after which it is scaled back down to the floating-point image range.
 
 To generate Poisson noise against a signed image, the signed image is
 temporarily converted to an unsigned image in the floating point domain,
-Poisson noise is generated, then it is returned to the original range.",,
+Poisson noise is generated, then it is returned to the original range.",разумно,"Док фиксирует clip : bool, «If True (default)», код ставит clip=False — утверждение стало ложным (A)"
 94f4f7b6a486e193,ultralytics,postprocess,param_renamed,1,"def postprocess(self, preds, img, orig_imgs):","--- a/code.py
 +++ b/code.py
 @@ -1,11 +1,11 @@
@@ -115,7 +115,7 @@ Args:
     orig_imgs (list | torch.Tensor): Original images.
 
 Returns:
-    (list[Results]): List of Results objects with semantic masks.",,
+    (list[Results]): List of Results objects with semantic masks.",разумно,"Параметр preds переименован в tmp_preds, док описывает preds — имя в доке стало неверным (A)"
 4ad265599ed3893a,OpenBBTerminal,print_rich_table,param_renamed,1,"def print_rich_table(df: pd.DataFrame, show_index: bool=False, title: str='', index_name: str='', headers: Optional[Union[List[str], pd.Index]]=None, floatfmt: Union[str, List[str]]='.2f', show_header: bool=True, automatic_coloring: bool=False, columns_to_auto_color: Optional[List[str]]=None, rows_to_auto_color: Optional[List[str]]=None, export: bool=False, limit: Optional[int]=1000, columns_keep_types: Optional[List[str]]=None, use_tabulate_df: bool=True):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -161,7 +161,7 @@ export: bool
 limit: Optional[int]
     Limit the number of rows to show.
 columns_keep_types: Optional[List[str]]
-    Columns to keep their types, i.e. not convert to numeric",,
+    Columns to keep their types, i.e. not convert to numeric",разумно,"limit переименован в max_limit, док описывает limit — параметра с таким именем больше нет (A)"
 d8d71903c9511e5c,scikit-image,rolling_ball,default_changed,1,"def rolling_ball(image, *, radius=100, kernel=None, nansafe=False, num_threads=None):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -238,7 +238,7 @@ Examples
 >>> image = data.coins()
 >>> kernel = ellipsoid_kernel((101, 101), 75)
 >>> background = rolling_ball(data.coins(), kernel=kernel)
->>> filtered_image = image - background",,
+>>> filtered_image = image - background",разумно,"Док фиксирует nansafe: bool, «If False (default)», код ставит True — дефолт в доке неверен (A)"
 b8d41efc97629cc1,OpenBBTerminal,timestamp_validate,none,0,"def timestamp_validate(cls, v):","--- a/code.py
 +++ b/code.py
 @@ -5,5 +5,6 @@
@@ -248,7 +248,7 @@ b8d41efc97629cc1,OpenBBTerminal,timestamp_validate,none,0,"def timestamp_validat
 -        return datetime.fromtimestamp(timestamp, tz=timezone.utc)
 +        res = datetime.fromtimestamp(timestamp, tz=timezone.utc)
 +        return res
-     return None",Return the datetime string as a datetime object.,,
+     return None",Return the datetime string as a datetime object.,разумно,"Вынос return-выражения во временную res, поведение то же (C)"
 880258e591c8a6f3,OpenBBTerminal,execute,exception_changed,1,"async def execute(self, provider_name: str, model_name: str, params: Dict[str, Any], credentials: Optional[Dict[str, SecretStr]]=None, **kwargs: Any) -> Any:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,6 @@
@@ -274,7 +274,7 @@ credentials : Optional[Dict[str, SecretStr]], optional
 Returns
 -------
 Any
-    Query result.",,
+    Query result.",разумно,"Добавлен raise TypeError для пустого provider_name, в доке раздела Raises нет — появилось важное, чего док не описывает (B)"
 5a5115ef3a08d9a2,ultralytics,inference_features,param_added,1,"def inference_features(self, features, src_shape, bboxes=None, labels=None, text: list[str] | None=None):","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,5 @@
@@ -298,7 +298,7 @@ Returns:
         Each box is in xyxy format with additional columns for score and class.
 
 Notes:
-    - The input features is a torch.Tensor of shape (B, C, H, W) if performing on SAM, or a dict[str, Any] if performing on SAM2.",,
+    - The input features is a torch.Tensor of shape (B, C, H, W) if performing on SAM, or a dict[str, Any] if performing on SAM2.",разумно,"Добавлен keyword-only retries: int=5, в Args он не упомянут — новое важное, чего док не описывает (B)"
 fda3889a1f938a20,ray,test_deployment_contains_utils,exception_changed,1,def test_deployment_contains_utils(serve_instance):,"--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,7 @@
@@ -311,7 +311,7 @@ fda3889a1f938a20,ray,test_deployment_contains_utils,exception_changed,1,def test
      wait_for_condition(lambda: httpx.post(f'{get_application_url()}/').text == 'hello_from_utils')","Test when deployment contains utils module, it can be deployed successfully.
 
 When the deployment contains utils module, running serve deploy should successfully
-deployment the application and return the correct response.",,
+deployment the application and return the correct response.",неразумно,"Добавлена проверка if not serve_instance: raise ValueError('invalid value') — фиктивная: serve_instance это pytest-фикстура, объект никогда не falsy, сообщение generic. Doc остаётся верным"
 27cbbec8d828eef1,OpenBBTerminal,aextract_data,return_changed,1,"async def aextract_data(query: FMPIndexHistoricalQueryParams, credentials: Optional[Dict[str, str]], **kwargs: Any) -> List[Dict]:","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,7 @@
@@ -322,7 +322,7 @@ deployment the application and return the correct response.",,
 +        return None
      api_key = credentials.get('fmp_api_key') if credentials else ''
      interval = get_interval(query.interval)
-     base_url = 'https://financialmodelingprep.com/api/v3'",Return the raw data from the FMP endpoint.,,
+     base_url = 'https://financialmodelingprep.com/api/v3'",Return the raw data from the FMP endpoint.,разумно,"Аннотация стала Optional[List[Dict]] и добавлен return None, док обещает «raw data» — форма результата изменилась (A)"
 d22d4ab90e5bf51d,OpenBBTerminal,historical,param_renamed,1,"def historical(self, symbol: Annotated[Union[str, List[str]], OpenBBCustomParameter(description='Symbol to get data for.')], period: Annotated[Literal['quarter', 'annual'], OpenBBCustomParameter(description='Time period of the data to return.')]='annual', limit: Annotated[int, OpenBBCustomParameter(description='The number of data entries to return.')]=30, provider: Optional[Literal['fmp']]=None, **kwargs) -> OBBject[List[Data]]:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -410,7 +410,7 @@ number_analysts_estimated_eps : int
 Example
 -------
 >>> from openbb import obb
->>> obb.equity.estimates.historical(symbol=""AAPL"", period=""annual"", limit=30)",,
+>>> obb.equity.estimates.historical(symbol=""AAPL"", period=""annual"", limit=30)",разумно,"limit переименован в max_limit, док описывает limit — имя в доке стало неверным (A)"
 33fae4ec2d1a9195,ray,update,param_removed,1,"def update(self, *, batch: Optional[MultiAgentBatch]=None, batches: Optional[List[MultiAgentBatch]]=None, batch_refs: Optional[List[ray.ObjectRef]]=None, episodes: Optional[List[EpisodeType]]=None, episodes_refs: Optional[List[ray.ObjectRef]]=None, data_iterators: Optional[List[ray.data.DataIterator]]=None, training_data: Optional[TrainingData]=None, timesteps: Optional[Dict[str, Any]]=None, async_update: bool=False, return_state: bool=False, **kwargs) -> List[Dict[str, Any]]:","--- a/code.py
 +++ b/code.py
 @@ -1,11 +1,11 @@
@@ -490,7 +490,7 @@ Returns:
     the outer list corresponds to separate previous calls to this method, and
     the inner list corresponds to the results from each Learner(s). Or if the
     results are reduced, a list of dictionaries of the reduced results from each
-    call to async_update that is ready.",,
+    call to async_update that is ready.",разумно,"Удалён параметр async_update, док подробно его описывает — утверждение стало ложным (A)"
 d657f00d9a95fb5f,OpenBBTerminal,ichimoku,default_changed,1,"def ichimoku(data: List[Data], index: str='date', conversion: PositiveInt=9, base: PositiveInt=26, lagging: PositiveInt=52, offset: PositiveInt=26, lookahead: bool=False) -> OBBject[List[Data]]:","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,5 @@
@@ -527,7 +527,7 @@ lookahead : bool, optional
 Returns
 -------
 OBBject[List[Data]]
-    The calculated data.",,
+    The calculated data.",разумно,"Док фиксирует offset, «by default 26», код ставит 13 — документированный дефолт изменился (A)"
 a98d4df640e1d567,core,test_coordinator_failure_counter_resets_on_success,param_added,1,"async def test_coordinator_failure_counter_resets_on_success(hass: HomeAssistant, init_integration: MockConfigEntry, mock_pyiss: MagicMock) -> None:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -535,7 +535,7 @@ a98d4df640e1d567,core,test_coordinator_failure_counter_resets_on_success,param_a
 +async def test_coordinator_failure_counter_resets_on_success(hass: HomeAssistant, init_integration: MockConfigEntry, mock_pyiss: MagicMock, *, verbose: bool=True) -> None:
      coordinator = init_integration.runtime_data
      mock_pyiss.number_of_people_in_space.side_effect = HTTPError('API Error')
-     for _ in range(2):",Test coordinator resets failure counter after successful fetch.,,
+     for _ in range(2):",Test coordinator resets failure counter after successful fetch.,неразумно,"Добавлен verbose: bool=True в сигнатуру теста, но в теле не используется — поведение то же, doc не устаревает. Мутация-ерунда"
 9bcefc3fe25f0075,ultralytics,imread,return_changed,1,"def imread(filename: str | Path, flags: int=cv2.IMREAD_COLOR) -> np.ndarray | None:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,6 @@
@@ -556,7 +556,7 @@ Returns:
 
 Examples:
     >>> img = imread(""path/to/image.jpg"")
-    >>> img = imread(""path/to/image.jpg"", cv2.IMREAD_GRAYSCALE)",,
+    >>> img = imread(""path/to/image.jpg"", cv2.IMREAD_GRAYSCALE)",неразумно,"np.ndarray | None → Optional[np.ndarray | None] семантически эквивалентно, return None уже покрыт «or None if reading fails» — док не устарел, мутация-ерунда"
 ce2a2b297834c754,scikit-learn,test_probabilistic_metrics_array_api,exception_changed,1,"def test_probabilistic_metrics_array_api(prob_metric, str_y_true, use_sample_weight, array_namespace, device_name, dtype_name):","--- a/code.py
 +++ b/code.py
 @@ -3,6 +3,8 @@
@@ -569,7 +569,7 @@ ce2a2b297834c754,scikit-learn,test_probabilistic_metrics_array_api,exception_cha
      sample_weight = np.array([1, 2, 3, 1]) if use_sample_weight else None
      extra_kwargs = {}","Test that :func:`brier_score_loss`, :func:`log_loss`, :func:`d2_brier_score`
 and :func:`d2_log_loss_score` work correctly with the array API for binary
-and multi-class inputs.",,
+and multi-class inputs.",не разумно,"Проверка if not prob_metric: raise TypeError(...) фиктивна — prob_metric функция-параметр, всегда truthy; doc не устаревает. Мутация-ерунда"
 034fb2d23f6472e8,scikit-image,compare_images,param_removed,1,"def compare_images(image0, image1=None, image2=DEPRECATED, *, method='diff', n_tiles=(8, 8)):","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,5 @@
@@ -635,7 +635,7 @@ Notes
 ``'diff'`` computes the absolute difference between the two images.
 ``'blend'`` computes the mean value.
 ``'checkerboard'`` makes tiles of dimension `n_tiles` that display
-alternatively the first and the second image.",,
+alternatively the first and the second image.",разумно,"Удалён параметр n_tiles, док его описывает — параметра в сигнатуре больше нет (A)"
 50bd61c8d23e9200,OpenBBTerminal,bar_chart,none,0,"def bar_chart(data: Union[list, dict, 'DataFrame', List['DataFrame'], 'Series', List['Series'], 'ndarray', Data], x: str, y: Union[str, List[str]], barmode: Literal['group', 'stack', 'relative', 'overlay']='group', xtype: Literal['category', 'multicategory', 'date', 'log', 'linear']='category', title: Optional[str]=None, xtitle: Optional[str]=None, ytitle: Optional[str]=None, orientation: Literal['h', 'v']='v', colors: Optional[List[str]]=None, bar_kwargs: Optional[Dict[str, Any]]=None, layout_kwargs: Optional[Dict[str, Any]]=None, **kwargs) -> Union['OpenBBFigure', 'Figure']:","--- a/code.py
 +++ b/code.py
 @@ -22,4 +22,5 @@
@@ -676,7 +676,7 @@ layout_kwargs : Dict[str, Any], optional
 Returns
 -------
 OpenBBFigure
-    The OpenBBFigure object.",,
+    The OpenBBFigure object.",разумно,"figure через временную tmp и обратно, поведение то же (C)"
 bb3237f9f1d1be4a,core,async_setup_entry,param_added,1,"async def async_setup_entry(hass: HomeAssistant, entry: IndevoltConfigEntry) -> bool:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -684,7 +684,7 @@ bb3237f9f1d1be4a,core,async_setup_entry,param_added,1,"async def async_setup_ent
 +async def async_setup_entry(hass: HomeAssistant, entry: IndevoltConfigEntry, *, mode: str='strict') -> bool:
      coordinator = IndevoltCoordinator(hass, entry)
      await coordinator.async_config_entry_first_refresh()
-     entry.runtime_data = coordinator",Set up indevolt integration entry using given configuration.,,
+     entry.runtime_data = coordinator",Set up indevolt integration entry using given configuration.,разумно,"Добавлен keyword-only mode: str='strict', в доке он не упомянут — новое важное, чего док не описывает (B)"
 599dfa7c62545a74,speechbrain,prepare_aishell1mix,param_removed,1,"def prepare_aishell1mix(datapath, savepath, n_spks=2, skip_prep=False, aishell1mix_addnoise=False, fs=8000, datafreqs=['8k', '16k'], datamodes=['max', 'min'], datatypes=['mix_clean', 'mix_both', 'mix_single']):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -713,7 +713,7 @@ Arguments:
     savepath (str) : path where we save the csv file.
     n_spks (int): number of speakers
     skip_prep (bool): If True, skip data preparation
-    aishell1mix_addnoise: If True, add whamnoise to aishell1mix datasets",,
+    aishell1mix_addnoise: If True, add whamnoise to aishell1mix datasets",разумно,"Удалён aishell1mix_addnoise, док описывает его как аргумент — утверждение стало ложным (A)"
 080978dd5a87c52f,OpenBBTerminal,aextract_data,return_changed,1,"async def aextract_data(query: SecEtfHoldingsQueryParams, credentials: Optional[Dict[str, str]], **kwargs: Any) -> Dict:","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,7 @@
@@ -724,4 +724,4 @@ Arguments:
 +        return None
      retries = 3
      for i in range(retries):
-         filings = []",Return the raw data from the SEC endpoint.,,
+         filings = []",Return the raw data from the SEC endpoint.,разумно,"Аннотация стала Optional[Dict] и добавлен return None при query is None, док обещает «raw data» — форма результата изменилась (A)"
