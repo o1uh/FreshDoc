@@ -1,0 +1,378 @@
+{
+  "dataset": "dataset_v1",
+  "built_by": "scripts/build_dataset.py (FD-12)",
+  "inputs": {
+    "pairs_codocbench": {
+      "path": "data/interim/pairs_codocbench.parquet",
+      "sha256": "fa3b43678715609dea0d4683205165da473b2c630644de578ebef8ef2f537048",
+      "rows": 2997
+    },
+    "pairs_negatives": {
+      "path": "data/interim/pairs_negatives.parquet",
+      "sha256": "36cb378b126aed7826d6fc6c9fa3d74cb73c7e2cc3aac15abd3749582bba69fd",
+      "rows": 2997
+    },
+    "synth_ast_v2": {
+      "path": "data/interim/synth_ast_v2.parquet",
+      "sha256": "b87e8ac9662c6fededfb5d500b04a8467b00ff48afe98a2413cc4e950021b4ed",
+      "rows": 29515
+    },
+    "synth_llm_main700": {
+      "path": "data/interim/synth_llm_main700.parquet",
+      "sha256": "9c2748fa3ef3aa48d881be1654a51e8e4616350a0e6dfa4b4e80c969619ce1df",
+      "rows": 822
+    },
+    "project_pools": {
+      "path": "data/interim/project_pools.parquet",
+      "sha256": "90e6dcdb9dc898023c922944f6d1dfa33787e3010796996f0212900373db6740",
+      "rows": 181
+    }
+  },
+  "params": {
+    "dedup": "pair_id drop_duplicates keep=first, приоритет codocbench>history_neg>synth_ast>synth_llm",
+    "dedup_removed": 7,
+    "val_isolation": "val — только реальные строки; синтетика val-проектов исключена полностью (8510 строк); test_synth очищен от функций реальных строк (671 строк)",
+    "sig_type": "пересчитан для всех строк (derive_drift_type по code_old/code_new)",
+    "sig_mismatch_stored": 0,
+    "split_real": "test_pool->test_real; train_pool: sha256(project)%100<80 train иначе val",
+    "split_synth": "sha256(function_hash)%100<90 train иначе test_synth (единая карта ast+llm)",
+    "weights": {
+      "real_coupled": 1.0,
+      "real_strong_neg": 1.0,
+      "real_weak_neg": 0.5,
+      "ast": 1.0,
+      "llm_p1": 0.5,
+      "llm_p2": 0.5,
+      "note": "llm_p1 0.5 — решение команды 13.10/15.10 (аудит 56-60% шума)"
+    },
+    "excluded": [
+      "synth_ast v1 (5575, подмножество пула v2)",
+      "synth_llm_main300 (449, 332 pair overlap с main700)",
+      "synth_llm (120, legacy)",
+      "synth_llm_pilot (22)",
+      "unlabeled_sigchange (label -1, только gold/replay)",
+      "p3_main700 (не пары, аугментация doc)"
+    ]
+  },
+  "val_projects": [
+    "ArchiveBox",
+    "OpenBBTerminal",
+    "airflow",
+    "ansible",
+    "black",
+    "conan",
+    "django-celery-results",
+    "kivy",
+    "llama_index",
+    "localstack",
+    "mmdetection",
+    "models",
+    "python-binance",
+    "rich",
+    "sd-webui-controlnet",
+    "spaCy",
+    "speechbrain"
+  ],
+  "counts": [
+    {
+      "split": "test_real",
+      "source": "codocbench",
+      "label_stale": 1,
+      "drift_type": "default_changed",
+      "n": 35
+    },
+    {
+      "split": "test_real",
+      "source": "codocbench",
+      "label_stale": 1,
+      "drift_type": "exception_changed",
+      "n": 56
+    },
+    {
+      "split": "test_real",
+      "source": "codocbench",
+      "label_stale": 1,
+      "drift_type": "param_added",
+      "n": 335
+    },
+    {
+      "split": "test_real",
+      "source": "codocbench",
+      "label_stale": 1,
+      "drift_type": "param_removed",
+      "n": 145
+    },
+    {
+      "split": "test_real",
+      "source": "codocbench",
+      "label_stale": 1,
+      "drift_type": "param_renamed",
+      "n": 137
+    },
+    {
+      "split": "test_real",
+      "source": "codocbench",
+      "label_stale": 1,
+      "drift_type": "return_changed",
+      "n": 90
+    },
+    {
+      "split": "test_real",
+      "source": "codocbench",
+      "label_stale": 1,
+      "drift_type": "unknown",
+      "n": 716
+    },
+    {
+      "split": "test_real",
+      "source": "history_neg",
+      "label_stale": 0,
+      "drift_type": "none",
+      "n": 1521
+    },
+    {
+      "split": "test_synth",
+      "source": "synth_ast",
+      "label_stale": 0,
+      "drift_type": "none",
+      "n": 806
+    },
+    {
+      "split": "test_synth",
+      "source": "synth_ast",
+      "label_stale": 1,
+      "drift_type": "default_changed",
+      "n": 32
+    },
+    {
+      "split": "test_synth",
+      "source": "synth_ast",
+      "label_stale": 1,
+      "drift_type": "exception_changed",
+      "n": 283
+    },
+    {
+      "split": "test_synth",
+      "source": "synth_ast",
+      "label_stale": 1,
+      "drift_type": "param_added",
+      "n": 172
+    },
+    {
+      "split": "test_synth",
+      "source": "synth_ast",
+      "label_stale": 1,
+      "drift_type": "param_removed",
+      "n": 47
+    },
+    {
+      "split": "test_synth",
+      "source": "synth_ast",
+      "label_stale": 1,
+      "drift_type": "param_renamed",
+      "n": 164
+    },
+    {
+      "split": "test_synth",
+      "source": "synth_ast",
+      "label_stale": 1,
+      "drift_type": "return_changed",
+      "n": 48
+    },
+    {
+      "split": "train",
+      "source": "codocbench",
+      "label_stale": 1,
+      "drift_type": "default_changed",
+      "n": 39
+    },
+    {
+      "split": "train",
+      "source": "codocbench",
+      "label_stale": 1,
+      "drift_type": "exception_changed",
+      "n": 96
+    },
+    {
+      "split": "train",
+      "source": "codocbench",
+      "label_stale": 1,
+      "drift_type": "param_added",
+      "n": 229
+    },
+    {
+      "split": "train",
+      "source": "codocbench",
+      "label_stale": 1,
+      "drift_type": "param_removed",
+      "n": 103
+    },
+    {
+      "split": "train",
+      "source": "codocbench",
+      "label_stale": 1,
+      "drift_type": "param_renamed",
+      "n": 94
+    },
+    {
+      "split": "train",
+      "source": "codocbench",
+      "label_stale": 1,
+      "drift_type": "return_changed",
+      "n": 65
+    },
+    {
+      "split": "train",
+      "source": "codocbench",
+      "label_stale": 1,
+      "drift_type": "unknown",
+      "n": 639
+    },
+    {
+      "split": "train",
+      "source": "history_neg",
+      "label_stale": 0,
+      "drift_type": "none",
+      "n": 1128
+    },
+    {
+      "split": "train",
+      "source": "synth_ast",
+      "label_stale": 0,
+      "drift_type": "none",
+      "n": 9558
+    },
+    {
+      "split": "train",
+      "source": "synth_ast",
+      "label_stale": 1,
+      "drift_type": "default_changed",
+      "n": 358
+    },
+    {
+      "split": "train",
+      "source": "synth_ast",
+      "label_stale": 1,
+      "drift_type": "exception_changed",
+      "n": 3659
+    },
+    {
+      "split": "train",
+      "source": "synth_ast",
+      "label_stale": 1,
+      "drift_type": "param_added",
+      "n": 1872
+    },
+    {
+      "split": "train",
+      "source": "synth_ast",
+      "label_stale": 1,
+      "drift_type": "param_removed",
+      "n": 794
+    },
+    {
+      "split": "train",
+      "source": "synth_ast",
+      "label_stale": 1,
+      "drift_type": "param_renamed",
+      "n": 2101
+    },
+    {
+      "split": "train",
+      "source": "synth_ast",
+      "label_stale": 1,
+      "drift_type": "return_changed",
+      "n": 666
+    },
+    {
+      "split": "train",
+      "source": "synth_llm",
+      "label_stale": 0,
+      "drift_type": "none",
+      "n": 365
+    },
+    {
+      "split": "train",
+      "source": "synth_llm",
+      "label_stale": 1,
+      "drift_type": "behavior_changed",
+      "n": 231
+    },
+    {
+      "split": "val",
+      "source": "codocbench",
+      "label_stale": 1,
+      "drift_type": "default_changed",
+      "n": 7
+    },
+    {
+      "split": "val",
+      "source": "codocbench",
+      "label_stale": 1,
+      "drift_type": "exception_changed",
+      "n": 9
+    },
+    {
+      "split": "val",
+      "source": "codocbench",
+      "label_stale": 1,
+      "drift_type": "param_added",
+      "n": 60
+    },
+    {
+      "split": "val",
+      "source": "codocbench",
+      "label_stale": 1,
+      "drift_type": "param_removed",
+      "n": 15
+    },
+    {
+      "split": "val",
+      "source": "codocbench",
+      "label_stale": 1,
+      "drift_type": "param_renamed",
+      "n": 19
+    },
+    {
+      "split": "val",
+      "source": "codocbench",
+      "label_stale": 1,
+      "drift_type": "return_changed",
+      "n": 13
+    },
+    {
+      "split": "val",
+      "source": "codocbench",
+      "label_stale": 1,
+      "drift_type": "unknown",
+      "n": 88
+    },
+    {
+      "split": "val",
+      "source": "history_neg",
+      "label_stale": 0,
+      "drift_type": "none",
+      "n": 348
+    }
+  ],
+  "totals": {
+    "rows": 27143,
+    "by_split": {
+      "train": 21997,
+      "test_real": 3035,
+      "test_synth": 1552,
+      "val": 559
+    },
+    "by_source": {
+      "synth_ast": 20560,
+      "history_neg": 2997,
+      "codocbench": 2990,
+      "synth_llm": 596
+    }
+  },
+  "versions": {
+    "python": "3.11.9",
+    "pandas": "3.0.6",
+    "pyarrow": "25.0.1"
+  }
+}
