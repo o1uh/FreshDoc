@@ -1,0 +1,109 @@
+{
+  "dataset": "dataset_v1.parquet",
+  "rows": 27143,
+  "by_split": {
+    "train": 21997,
+    "test_real": 3035,
+    "test_synth": 1552,
+    "val": 559
+  },
+  "ok": true,
+  "checks": [
+    {
+      "name": "pair_id_unique",
+      "ok": true,
+      "detail": "дублей-строк pair_id: 0",
+      "n_fail": 0
+    },
+    {
+      "name": "required_columns",
+      "ok": true,
+      "detail": "все колонки R1 на месте",
+      "n_fail": 0
+    },
+    {
+      "name": "splits_valid",
+      "ok": true,
+      "detail": "сплиты: {'train': 21997, 'test_real': 3035, 'test_synth': 1552, 'val': 559}",
+      "n_fail": 0
+    },
+    {
+      "name": "doc_old_nonempty",
+      "ok": true,
+      "detail": "строк с пустым doc_old: 0",
+      "n_fail": 0
+    },
+    {
+      "name": "label_values",
+      "ok": true,
+      "detail": "label_stale только 0/1",
+      "n_fail": 0
+    },
+    {
+      "name": "label_source_valid",
+      "ok": true,
+      "detail": "label_source: 6 значений, все из словаря R1",
+      "n_fail": 0
+    },
+    {
+      "name": "filters_uniform",
+      "ok": true,
+      "detail": "нарушений фильтров R1: 0 (имя с _: 0, doc<40: 0, строк вне [4,300]: 0)",
+      "n_fail": 0
+    },
+    {
+      "name": "synth_split_allowed",
+      "ok": true,
+      "detail": "синтетика только в train/test_synth",
+      "n_fail": 0
+    },
+    {
+      "name": "synth_function_single_split",
+      "ok": true,
+      "detail": "function_hash синтетики в нескольких сплитах: 0",
+      "n_fail": 0
+    },
+    {
+      "name": "real_project_single_split",
+      "ok": true,
+      "detail": "реальных проектов: 181, все в одном сплите",
+      "n_fail": 0
+    },
+    {
+      "name": "train_hash_isolation",
+      "ok": true,
+      "detail": "пересечений train по function_hash: 0 (val: 0, test_real: 0, test_synth: 0)",
+      "n_fail": 0
+    },
+    {
+      "name": "drift_label_consistency",
+      "ok": true,
+      "detail": "типы дрейфа согласованы с метками",
+      "n_fail": 0
+    },
+    {
+      "name": "model_inputs_isolated",
+      "ok": true,
+      "detail": "вход модели ['sig_old', 'diff_code', 'doc_old']; _leak_/_aux_ в таблице: 4, во входе: 0",
+      "n_fail": 0
+    },
+    {
+      "name": "weights_consistent",
+      "ok": true,
+      "detail": "веса по R1",
+      "n_fail": 0
+    },
+    {
+      "name": "sig_type_valid",
+      "ok": true,
+      "detail": "sig_type из допустимого набора",
+      "n_fail": 0
+    },
+    {
+      "name": "synth_only_train_pool",
+      "ok": true,
+      "detail": "проектов в синтетике: 71, все из train-пула",
+      "n_fail": 0
+    }
+  ]
+}
