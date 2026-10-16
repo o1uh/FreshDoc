@@ -371,8 +371,8 @@
     }
   },
   "versions": {
-    "python": "3.11.9",
+    "python": "3.11.17",
     "pandas": "3.0.6",
-    "pyarrow": "25.0.1"
+    "pyarrow": "26.0.0"
   }
 }
