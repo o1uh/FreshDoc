@@ -1,0 +1,45 @@
+{
+  "seed": 42,
+  "n_total": 200,
+  "n_pos": 70,
+  "n_neg": 70,
+  "n_strong": 4,
+  "n_weak": 66,
+  "n_unlabeled": 60,
+  "pos_quotas": {
+    "default_changed": 2,
+    "exception_changed": 3,
+    "param_added": 15,
+    "param_removed": 7,
+    "param_renamed": 6,
+    "return_changed": 4,
+    "unknown": 33
+  },
+  "pos_counts_pool": {
+    "default_changed": 35,
+    "exception_changed": 56,
+    "param_added": 335,
+    "param_removed": 145,
+    "param_renamed": 137,
+    "return_changed": 90,
+    "unknown": 723
+  },
+  "weak_per_project": 11,
+  "weak_projects": [
+    "AzurLaneAutoScript",
+    "TTS",
+    "espnet",
+    "ipython",
+    "manim",
+    "rasa"
+  ],
+  "unl_per_type": 10,
+  "project_cap": 3,
+  "per_annotator_rows": {
+    "annotator_1": 65,
+    "annotator_2": 65,
+    "annotator_3": 65,
+    "annotator_4": 65
+  },
+  "train_hash_overlap": 0
+}
