@@ -1,11 +1,12 @@
 {
   "dataset": "dataset_v1.parquet",
-  "rows": 27143,
+  "rows": 27203,
   "by_split": {
     "train": 21997,
-    "test_real": 3035,
+    "test_real": 2895,
     "test_synth": 1552,
-    "val": 559
+    "val": 559,
+    "gold": 200
   },
   "ok": true,
   "checks": [
@@ -24,7 +25,7 @@
     {
       "name": "splits_valid",
       "ok": true,
-      "detail": "сплиты: {'train': 21997, 'test_real': 3035, 'test_synth': 1552, 'val': 559}",
+      "detail": "сплиты: {'train': 21997, 'test_real': 2895, 'test_synth': 1552, 'val': 559, 'gold': 200}",
       "n_fail": 0
     },
     {
@@ -42,7 +43,7 @@
     {
       "name": "label_source_valid",
       "ok": true,
-      "detail": "label_source: 6 значений, все из словаря R1",
+      "detail": "label_source: 7 значений, все из словаря R1",
       "n_fail": 0
     },
     {
@@ -66,13 +67,13 @@
     {
       "name": "real_project_single_split",
       "ok": true,
-      "detail": "реальных проектов: 181, все в одном сплите",
+      "detail": "реальных проектов: 169, все в одном сплите",
       "n_fail": 0
     },
     {
       "name": "train_hash_isolation",
       "ok": true,
-      "detail": "пересечений train по function_hash: 0 (val: 0, test_real: 0, test_synth: 0)",
+      "detail": "пересечений train по function_hash: 0 (val: 0, test_real: 0, test_synth: 0, gold: 0)",
       "n_fail": 0
     },
     {

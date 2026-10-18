@@ -26,6 +26,16 @@
       "path": "data/interim/project_pools.parquet",
       "sha256": "90e6dcdb9dc898023c922944f6d1dfa33787e3010796996f0212900373db6740",
       "rows": 181
+    },
+    "annotations_final": {
+      "path": "reports/annotations_final.csv",
+      "sha256": "2e90fb71de77a61f817b834c05925becd2fe196e29e25f296f9dc17367a90943",
+      "rows": 200
+    },
+    "gold_candidates_full": {
+      "path": "data/interim/gold_candidates_full.parquet",
+      "sha256": "58ae97780cd6c3f4e1fa021bf5905c7380c2f4572eacb4c1c0fe8679a9737f3c",
+      "rows": 200
     }
   },
   "params": {
@@ -52,7 +62,8 @@
       "synth_llm_pilot (22)",
       "unlabeled_sigchange (label -1, только gold/replay)",
       "p3_main700 (не пары, аугментация doc)"
-    ]
+    ],
+    "gold_patch": "FD-18: 140 test_real->gold, 60 unlabeled_sigchange appended; source=gold, label_source=gold_human, weight=0.0"
   },
   "val_projects": [
     "ArchiveBox",
@@ -75,60 +86,172 @@
   ],
   "counts": [
     {
+      "split": "gold",
+      "source": "gold",
+      "label_stale": 0,
+      "drift_type": "default_changed",
+      "n": 10
+    },
+    {
+      "split": "gold",
+      "source": "gold",
+      "label_stale": 0,
+      "drift_type": "exception_changed",
+      "n": 10
+    },
+    {
+      "split": "gold",
+      "source": "gold",
+      "label_stale": 0,
+      "drift_type": "none",
+      "n": 69
+    },
+    {
+      "split": "gold",
+      "source": "gold",
+      "label_stale": 0,
+      "drift_type": "param_added",
+      "n": 4
+    },
+    {
+      "split": "gold",
+      "source": "gold",
+      "label_stale": 0,
+      "drift_type": "param_removed",
+      "n": 7
+    },
+    {
+      "split": "gold",
+      "source": "gold",
+      "label_stale": 0,
+      "drift_type": "param_renamed",
+      "n": 11
+    },
+    {
+      "split": "gold",
+      "source": "gold",
+      "label_stale": 0,
+      "drift_type": "return_changed",
+      "n": 9
+    },
+    {
+      "split": "gold",
+      "source": "gold",
+      "label_stale": 0,
+      "drift_type": "unknown",
+      "n": 25
+    },
+    {
+      "split": "gold",
+      "source": "gold",
+      "label_stale": 1,
+      "drift_type": "default_changed",
+      "n": 2
+    },
+    {
+      "split": "gold",
+      "source": "gold",
+      "label_stale": 1,
+      "drift_type": "exception_changed",
+      "n": 3
+    },
+    {
+      "split": "gold",
+      "source": "gold",
+      "label_stale": 1,
+      "drift_type": "none",
+      "n": 1
+    },
+    {
+      "split": "gold",
+      "source": "gold",
+      "label_stale": 1,
+      "drift_type": "param_added",
+      "n": 21
+    },
+    {
+      "split": "gold",
+      "source": "gold",
+      "label_stale": 1,
+      "drift_type": "param_removed",
+      "n": 10
+    },
+    {
+      "split": "gold",
+      "source": "gold",
+      "label_stale": 1,
+      "drift_type": "param_renamed",
+      "n": 5
+    },
+    {
+      "split": "gold",
+      "source": "gold",
+      "label_stale": 1,
+      "drift_type": "return_changed",
+      "n": 5
+    },
+    {
+      "split": "gold",
+      "source": "gold",
+      "label_stale": 1,
+      "drift_type": "unknown",
+      "n": 8
+    },
+    {
       "split": "test_real",
       "source": "codocbench",
       "label_stale": 1,
       "drift_type": "default_changed",
-      "n": 35
+      "n": 33
     },
     {
       "split": "test_real",
       "source": "codocbench",
       "label_stale": 1,
       "drift_type": "exception_changed",
-      "n": 56
+      "n": 53
     },
     {
       "split": "test_real",
       "source": "codocbench",
       "label_stale": 1,
       "drift_type": "param_added",
-      "n": 335
+      "n": 320
     },
     {
       "split": "test_real",
       "source": "codocbench",
       "label_stale": 1,
       "drift_type": "param_removed",
-      "n": 145
+      "n": 138
     },
     {
       "split": "test_real",
       "source": "codocbench",
       "label_stale": 1,
       "drift_type": "param_renamed",
-      "n": 137
+      "n": 131
     },
     {
       "split": "test_real",
       "source": "codocbench",
       "label_stale": 1,
       "drift_type": "return_changed",
-      "n": 90
+      "n": 86
     },
     {
       "split": "test_real",
       "source": "codocbench",
       "label_stale": 1,
       "drift_type": "unknown",
-      "n": 716
+      "n": 683
     },
     {
       "split": "test_real",
       "source": "history_neg",
       "label_stale": 0,
       "drift_type": "none",
-      "n": 1521
+      "n": 1451
     },
     {
       "split": "test_synth",
@@ -356,18 +479,20 @@
     }
   ],
   "totals": {
-    "rows": 27143,
+    "rows": 27203,
     "by_split": {
       "train": 21997,
-      "test_real": 3035,
+      "test_real": 2895,
       "test_synth": 1552,
-      "val": 559
+      "val": 559,
+      "gold": 200
     },
     "by_source": {
       "synth_ast": 20560,
-      "history_neg": 2997,
-      "codocbench": 2990,
-      "synth_llm": 596
+      "history_neg": 2927,
+      "codocbench": 2920,
+      "synth_llm": 596,
+      "gold": 200
     }
   },
   "versions": {
