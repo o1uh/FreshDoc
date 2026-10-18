@@ -38,7 +38,7 @@ def load_data(path: Path) -> pd.DataFrame:
     df = pd.read_parquet(path)
     if not all(col in df.columns for col in META_FEATURES):
         df = add_metadata(df)
-    cols = META_FEATURES + ["label_stale", "split"]
+    cols = META_FEATURES + ["label_stale", "split", "source"]
     missing = set(cols) - set(df.columns)
     if missing:
         raise RuntimeError(
@@ -104,12 +104,16 @@ def main() -> None:
     df = load_data(Path(args.input))
     df = prepare_features(df)
 
-    train_df = df[df["split"] == "train"]
+    # workflow.md FD-15: обучение на реальных строках train
+    train_df = df[
+        (df["split"] == "train")
+        & (df["source"].isin(("codocbench", "history_neg")))
+    ]
     X_train = train_df[META_FEATURES]
     y_train = train_df["label_stale"]
 
     model = LogisticRegression(
-        max_iter=1000, class_weight="balanced"
+        max_iter=1000, class_weight="balanced", random_state=42
     )
     model.fit(X_train, y_train)
 
