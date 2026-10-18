@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import ast
-import textwrap
 import re
-from typing import Optional, Tuple, List, Dict, Any
+import textwrap
+from typing import Any, Dict, List, Optional, Tuple
+
+import pandas as pd
 
 
 def dedent_code(code_str: str) -> str:
@@ -98,3 +100,36 @@ def extract_metadata(code_str: str, docstring: str) -> Dict[str, Any]:
         "has_returns": has_section(docstring, "Returns"),
         "has_raises": has_section(docstring, "Raises"),
     }
+
+
+def add_metadata(df: pd.DataFrame) -> pd.DataFrame:
+    """Compute and attach metadata columns required for FD‑15.
+
+    Extracts features from ``code_old`` and ``doc_old``:
+    - ``func_len``: number of non-empty lines in function
+    - ``param_cnt``: total parameter count
+    - ``has_args`` / ``has_returns`` / ``has_raises``: docstring sections
+    """
+    func_len = []
+    param_cnt = []
+    has_args = []
+    has_returns = []
+    has_raises = []
+
+    for _, row in df.iterrows():
+        code = str(row.get("code_old", ""))
+        doc = str(row.get("doc_old", ""))
+        meta = extract_metadata(code, doc)
+        func_len.append(meta.get("len", 0))
+        param_cnt.append(meta.get("params", 0))
+        has_args.append(meta.get("has_args", False))
+        has_returns.append(meta.get("has_returns", False))
+        has_raises.append(meta.get("has_raises", False))
+
+    df = df.copy()
+    df["func_len"] = func_len
+    df["param_cnt"] = param_cnt
+    df["has_args"] = has_args
+    df["has_returns"] = has_returns
+    df["has_raises"] = has_raises
+    return df

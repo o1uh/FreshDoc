@@ -10,6 +10,7 @@ checkpoints/
 *.bin
 *.safetensors
 *.onnx
+*.pkl
 
 # Окружение и секреты
 .venv/
