@@ -1,0 +1,120 @@
+{
+  "task": "FD-20",
+  "built_at": "2026-10-18T13:37:45.824976+00:00",
+  "dataset": "data\\processed\\dataset_v1.parquet",
+  "dataset_rows": 27203,
+  "seed": 42,
+  "params": {
+    "max_iter": 500,
+    "learning_rate": 0.05,
+    "max_leaf_nodes": 31,
+    "min_samples_leaf": 20
+  },
+  "model_class": "HistGradientBoostingClassifier",
+  "n_features": 21,
+  "feature_cols": [
+    "diff_added",
+    "diff_removed",
+    "n_code_lines",
+    "n_params_old",
+    "n_sig_changes",
+    "sig_none",
+    "sig_param_renamed",
+    "sig_param_removed",
+    "sig_param_added",
+    "sig_default_changed",
+    "sig_return_changed",
+    "sig_exception_changed",
+    "doc_len_chars",
+    "doc_len_lines",
+    "has_args",
+    "has_returns",
+    "has_raises",
+    "n_params_mentioned",
+    "has_default_word",
+    "link_removed_mentioned",
+    "link_default_mentioned"
+  ],
+  "n_train": 21997,
+  "n_train_pos": 10946,
+  "n_val_real": 559,
+  "n_val_real_pos": 211,
+  "threshold_val_m0": 1.0,
+  "threshold_val_m1": 0.44298304606964417,
+  "val_group_diagnostics": {
+    "all": {
+      "n": 559,
+      "n_pos": 211,
+      "M0": {
+        "threshold": 1.0,
+        "precision": 1.0,
+        "recall": 0.5829383886255924,
+        "f1": 0.7365269461077845,
+        "recall_at_p80": 0.5829383886255924
+      },
+      "M1": {
+        "threshold": 0.44298304606964417,
+        "precision": 0.7452830188679245,
+        "recall": 0.7488151658767772,
+        "f1": 0.7470449172576832,
+        "recall_at_p80": 0.6682464454976303
+      }
+    },
+    "sig_changed": {
+      "n": 123,
+      "n_pos": 123,
+      "M0": {
+        "threshold": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "recall_at_p80": 0.0
+      },
+      "M1": {
+        "threshold": 0.44298304606964417,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "recall_at_p80": 0.0
+      }
+    },
+    "sig_same": {
+      "n": 436,
+      "n_pos": 88,
+      "M0": {
+        "threshold": 1.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "recall_at_p80": 0.0
+      },
+      "M1": {
+        "threshold": 0.44298304606964417,
+        "precision": 0.39325842696629215,
+        "recall": 0.3977272727272727,
+        "f1": 0.3954802259887006,
+        "recall_at_p80": 0.011363636363636364
+      }
+    }
+  },
+  "train_time_sec": 2.2,
+  "total_time_sec": 22.4,
+  "forbidden_cols_never_read": [
+    "project",
+    "source",
+    "label_stale",
+    "label_source",
+    "drift_type",
+    "split",
+    "weight",
+    "pair_id",
+    "_leak_*",
+    "_aux_*"
+  ],
+  "outputs": {
+    "m0": "reports\\preds\\m0.csv",
+    "m1": "reports\\preds\\m1.csv",
+    "model": "checkpoints\\m1_hgb.joblib"
+  },
+  "next": "python scripts/evaluate.py --pred M0=reports\\preds\\m0.csv --pred M1=reports\\preds\\m1.csv"
+}
