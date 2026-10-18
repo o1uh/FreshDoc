@@ -160,3 +160,45 @@ def projects_of(df_all: pd.DataFrame, split: str, sources=None) -> set[str]:
     if sources is not None:
         sub = sub.loc[sub["source"].isin(sources)]
     return set(sub["project"].astype(str).unique())
+
+# ---------------------------------------------------------------------------
+# FD‑15: Метаданные функции (длина, количество параметров, секции docstring)
+# ---------------------------------------------------------------------------
+from src.data.metadata_extractor import extract_metadata
+import pandas as pd
+
+
+def add_metadata(df: pd.DataFrame) -> pd.DataFrame:
+    """Compute and attach metadata columns required for FD‑15.
+
+    The function iterates over rows, extracts ``code_old`` and ``doc_old``
+    (the original version of the function) and adds the following columns:
+    - ``func_len``: количество строк функции (не пустых).
+    - ``param_cnt``: общее число параметров.
+    - ``has_args`` / ``has_returns`` / ``has_raises``: наличие соответствующих
+      секций в docstring.
+    """
+    # Prepare containers
+    func_len = []
+    param_cnt = []
+    has_args = []
+    has_returns = []
+    has_raises = []
+
+    for _, row in df.iterrows():
+        code = str(row.get("code_old", ""))
+        doc = str(row.get("doc_old", ""))
+        meta = extract_metadata(code, doc)
+        func_len.append(meta.get("len", 0))
+        param_cnt.append(meta.get("params", 0))
+        has_args.append(meta.get("has_args", False))
+        has_returns.append(meta.get("has_returns", False))
+        has_raises.append(meta.get("has_raises", False))
+
+    df = df.copy()
+    df["func_len"] = func_len
+    df["param_cnt"] = param_cnt
+    df["has_args"] = has_args
+    df["has_returns"] = has_returns
+    df["has_raises"] = has_raises
+    return df

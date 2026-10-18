@@ -144,6 +144,9 @@ def main() -> None:
 
     # 5. Сплиты R1.
     df_all["split"] = assign_splits(df_all, pool_of, val_projects).values
+    # FD-15: добавить метаданные функции
+    from src.data.dataset import add_metadata
+    df_all = add_metadata(df_all)
     print(f"Сплиты назначены: {df_all['split'].value_counts().to_dict()}")
     val_sources = set(df_all.loc[df_all["split"] == "val", "source"].unique())
     assert val_sources <= set(REAL_SOURCES), f"В val попала синтетика: {val_sources}"
