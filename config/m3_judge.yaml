@@ -1,0 +1,36 @@
+# FD-22: нулевой LLM-судья M3 (R10).
+# Судья — Claude Haiku 5.5 (Go Inference API opencode). Выбор зафиксирован сразу:
+# Gemini 3.8 Flash рассматривался и отклонён (размечал все 200 строк gold —
+# судить по ним же было бы петлёй самооценки), Muse Spark — по той же причине.
+# Haiku в проекте ранее не использовался. От генератора синтетики (deepseek-flash)
+# отличается, требование R7 соблюдено.
+# Оговорка: effort-варианты (max) — сущность агента opencode, в HTTP-контракте
+# Inference API их нет; прогон идёт базовой моделью с temperature=0 (строго R10).
+model: claude-haiku-5-5
+
+api:
+  model: claude-haiku-5-5
+  label: Claude Haiku 5.5
+  base_url: https://opencode.ai/inference/go
+  key_env: OPENCODE_API_KEY
+  temperature: null
+  max_tokens: 1000
+  # 20.10.2026: temperature НЕ отправляется (шлюз: "`temperature` is deprecated
+  # for this model", 400 на любое значение). Целевое по R10 — 0.0, фактически —
+  # дефолт шлюза. max_tokens 1000 вместо 120 по R10: 120 и 500 физически режут
+  # валидный JSON (smoke). Отклонения — в docs/m3_haiku_run.md.
+  # Прайс opencode API 19.10.2026, USD за 1M (тир ≤100K; наши запросы ~2–4k).
+  price_in: 0.10
+  price_out: 0.50
+
+# Отбор: 300 строк test_real (seed 22) + весь gold (200) = 500 строк.
+# Отклонение от формулировки FD-22 (250+250): в gold всего 200 строк
+# (FD-18: gold.csv зафиксирован и не меняется), взять 250 из gold
+# физически невозможно. Сохранён общий объём 500.
+sampling:
+  seed: 22
+  n_test_real: 300
+  n_gold: 200  # весь gold
+
+# p_stale — из confidence (лог-вероятности Messages API недоступны, R10 fallback).
+p_stale_from: confidence

@@ -344,7 +344,7 @@ def _write_main_report(report_path: Path, stats: dict[str, Any], out_dir: Path,
         f"- Генератор: {MODEL} ({MODEL_VERSION}), thinking={p.thinking}, "
         f"temperature={p.temperature}, top_p={p.top_p}, max_tokens={p.max_tokens}. "
         f"Дата прогона: см. fetched_at в responses/.",
-        "- Судья M3 (FD-22, Gemini 3.8 Flash) для данных не используется.",
+        "- Судья M3 (FD-22, Claude Haiku 5.5) для данных не используется.",
         f"- Каталог партии: {out_dir}; выборка: {getattr(args, 'limit', None) or getattr(args, 'n', None) or 'все'} "
         f"(seed — в имени каталога/документации).",
         f"- Объектов всего: {stats['objects_total']}; принято P1: {stats['accepted_p1']}; "
