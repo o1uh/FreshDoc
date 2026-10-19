@@ -5,7 +5,7 @@
   "seed": 42,
   "threshold_from": "val real rows (max F1), per model",
   "splits_separate_no_averaging": true,
-  "built_at": "2026-10-18T13:37:52.697495+00:00",
+  "built_at": "2026-10-19T12:35:36.254503+00:00",
   "models": {
     "M0": {
       "threshold_val": 1.0,

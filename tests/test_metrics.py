@@ -33,14 +33,20 @@ def test_binary_at_threshold_empty_slice():
 
 
 def test_evaluate_drift_unknown_pred_not_a_class():
-    """Предсказанный unknown — обычная ошибка, а не отдельный класс в macro-F1."""
+    """Предсказанный unknown — обычная ошибка, а не отдельный класс в macro-F1.
+
+    Протокол R11: только y_stale=1 с известным типом; none/unknown
+    в метрику не входят (истинные none-строки исключаются из n_drift).
+    """
     dt = np.array(["param_added", "param_added", "none", "none"])
     dp = np.array(["param_added", "unknown", "none", "none"])
     out = evaluate_drift(dt, dp)
-    assert out["n_drift"] == 4
-    assert out["drift_acc"] == 0.75
+    # истинные none-строки исключены: n=2, верно 1
+    assert out["n_drift"] == 2
+    assert out["drift_acc"] == 0.5
     assert "unknown" not in out["drift_per_class_f1"]
-    assert abs(out["drift_macro_f1"] - 5 / 6) < 1e-9
+    assert "none" not in out["drift_per_class_f1"]
+    assert abs(out["drift_macro_f1"] - 2 / 3) < 1e-9
 
 
 def test_load_pred_categorical_type_pred():
@@ -218,11 +224,30 @@ def test_evaluate_drift_known_only():
     dt = np.array(["param_added", "unknown", "none", "param_added"])
     dp = np.array(["param_added", "none", "none", "none"])
     out = evaluate_drift(dt, dp)
-    # unknown исключён: n=3, верно 2
-    assert out["n_drift"] == 3
-    assert abs(out["drift_acc"] - 2 / 3) < 1e-12
+    # unknown и none (истинные) исключены: n=2 (только param_added), верно 1
+    assert out["n_drift"] == 2
+    assert abs(out["drift_acc"] - 1 / 2) < 1e-12
     assert 0.0 <= out["drift_macro_f1"] <= 1.0
     assert "param_added" in out["drift_per_class_f1"]
+    assert "none" not in out["drift_per_class_f1"]
+    assert "unknown" not in out["drift_per_class_f1"]
+
+
+def test_evaluate_drift_y_stale_filter():
+    """Фильтр y_stale=1: синхронные (0) и unknown исключаются (R11)."""
+    dt = np.array(["param_added", "param_added", "none", "unknown", "return_changed"])
+    dp = np.array(["param_added", "param_added", "none", "param_added", "none"])
+    y = np.array([1, 0, 0, 1, 1])
+    out = evaluate_drift(dt, dp, y)
+    # остаются idx0 (param_added верный) и idx4 (return_changed -> none, ошибка)
+    assert out["n_drift"] == 2
+    assert abs(out["drift_acc"] - 0.5) < 1e-12
+    assert set(out["drift_per_class_f1"]) == {"param_added", "return_changed"}
+    assert "none" not in out["drift_per_class_f1"]
+    assert "unknown" not in out["drift_per_class_f1"]
+    # без y_stale тот же набор дал бы 3 строки (idx0, idx1, idx4)
+    out_no_y = evaluate_drift(dt, dp)
+    assert out_no_y["n_drift"] == 3
 
 
 def test_evaluate_drift_empty_known():

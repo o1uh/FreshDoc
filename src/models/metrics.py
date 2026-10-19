@@ -20,6 +20,9 @@ EVAL_GROUPS = ("all", "sig_changed", "sig_same")
 #: Типы дрейфа, исключаемые из оценки type_pred (неизвестный тип).
 UNKNOWN_DRIFT = "unknown"
 
+#: Отсутствие дрейфа — не класс головы (R10: 8 классов без none).
+NONE_DRIFT = "none"
+
 
 def group_mask(sig_type: np.ndarray, group: str) -> np.ndarray:
     """Булева маска группы по sig_type (M0 видит sig_changed, слеп на sig_same)."""
@@ -200,22 +203,34 @@ def evaluate_binary(
 
 
 def evaluate_drift(
-    drift_true: np.ndarray, drift_pred: np.ndarray
+    drift_true: np.ndarray, drift_pred: np.ndarray,
+    y_stale: np.ndarray | None = None,
 ) -> dict:
-    """Macro-F1 по drift_type на строках с известным типом (R11).
+    """Macro-F1 по drift_type только на y_stale=1 с известным типом (R11).
 
-    unknown исключается; behavior_changed входит в общий macro и отдельно
-    отчитывается классовым F1 (в eval-сплитах его обычно нет — n=0).
+    Подвыборка: строки с истинным рассинхроном (``y_stale == 1``,
+    если передано) и известным типом (``drift_type`` не ``unknown``
+    и не ``none``). Классы ``none``/``unknown`` из усреднения исключаются:
+    предсказанные ``none``/``unknown`` засчитываются как обычная ошибка
+    (штраф recall класса), но отдельного класса не образуют.
+
+    ``y_stale`` опционален для обратной совместимости: без него
+    фильтруется только по известному типу.
     """
     dt = np.asarray(drift_true, dtype=str)
     dp = np.asarray(drift_pred, dtype=str)
-    m = dt != UNKNOWN_DRIFT
+    m = (dt != UNKNOWN_DRIFT) & (dt != NONE_DRIFT)
+    if y_stale is not None:
+        ys = np.asarray(y_stale, dtype=int)
+        if len(ys) != len(dt):
+            raise ValueError(f"y_stale len {len(ys)} != drift len {len(dt)}")
+        m = m & (ys == 1)
     dt, dp = dt[m], dp[m]
     n = int(len(dt))
     if n == 0:
         return {"n_drift": 0, "drift_acc": float("nan"),
                 "drift_macro_f1": float("nan"), "drift_per_class_f1": {}}
-    labels = sorted((set(dt.tolist()) | set(dp.tolist())) - {UNKNOWN_DRIFT})
+    labels = sorted((set(dt.tolist()) | set(dp.tolist())) - {UNKNOWN_DRIFT, NONE_DRIFT})
     if not labels:
         return {"n_drift": n, "drift_acc": float((dt == dp).mean()),
                 "drift_macro_f1": float("nan"), "drift_per_class_f1": {}}
