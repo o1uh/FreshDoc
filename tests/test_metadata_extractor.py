@@ -83,6 +83,29 @@ class TestHasSection(unittest.TestCase):
         doc = "Something.\n\n    args:\n        x: val\n"
         self.assertTrue(has_section(doc, "Args"))
 
+    def test_parameters_spelling(self):
+        doc = "Do things.\n\nParameters:\n    x: value\n"
+        self.assertTrue(has_section(doc, "Args"))
+
+    def test_numpy_underline_style(self):
+        doc = "Do things.\n\nParameters\n----------\nx : value\n"
+        self.assertTrue(has_section(doc, "Args"))
+        doc2 = "Do things.\n\nReturns\n-------\nint\n"
+        self.assertTrue(has_section(doc2, "Returns"))
+
+    def test_rst_param_marker(self):
+        doc = "Do things.\n\n:param x: value\n"
+        self.assertTrue(has_section(doc, "Args"))
+
+    def test_prose_without_marker_is_not_section(self):
+        self.assertFalse(has_section("Return the value.", "Returns"))
+        self.assertFalse(
+            has_section("Handles network errors gracefully.", "Raises"))
+
+    def test_unknown_section_raises(self):
+        with self.assertRaises(ValueError):
+            has_section("Args:\n    x", "Nope")
+
 
 class TestExtractMetadata(unittest.TestCase):
     def test_basic_function(self):

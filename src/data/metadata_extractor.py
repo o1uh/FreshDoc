@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import ast
-import re
 import textwrap
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional
 
 import pandas as pd
+
+from src.data.docsections import doc_section_flags
 
 
 def dedent_code(code_str: str) -> str:
@@ -64,16 +65,26 @@ def param_count(fn_node: ast.FunctionDef | ast.AsyncFunctionDef) -> int:
     return total
 
 
-def has_section(docstring: str, section: str) -> bool:
-    """Check whether a docstring contains a given section header.
+_SECTION_INDEX = {"args": 0, "returns": 1, "raises": 2}
 
-    Section detection is case‑insensitive and tolerant to leading whitespace.
-    Example sections: ``"Args"``, ``"Returns"``, ``"Raises"``.
+
+def has_section(docstring: str, section: str) -> bool:
+    """Check whether a docstring contains a given section.
+
+    Uses the shared detector from ``src.data.docsections`` (same as M1
+    features): Google-style ``Args:``, RST ``:param:``, NumPy underlines
+    (``Parameters`` + ``-----``). ``section`` is one of ``"Args"``,
+    ``"Returns"``, ``"Raises"`` (case-insensitive); ``"Args"`` also
+    matches ``Parameters``/``Params``/``Arguments`` spellings.
     """
-    if not docstring:
+    if not docstring or not isinstance(section, str):
         return False
-    pattern = rf"^\s*{re.escape(section)}\s*:"
-    return any(re.search(pattern, line, flags=re.IGNORECASE) for line in docstring.splitlines())
+    idx = _SECTION_INDEX.get(section.lower())
+    if idx is None:
+        raise ValueError(f"Unknown section: {section!r}")
+    if not isinstance(docstring, str):
+        return False
+    return bool(doc_section_flags(docstring)[idx])
 
 
 def extract_metadata(code_str: str, docstring: str) -> Dict[str, Any]:

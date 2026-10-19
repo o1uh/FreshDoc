@@ -5,7 +5,10 @@ from src.data.token_analysis import (
     _added_tokens,
     document_frequencies,
     filter_shortcut_tokens,
+    max_literal_gap,
+    max_suffix_gap,
     top_suspicious,
+    word_token_gaps,
 )
 
 
@@ -94,6 +97,46 @@ class TestFilterShortcutTokens(unittest.TestCase):
         hits = filter_shortcut_tokens(freqs, gap=0.3)
         self.assertEqual(hits[0][0], "b")  # gap 0.85 > 0.7
 
+    def test_absolute_catches_negative_side(self):
+        freqs = {"neg_marker": (0.05, 0.9)}  # gap -0.85
+        self.assertEqual(len(filter_shortcut_tokens(freqs, gap=0.3)), 1)
+        self.assertEqual(
+            len(filter_shortcut_tokens(freqs, gap=0.3,
+                                       absolute=False)), 0)
+
+
+class TestWordTokenGaps(unittest.TestCase):
+    def test_suffix_visible_in_word_tokens(self):
+        pairs = [
+            ("+verbose_tmp = 1", 1),
+            ("+verbose_tmp = 2", 1),
+            ("+plain = 1", 0),
+            ("+other = 2", 0),
+        ]
+        freqs = word_token_gaps(pairs)
+        gap, tok = max_suffix_gap(freqs)
+        self.assertEqual(tok, "verbose_tmp")
+        self.assertAlmostEqual(gap, 1.0)
+
+    def test_no_suffix_tokens(self):
+        pairs = [("+plain = 1", 1), ("+other = 2", 0)]
+        gap, tok = max_suffix_gap(word_token_gaps(pairs))
+        self.assertEqual(gap, 0.0)
+        self.assertEqual(tok, "")
+
+    def test_literal_gap_excludes_structural(self):
+        pairs = [
+            ("+if x is None:", 1),
+            ("+if y is None:", 1),
+            ("+z = 1", 0),
+            ("+w = 2", 0),
+        ]
+        freqs = word_token_gaps(pairs)
+        gap_all, _ = max_literal_gap(freqs, exclude_structural=False)
+        self.assertGreater(gap_all, 0.5)  # 'none' structural
+        gap, _ = max_literal_gap(freqs, exclude_structural=True)
+        self.assertLess(gap, 0.3)
+
 
 class TestTopSuspicious(unittest.TestCase):
     def test_returns_top_n(self):
@@ -101,6 +144,13 @@ class TestTopSuspicious(unittest.TestCase):
         top = top_suspicious(freqs, n=3)
         self.assertEqual(len(top), 3)
         self.assertEqual(top[0][0], "t10")
+
+    def test_by_abs_surfaces_negative_side(self):
+        freqs = {"a": (0.9, 0.1), "b": (0.1, 0.9)}
+        top = top_suspicious(freqs, n=2, by_abs=True)
+        self.assertEqual({t for t, _, _, _ in top}, {"a", "b"})
+        top_pos = top_suspicious(freqs, n=1)
+        self.assertEqual(top_pos[0][0], "a")
 
 
 if __name__ == "__main__":

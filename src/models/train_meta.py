@@ -1,12 +1,10 @@
-"""FD-15: Train logistic regression on metadata features.
+"""FD-15: logistic regression on metadata features (library + CLI).
 
-This script loads ``dataset_v1.parquet`` (produced by ``build_dataset.py``),
-selects only the columns required for the metadata model, trains a
-``LogisticRegression`` classifier, evaluates ROC‑AUC on ``val`` and
-``test_real`` splits and saves the model to ``models/meta_lr.pkl``.
-
-The report now includes split sizes, class balance, model coefficients
-and interpretation when ROC-AUC val > 0.65.
+Trains on **real train rows only** (``source`` in ``{codocbench,
+history_neg}``) per workflow.md FD-15, evaluates ROC-AUC on ``val`` and
+``test_real``. The unified E8 report (``reports/e8_shortcut.md``) is built
+by ``scripts/e8_shortcut_analysis.py``, which reuses the helpers below —
+single source of truth for the numbers.
 """
 from __future__ import annotations
 
@@ -15,6 +13,7 @@ import sys
 from pathlib import Path
 
 import joblib
+import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score
@@ -33,46 +32,77 @@ META_FEATURES = [
     "has_raises",
 ]
 
+#: Sources used for training per workflow.md FD-15 (real rows only).
+REAL_SOURCES = ("codocbench", "history_neg")
 
-def load_data(path: Path) -> pd.DataFrame:
-    df = pd.read_parquet(path)
+RANDOM_STATE = 42
+N_BOOTSTRAP = 1000
+
+
+def ensure_metadata(df: pd.DataFrame) -> pd.DataFrame:
+    """Attach metadata columns if missing; binarise section flags to int."""
     if not all(col in df.columns for col in META_FEATURES):
         df = add_metadata(df)
-    cols = META_FEATURES + ["label_stale", "split", "source"]
-    missing = set(cols) - set(df.columns)
-    if missing:
-        raise RuntimeError(
-            f"Missing columns for FD-15 model: {missing}"
-        )
-    return df[cols]
-
-
-def prepare_features(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
     for c in ("has_args", "has_returns", "has_raises"):
         df[c] = df[c].astype(int)
     return df
 
 
-def evaluate(
+def real_train_frame(df: pd.DataFrame) -> pd.DataFrame:
+    """Real train rows only (no synth, no gold)."""
+    return df[
+        (df["split"] == "train") & (df["source"].isin(REAL_SOURCES))
+    ]
+
+
+def train_metadata_model(train_df: pd.DataFrame) -> LogisticRegression:
+    """Fit balanced LogisticRegression on metadata features."""
+    model = LogisticRegression(
+        max_iter=1000, class_weight="balanced", random_state=RANDOM_STATE
+    )
+    model.fit(train_df[META_FEATURES].values,
+              train_df["label_stale"].values)
+    return model
+
+
+def bootstrap_auc_ci(
+    y_true: np.ndarray,
+    y_score: np.ndarray,
+    n_boot: int = N_BOOTSTRAP,
+    seed: int = RANDOM_STATE,
+) -> tuple[float, float]:
+    """95% bootstrap CI for ROC-AUC (percentile, fixed seed)."""
+    rng = np.random.default_rng(seed)
+    n = len(y_true)
+    aucs = []
+    for _ in range(n_boot):
+        idx = rng.integers(0, n, n)
+        if len(np.unique(y_true[idx])) < 2:
+            continue
+        aucs.append(roc_auc_score(y_true[idx], y_score[idx]))
+    return float(np.percentile(aucs, 2.5)), float(np.percentile(aucs, 97.5))
+
+
+def evaluate_metadata(
     df: pd.DataFrame, model: LogisticRegression
 ) -> dict:
+    """ROC-AUC (+ bootstrap CI, sizes, balance) on val / test_real."""
     results = {}
-    for split in ["val", "test_real"]:
+    for split in ("val", "test_real"):
         sub = df[df["split"] == split]
         if sub.empty:
             continue
-        X = sub[META_FEATURES]
-        y = sub["label_stale"]
-        probs = model.predict_proba(X)[:, 1]
-        auc = roc_auc_score(y, probs)
-        n_pos = int(y.sum())
-        n_neg = int(len(y) - y.sum())
+        y = sub["label_stale"].to_numpy(dtype=int)
+        probs = model.predict_proba(sub[META_FEATURES].values)[:, 1]
+        lo, hi = bootstrap_auc_ci(y, probs)
         results[split] = {
-            "auc": auc,
-            "n": len(sub),
-            "pos": n_pos,
-            "neg": n_neg,
+            "auc": float(roc_auc_score(y, probs)),
+            "ci_lo": lo,
+            "ci_hi": hi,
+            "n": int(len(sub)),
+            "pos": int(y.sum()),
+            "neg": int(len(sub) - y.sum()),
         }
     return results
 
@@ -81,114 +111,42 @@ def main() -> None:
     p = argparse.ArgumentParser(
         description="FD-15: train metadata logistic regression"
     )
-    p.add_argument(
-        "--input",
-        type=str,
-        required=True,
-        help="Path to dataset_v1.parquet",
-    )
-    p.add_argument(
-        "--model-out",
-        type=str,
-        default="checkpoints/meta_lr.pkl",
-        help="Where to save the trained model",
-    )
-    p.add_argument(
-        "--report",
-        type=str,
-        default="reports/e8_meta_metrics.md",
-        help="Markdown report path",
-    )
+    p.add_argument("--input", type=str, required=True,
+                   help="Path to dataset_v1.parquet")
+    p.add_argument("--model-out", type=str,
+                   default="checkpoints/meta_lr.pkl",
+                   help="Where to save the trained model")
+    p.add_argument("--report", type=str, default=None,
+                   help="Optional: write short metrics markdown here "
+                        "(unified E8 report is built by "
+                        "scripts/e8_shortcut_analysis.py)")
     args = p.parse_args()
 
-    df = load_data(Path(args.input))
-    df = prepare_features(df)
+    df = ensure_metadata(pd.read_parquet(Path(args.input)))
+    train_df = real_train_frame(df)
+    model = train_metadata_model(train_df)
+    metrics = evaluate_metadata(df, model)
 
-    # workflow.md FD-15: обучение на реальных строках train
-    train_df = df[
-        (df["split"] == "train")
-        & (df["source"].isin(("codocbench", "history_neg")))
-    ]
-    X_train = train_df[META_FEATURES]
-    y_train = train_df["label_stale"]
+    out = Path(args.model_out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    joblib.dump(model, out)
 
-    model = LogisticRegression(
-        max_iter=1000, class_weight="balanced", random_state=42
-    )
-    model.fit(X_train, y_train)
-
-    metrics = evaluate(df, model)
-
-    Path(args.model_out).parent.mkdir(
-        parents=True, exist_ok=True
-    )
-    joblib.dump(model, args.model_out)
-
-    report_path = Path(args.report)
-    report_path.parent.mkdir(parents=True, exist_ok=True)
-    with report_path.open("w", encoding="utf-8") as f:
-        f.write(
-            "# FD-15 Metadata Logistic Regression Metrics\n\n"
-        )
-        f.write(
-            f"Training set: {len(train_df)} rows "
-            f"(pos {int(y_train.sum())}, "
-            f"neg {int(len(y_train) - y_train.sum())})\n\n"
-        )
-
-        # Coefficients
-        f.write("## Coefficients\n\n")
-        f.write("| Feature | Coefficient |\n|---|---|\n")
-        for name, coef in zip(
-            META_FEATURES, model.coef_[0]
-        ):
-            f.write(f"| `{name}` | {coef:+.4f} |\n")
-        f.write(
-            f"| intercept | "
-            f"{model.intercept_[0]:+.4f} |\n\n"
-        )
-
-        # Per-split metrics
-        f.write("## ROC-AUC\n\n")
-        f.write(
-            "| Split | Rows | Pos | Neg | ROC‑AUC |\n"
-            "|---|---|---|---|---|\n"
-        )
-        for split, m in metrics.items():
-            f.write(
-                f"| {split} | {m['n']} | {m['pos']} "
-                f"| {m['neg']} | **{m['auc']:.4f}** |\n"
-            )
-        f.write("\n")
-
-        # Interpretation
-        val_m = metrics.get("val", {})
-        if val_m and val_m.get("auc", 0) > 0.65:
-            f.write(
-                f"> **⚠️ ROC-AUC val = "
-                f"{val_m['auc']:.4f} > 0.65.**\n>\n"
-                "> Val-проекты — подмножество train-пула; "
-                "модель выучивает project-specific паттерны. "
-                "На test_real (другие проекты) AUC ≈ 0.57 "
-                "— обходного пути через метаданные нет.\n\n"
-            )
-        else:
-            f.write(
-                "ROC-AUC ≤ 0.65 — метаданные не дают "
-                "обходного пути. ✅\n\n"
-            )
-
-        f.write(
-            "---\n\nGenerated automatically by "
-            "FD‑15 pipeline.\n"
-        )
-
-    print("Training complete. Metrics:")
-    for s, m in metrics.items():
-        print(
-            f"  {s}: AUC={m['auc']:.4f} "
-            f"(n={m['n']}, pos={m['pos']}, neg={m['neg']})"
-        )
+    for split, m in metrics.items():
+        print(f"  {split}: AUC={m['auc']:.4f} "
+              f"[{m['ci_lo']:.4f}, {m['ci_hi']:.4f}] "
+              f"(n={m['n']}, pos={m['pos']}, neg={m['neg']})")
+    if args.report:
+        rp = Path(args.report)
+        rp.parent.mkdir(parents=True, exist_ok=True)
+        with rp.open("w", encoding="utf-8") as f:
+            f.write("# FD-15 Metadata Logistic Regression Metrics\n\n")
+            f.write(f"Training: {len(train_df)} real train rows\n\n")
+            f.write("| Split | Rows | Pos | Neg | ROC-AUC | 95% CI |\n"
+                    "|---|---|---|---|---|---|\n")
+            for split, m in metrics.items():
+                f.write(f"| {split} | {m['n']} | {m['pos']} | {m['neg']} "
+                        f"| **{m['auc']:.4f}** "
+                        f"| [{m['ci_lo']:.4f}, {m['ci_hi']:.4f}] |\n")
 
 
 if __name__ == "__main__":

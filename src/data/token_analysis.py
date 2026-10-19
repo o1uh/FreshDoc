@@ -2,11 +2,13 @@
 
 Computes **per-document (per-pair) frequency**: for each token, what
 fraction of positive pairs contains it vs what fraction of negative
-pairs contains it.  Only **added lines** of the diff (lines starting
+pairs contains it. Only **added lines** of the diff (lines starting
 with ``+``) are considered, as required by workflow.md step 2.
 """
 from __future__ import annotations
 
+import keyword
+import re
 from collections import Counter
 from typing import Dict, List, Tuple
 
@@ -69,31 +71,44 @@ def document_frequencies(
 def filter_shortcut_tokens(
     freqs: Dict[str, Tuple[float, float]],
     gap: float = 0.30,
+    absolute: bool = True,
 ) -> List[Tuple[str, float, float]]:
-    """Return tokens where ``pos_frac - neg_frac > gap``.
+    """Return tokens with ``|pos_frac - neg_frac| > gap``.
 
-    This matches workflow.md: "выписать токены с разницей > 0,3".
+    This matches workflow.md: "выписать токены с разницей > 0,3"
+    (difference read as absolute value, so negative-side artefacts
+    are caught too).
 
     Returns:
         Sorted list of ``(token, pos_frac, neg_frac)`` by descending
-        gap.
+        absolute gap.
     """
-    hits = [
-        (tok, pf, nf)
-        for tok, (pf, nf) in freqs.items()
-        if pf - nf > gap
-    ]
-    hits.sort(key=lambda x: x[1] - x[2], reverse=True)
+    if absolute:
+        hits = [
+            (tok, pf, nf)
+            for tok, (pf, nf) in freqs.items()
+            if abs(pf - nf) > gap
+        ]
+        hits.sort(key=lambda x: abs(x[1] - x[2]), reverse=True)
+    else:
+        hits = [
+            (tok, pf, nf)
+            for tok, (pf, nf) in freqs.items()
+            if pf - nf > gap
+        ]
+        hits.sort(key=lambda x: x[1] - x[2], reverse=True)
     return hits
 
 
 def top_suspicious(
     freqs: Dict[str, Tuple[float, float]],
     n: int = 30,
+    by_abs: bool = False,
 ) -> List[Tuple[str, float, float, float]]:
-    """Return top-*n* tokens by ``pos_frac - neg_frac`` (descending).
+    """Return top-*n* tokens by gap (descending).
 
-    Useful for the report even when no token crosses the 0.3 threshold.
+    By default sorts by ``pos_frac - neg_frac``; with ``by_abs=True``
+    sorts by absolute gap so negative-side markers surface too.
 
     Returns:
         ``[(token, pos_frac, neg_frac, gap), ...]``
@@ -102,5 +117,105 @@ def top_suspicious(
         (tok, pf, nf, pf - nf)
         for tok, (pf, nf) in freqs.items()
     ]
-    ranked.sort(key=lambda x: x[3], reverse=True)
+    if by_abs:
+        ranked.sort(key=lambda x: abs(x[3]), reverse=True)
+    else:
+        ranked.sort(key=lambda x: x[3], reverse=True)
     return ranked[:n]
+
+
+_WORD_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+
+#: Identifier suffixes typical of synthetic renaming (R6 pools use the
+#: same styles for positive and negative renames, so a large gap here
+#: would mean the pools leaked the class).
+_SUFFIX_RE = re.compile(
+    r"_(tmp|temp|new|old|bak|copy|v\d+|2)$|^(tmp|res|out|result_value)$",
+    re.IGNORECASE,
+)
+
+#: Literal constants (booleans, None, numbers). Large gaps outside the
+#: structural ones (None from return_changed, bool flips from
+#: default_changed) would signal template constants leaking the class.
+_LITERAL_RE = re.compile(
+    r"^(?:true|false|none|\d+\.?\d*)$", re.IGNORECASE
+)
+
+_STRUCTURAL_WORDS = frozenset(
+    list(keyword.kwlist)
+    + ["none", "true", "false", "optional", "def", "return", "raise"]
+)
+
+
+def word_token_gaps(
+    pairs: List[Tuple[str, int]],
+) -> Dict[str, Tuple[float, float]]:
+    """Per-document frequencies with ``\\w+`` tokenisation (lowercased).
+
+    Complements the whitespace tokenisation: catches identifier
+    suffixes and constants that whitespace splitting dilutes
+    (e.g. ``verbose_tmp=False,`` hides the ``_tmp`` suffix).
+    """
+    pos_docs: Counter[str] = Counter()
+    neg_docs: Counter[str] = Counter()
+    n_pos = 0
+    n_neg = 0
+    for diff, label in pairs:
+        added = " ".join(
+            line.lstrip()[1:]
+            for line in diff.splitlines()
+            if line.lstrip().startswith("+")
+            and not line.lstrip().startswith("+++")
+        )
+        toks = set(_WORD_RE.findall(added.lower()))
+        if label == 1:
+            n_pos += 1
+            pos_docs.update(toks)
+        else:
+            n_neg += 1
+            neg_docs.update(toks)
+    n_pos = max(n_pos, 1)
+    n_neg = max(n_neg, 1)
+    return {
+        t: (pos_docs[t] / n_pos, neg_docs[t] / n_neg)
+        for t in set(pos_docs) | set(neg_docs)
+    }
+
+
+def max_suffix_gap(
+    word_freqs: Dict[str, Tuple[float, float]],
+) -> Tuple[float, str]:
+    """Largest absolute gap among name-suffix-like tokens.
+
+    Returns ``(max_gap, token)``; ``(0.0, "")`` when no such token.
+    """
+    best = (0.0, "")
+    for tok, (pf, nf) in word_freqs.items():
+        if _SUFFIX_RE.search(tok):
+            g = abs(pf - nf)
+            if g > best[0]:
+                best = (g, tok)
+    return best
+
+
+def max_literal_gap(
+    word_freqs: Dict[str, Tuple[float, float]],
+    exclude_structural: bool = True,
+) -> Tuple[float, str]:
+    """Largest absolute gap among literal-constant tokens.
+
+    With ``exclude_structural=True`` the expected structural
+    literals (None/True/False from ``return_changed`` /
+    ``default_changed``) are skipped, isolating template-constant
+    artefacts. Returns ``(max_gap, token)``.
+    """
+    best = (0.0, "")
+    for tok, (pf, nf) in word_freqs.items():
+        if not _LITERAL_RE.match(tok):
+            continue
+        if exclude_structural and tok in _STRUCTURAL_WORDS:
+            continue
+        g = abs(pf - nf)
+        if g > best[0]:
+            best = (g, tok)
+    return best
