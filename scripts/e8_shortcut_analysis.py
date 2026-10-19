@@ -305,6 +305,34 @@ def _token_analysis(df: pd.DataFrame) -> list[str]:
     return lines
 
 
+# ── Part 3: decision protocol (measured in FD-23, not now) ───
+def _decision_protocol() -> list[str]:
+    """Deferred-decision protocol: verify on trained M2, then decide."""
+    return [
+        "## 3. Протокол решения (уточнение: проверка в FD-23, не сейчас)",
+        "",
+        "Триггер E8 (val > 0,65) зафиксирован выше, но решение о FD-06bis "
+        "откладывается до замера на обученной M2 — смещение в данных "
+        "доказано, эксплуатация его моделью пока нет.",
+        "",
+        "Шаги в FD-23 (таблица E1 v0):",
+        "",
+        "1. Обучить M2 по плану, без изменений.",
+        "2. Прогнать оценку дважды: на исходных `doc_old` и на "
+        "нормализованных (заголовки секций стёрты). Падение метрики "
+        "между прогонами = измеренный вклад шортката.",
+        "3. Отдельно посмотреть срез `sig_same` на gold — там правило M0 "
+        "слепо, виден чистый вклад модели.",
+        "4. Порог решения: вклад ≤ 1–2 п.п. — принять как известное "
+        "ограничение в записке, вопрос закрыт; больше — запускать "
+        "FD-06bis (переподбор отрицательных, gold frozen) с измеренным "
+        "обоснованием.",
+        "5. При отборе конфигурации (FD-24) учитывать смещённость `val`: "
+        "смотреть стратифицированные метрики, а не только общий PR-AUC.",
+        "",
+    ]
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(
         description="FD-15 E8: shortcut & artefact analysis"
@@ -338,6 +366,8 @@ def main() -> None:
     report_lines.append(
         "Сгенерировано автоматически `scripts/e8_shortcut_analysis.py`."
     )
+    report_lines.append("")
+    report_lines.extend(_decision_protocol())
 
     out = Path(args.report)
     out.parent.mkdir(parents=True, exist_ok=True)
