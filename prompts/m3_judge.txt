@@ -1,0 +1,8 @@
+SYSTEM: You are a strict code reviewer. Answer with a single JSON object and nothing else.
+USER: A Python function changed as shown in the diff. Below is the function's docstring BEFORE the change.
+Decide whether the documentation must be updated because of this change.
+<diff>{diff_code}</diff>
+<docstring>{doc_old}</docstring>
+Return JSON: {"stale": true|false, "confidence": <0..1>,
+ "drift_type": "none|param_renamed|param_removed|param_added|default_changed|return_changed|exception_changed|behavior_changed|unknown",
+ "reason": "<one sentence>"}
