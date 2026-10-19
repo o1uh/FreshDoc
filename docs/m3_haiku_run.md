@@ -63,6 +63,20 @@ $env:OPENCODE_API_KEY="..."  # или строка OPENCODE_API_KEY=... в .env 
 M3 покрывает только test_real+gold; пустые срезы val/test_synth дают nan
 (протокол R11, без усреднений). Порог F1 — по реальным строкам val.
 
+## 5. Прогон с effort=max (чувствительность, вне FD-22)
+
+```powershell
+# те же 500 строк (data/m3_judge_max/m3_manifest.csv — копия манифеста)
+.venv\Scripts\python scripts/m3_judge.py run --dir data/m3_judge_max --workers 4 --effort max --max-tokens 32000
+# добивка упёршихся: --max-tokens 64000 --timeout 300 (только недостающие)
+.venv\Scripts\python scripts/m3_judge.py import-api --dir data/m3_judge_max --out <вне reports/preds/> --report <вне репозитория>
+```
+
+Итог 20.10.2026: принято 500/500, обрезок 0, факт $0.952 (thinking ~1.6M токенов).
+PR-AUC в пределах CI базового прогона, acc@0.5 gold 0.900 vs 0.850. Вывод: 9× цена
+без значимого прироста — основной остаётся обычный прогон. Флаги `--effort`,
+`--max-tokens`, `--timeout` — для таких экспериментов.
+
 ## 4. Файлы
 
 - `src/synth/opencode_client.py` — клиент (кэш, 3 повтора, смета, цены $0.10/$0.50).

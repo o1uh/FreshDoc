@@ -187,14 +187,17 @@ def _write_outputs(
 
 
 def _report_text(stats: dict[str, Any], out_dir: Path, args: argparse.Namespace,
-                 usage_totals: dict[str, int] | None) -> str:
+                 usage_totals: dict[str, int] | None, effort: str | None = None,
+                 max_tokens: str | None = None) -> str:
     cfg = _load_cfg(getattr(args, "config", None))
     api = cfg.get("api", {}) if isinstance(cfg.get("api", {}), dict) else {}
     model = str(api.get("model", cfg.get("model", JUDGE_MODEL)))
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    effort_str = f", effort={effort}" if effort else " (без thinking)"
+    mt = max_tokens or str(api.get("max_tokens", 1000))
     mode_lines = [
         f"- Модель-судья: {model} (temperature не отправляется — дефолт шлюза, "
-        f"max_tokens={api.get('max_tokens', 1000)}, thinking выкл). Дата импорта: {now}.",
+        f"max_tokens={mt}{effort_str}). Дата импорта: {now}.",
         "- Прогон: одиночные запросы (точный R10, один кейс на запрос), дисковый кэш — повтор ключ не тратит.",
         "- p_stale_from: confidence (лог-вероятности Messages API не отдаёт, R10 fallback).",
     ]
@@ -271,7 +274,7 @@ def cmd_estimate(args: argparse.Namespace) -> None:
 
 def _run_one(m3_id: str, pair_id: str, diff_code: str, doc_old: str, out_dir: Path,
              api_key: str, base_url: str, params: Any, sleep: float, force: bool,
-             session_id: str) -> dict[str, Any]:
+             session_id: str, timeout: int = 120) -> dict[str, Any]:
     from src.synth.opencode_client import build_messages, call_opencode
 
     resp_dir = out_dir / RESPONSES_DIR
@@ -284,10 +287,12 @@ def _run_one(m3_id: str, pair_id: str, diff_code: str, doc_old: str, out_dir: Pa
     messages = build_messages(diff_code, doc_old, PROJECT_ROOT / "prompts")
     res = call_opencode(messages, api_key, base_url, params,
                         cache_dir=out_dir / CACHE_DIR, max_retries=3,
-                        session_id=session_id)
+                        session_id=session_id, timeout=timeout)
     payload = {
         "m3_id": m3_id, "pair_id": pair_id,
         "model": res["model"],
+        "params": {"model": params.model, "temperature": params.temperature,
+                   "max_tokens": params.max_tokens, "effort": params.effort},
         "content": res["content"], "finish_reason": res.get("finish_reason"),
         "usage": res["usage"], "latency_s": res["latency_s"], "attempts": res["attempts"],
         "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -302,7 +307,7 @@ def _run_one(m3_id: str, pair_id: str, diff_code: str, doc_old: str, out_dir: Pa
 
 
 def cmd_run(args: argparse.Namespace) -> None:
-    from src.synth.opencode_client import BASE_URL_DEFAULT, load_api_key
+    from src.synth.opencode_client import BASE_URL_DEFAULT, OpenCodeParams, load_api_key
 
     cfg = _load_cfg(getattr(args, "config", None))
     api = cfg.get("api", {}) if isinstance(cfg.get("api", {}), dict) else {}
@@ -322,6 +327,13 @@ def cmd_run(args: argparse.Namespace) -> None:
 
     api_key = load_api_key()
     params = _api_params(cfg)
+    if getattr(args, "effort", None) is not None:
+        params = OpenCodeParams(model=params.model, temperature=params.temperature,
+                                max_tokens=args.max_tokens or params.max_tokens,
+                                effort=args.effort)
+    elif getattr(args, "max_tokens", None) is not None:
+        params = OpenCodeParams(model=params.model, temperature=params.temperature,
+                                max_tokens=args.max_tokens, effort=params.effort)
     base_url = str(api.get("base_url", BASE_URL_DEFAULT))
     (out_dir / RESPONSES_DIR).mkdir(parents=True, exist_ok=True)
     (out_dir / CACHE_DIR).mkdir(parents=True, exist_ok=True)
@@ -337,7 +349,7 @@ def cmd_run(args: argparse.Namespace) -> None:
         try:
             out = _run_one(m3_id, pair_id, diff_code, doc_old, out_dir,
                            api_key, base_url, params, args.sleep, args.force,
-                           session_id)
+                           session_id, timeout=args.timeout)
         except Exception as exc:  # noqa: BLE001 — один запрос не роняет партию
             out = {"m3_id": m3_id, "status": f"error: {exc}"}
         with lock:
@@ -455,7 +467,19 @@ def cmd_import_api(args: argparse.Namespace) -> None:
                          "latency_s": payload.get("latency_s", 0)})
 
     totals = _usage_totals(out_dir)
-    report = _report_text(stats, out_dir, args, usage_totals=totals)
+    effort = None
+    mt_set: set[int] = set()
+    for resp_path in sorted((out_dir / RESPONSES_DIR).glob("m3_*.response.json")):
+        try:
+            params = json.loads(resp_path.read_text(encoding="utf-8")).get("params", {})
+            if effort is None:
+                effort = params.get("effort")
+            if isinstance(params.get("max_tokens"), int):
+                mt_set.add(int(params["max_tokens"]))
+        except (json.JSONDecodeError, OSError, AttributeError):
+            continue
+    mt_label = str(sorted(mt_set)[0]) if len(mt_set) == 1 else "mixed:" + "/".join(map(str, sorted(mt_set)))
+    report = _report_text(stats, out_dir, args, usage_totals=totals, effort=effort, max_tokens=mt_label)
     _write_outputs(preds, raw_rows, stats, out_dir, args, report)
     if stats["accepted"] < len(by_id):
         print(f"WARNING: принято {stats['accepted']} из {len(by_id)} - "
@@ -480,6 +504,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--sleep", type=float, default=0.5)
     p.add_argument("--limit", type=int, default=None)
     p.add_argument("--force", action="store_true")
+    p.add_argument("--timeout", type=int, default=120,
+                   help="таймаут HTTP-запроса, с (max effort отвечает медленно)")
+    p.add_argument("--effort", type=str, default=None,
+                   help="effort шлюза (напр. max): thinking adaptive; новый кэш, полный реран")
+    p.add_argument("--max-tokens", dest="max_tokens", type=int, default=None,
+                   help="переопределить лимит токенов из конфига")
     p.set_defaults(func=cmd_run)
     p = sub.add_parser("import-api", help="разбор responses/*.response.json -> preds + отчёт (без сети)")
     p.add_argument("--dir", default=str(OUT_DIR_DEFAULT))

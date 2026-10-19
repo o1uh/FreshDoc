@@ -61,6 +61,10 @@ class OpenCodeParams:
     # (smoke 20.10.2026: stop=max_tokens, `behavior_chang…` на 120 и обрезка
     # reason на 500). 1000 — с запасом; биллинг по факту, не по лимиту.
     max_tokens: int = 1000
+    # effort=None: обычный вызов без thinking (дефолт шлюза; thinking_tokens=0
+    # на всём прогоне 20.10.2026). effort="max": thinking adaptive + output_config,
+    # ключ кэша меняется (полный реран).
+    effort: str | None = None
 
 
 def load_api_key(env: dict[str, str] | None = None, dotenv_path: Path | None = None) -> str:
@@ -112,12 +116,13 @@ def request_key(model: str, params: OpenCodeParams, messages: list[dict[str, str
 
 def _normalize_usage(raw: dict[str, Any] | None) -> dict[str, int]:
     raw = raw or {}
+    details = raw.get("output_tokens_details") or {}
     return {
         "prompt_tokens": int(raw.get("input_tokens") or 0),
         "prompt_cache_hit_tokens": int(raw.get("cache_read_input_tokens") or 0),
         "prompt_cache_miss_tokens": int(raw.get("cache_creation_input_tokens") or 0),
         "completion_tokens": int(raw.get("output_tokens") or 0),
-        "reasoning_tokens": 0,  # thinking выключен по R10
+        "reasoning_tokens": int(details.get("thinking_tokens") or 0),
         "total_tokens": int(raw.get("input_tokens") or 0) + int(raw.get("output_tokens") or 0),
     }
 
@@ -171,6 +176,11 @@ def call_opencode(
     }
     if params.temperature is not None:
         body["temperature"] = params.temperature
+    if params.effort is not None:
+        # effort — сущность шлюза (проверено пробой 20.10.2026):
+        # thinking.type.adaptive + output_config.effort.
+        body["thinking"] = {"type": "adaptive"}
+        body["output_config"] = {"effort": params.effort}
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json",
                "anthropic-version": ANTHROPIC_VERSION,
                "User-Agent": "FreshDoc-m3-judge/1.0"}

@@ -131,6 +131,15 @@ def test_cost_math():
     assert oc.cost_usd(6) == pytest.approx(0.00129)
 
 
+def test_normalize_usage_reads_thinking_tokens():
+    raw = {"input_tokens": 439, "output_tokens": 1497,
+           "output_tokens_details": {"thinking_tokens": 1383}}
+    u = oc._normalize_usage(raw)
+    assert u["reasoning_tokens"] == 1383
+    assert u["completion_tokens"] == 1497
+    assert oc._normalize_usage({})["reasoning_tokens"] == 0
+
+
 def test_estimate_runs_without_net_or_key(capsys):
     import sys
     from scripts.m3_judge import cmd_estimate
@@ -202,3 +211,27 @@ def test_temperature_none_omitted_from_body(monkeypatch, tmp_path):
                      params=OpenCodeParams(temperature=None))
     assert "temperature" not in bodies[0]
     assert bodies[0]["max_tokens"] == 1000
+    assert "thinking" not in bodies[0] and "output_config" not in bodies[0]
+
+
+def test_effort_max_sends_thinking_and_output_config(monkeypatch, tmp_path):
+    bodies: list[dict] = []
+
+    def fake_post(url, headers=None, json=None, timeout=None):
+        bodies.append(json)
+        return _Resp(200, _msg_ok())
+
+    monkeypatch.setattr(oc.requests, "post", fake_post)
+    monkeypatch.setattr(oc.time, "sleep", lambda *a, **k: None)
+    oc.call_opencode(_messages(), "key", cache_dir=tmp_path,
+                     params=OpenCodeParams(temperature=None, max_tokens=4000, effort="max"))
+    assert bodies[0]["thinking"] == {"type": "adaptive"}
+    assert bodies[0]["output_config"] == {"effort": "max"}
+    assert bodies[0]["max_tokens"] == 4000
+
+
+def test_request_key_differs_by_effort():
+    m = _messages()
+    a = OpenCodeParams(temperature=None, max_tokens=1000, effort=None)
+    b = OpenCodeParams(temperature=None, max_tokens=4000, effort="max")
+    assert oc.request_key("x", a, m) != oc.request_key("x", b, m)
