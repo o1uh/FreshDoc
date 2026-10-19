@@ -66,7 +66,7 @@ $p_{50} \approx 340,\; p_{75} \approx 560,\; p_{90} \approx 870,\; p_{95} \appro
 
 | Модель | Параметры (точно) | Архитектура и токенизатор | Контекст (макс/цель) | Режим на 2× T4 | VRAM (пик на карту) | Время 1 эпохи (22k) | Лицензия | Вердикт и статус в проекте |
 |---|---|---|---|---|---|---|---|---|
-| **`Alibaba-NLP/gte-modernbert-base`** (и **`gte-reranker-modernbert-base`**) | **149 014 272** (149M; reranker: 149.6M) | `ModernBertModel` / `ModernBertForSequenceClassification` (RoPE, GeGLU, vocab 50k, safetensors) | 8192 / **2048** (0.7% trunc) | **Full FT FP16** (+GC на 2048) | ~5.5–6.5 ГБ @1024; ~9–12 ГБ @2048 | **~8–11 мин @1024; ~14–18 мин @2048** | **Apache-2.0** | ⭐ **ТОП-1 (Цель M2 v2 в FD-24)**. Полная совместимость с ModernBERT; парный претрейн на текстовых relevance-парах (GTE/mGTE), код — только COIR-оценка (79.3/80.0); bi-encoder, готовая classification head — у `gte-reranker-modernbert-base` |
+| **`Alibaba-NLP/gte-modernbert-base`** (и **`gte-reranker-modernbert-base`**) | **149 014 272** (149M; reranker: 149.6M) | `ModernBertModel` / `ModernBertForSequenceClassification` (RoPE, GeGLU, vocab 50k, safetensors) | 8192 / **2048** (0.7% trunc) | **Full FT FP16** (+GC на 2048) | ~5.5–6.5 ГБ @1024; ~9–12 ГБ @2048 | **~8–11 мин @1024; ~14–18 мин @2048** | **Apache-2.0** | ⭐ **ТОП-1 (Цель M2 v2 в FD-24)**. Полная совместимость с ModernBERT; парный претрейн на текстовых relevance-парах (GTE/mGTE), код — только COIR-оценка (79.3/80.0); bi-encoder; энкодерные веса `gte-reranker-modernbert-base` — только бэкбон для слота 11 (гипотеза, свои головы DualHead) |
 | **`answerdotai/ModernBERT-base`** | 149 655 232 (149M) | `ModernBertForMaskedLM` (RoPE, GeGLU, vocab 50k) | 8192 / **2048** (0.7% trunc) | Full FT FP16 (+GC на 2048) | ~5.5–6.5 ГБ @1024; ~9–12 ГБ @2048 | ~8–11 мин @1024; ~14–18 мин @2048 | Apache-2.0 | ⭐ **ТОП-2 (Контроль M2 v2 в FD-24)**. Чистый Masked LM бейзлайн |
 | **`microsoft/unixcoder-base`** | ~125M | `RobertaModel` (BPE, vocab 51k, `pytorch_model.bin`) | 1026 / **1024** (4.4% trunc) | Full FT FP16 | ~4.5–5.5 ГБ | **~6–8 мин** | Apache-2.0 | ⭐ **ТОП-3 (Бейзлайн M2 v1 в FD-21)**. Стабильный чисто кодовый бейзлайн, штатный CLS-пулинг |
 | **`ibm-granite/granite-embedding-english-r2`** | 149 014 272 (149M) | `ModernBertModel` (RoPE, GeGLU, vocab 50k) | 8192 / **2048** | Full FT FP16 | ~5.5–6.5 ГБ | ~8–11 мин | Apache-2.0 | ⭐ **ТОП-4 (Резерв ModernBERT)**. Архитектура ModernBERT, обученная на open-source permissive парах и IBM-internal парах технических доменов (код — COIR-оценка 55.3; явный кодовый претрейн заявлен лишь у multilingual-r2) |
@@ -75,7 +75,7 @@ $p_{50} \approx 340,\; p_{75} \approx 560,\; p_{90} \approx 870,\; p_{95} \appro
 | `ibm-granite/granite-embedding-small-english-r2` | 47 662 464 (48M) | `ModernBertModel` (RoPE, hidden 384, layers 12) | 8192 / 2048 | Full FT FP16 | ~2.5–3.5 ГБ | **~2–3 мин** | Apache-2.0 | Скоростной smoke-тест DDP пайплайна |
 | `nomic-ai/modernbert-embed-base` | 149 014 272 (149M) | `ModernBertModel` (RoPE, GeGLU) | 8192 / 2048 | Full FT FP16 | ~5.5–6.5 ГБ | ~8–11 мин | Apache-2.0 | Аналог GTE-ModernBERT |
 | `ibm-granite/granite-embedding-311m-multilingual-r2` | 311 664 384 (312M) | `ModernBertModel` (vocab 262k) | **32 768** / 2048 | Full FT FP16 + GC | ~10–12 ГБ | ~15–20 мин | Apache-2.0 | Резерв сверхдлинного контекста |
-| `answerdotai/ModernBERT-large` | 395M | `ModernBertModel` (RoPE, GeGLU) | 8192 / 2048 | Full FT FP16 + GC | ~11–13 ГБ | ~18–24 мин | Apache-2.0 | Резерв высокой емкости (слот 9) |
+| `answerdotai/ModernBERT-large` | 395M | `ModernBertModel` (RoPE, GeGLU) | 8192 / 2048 | Full FT FP16 + GC | ~11–13 ГБ | ~18–24 мин | Apache-2.0 | Резерв высокой емкости (слот 10+; брать, только если 149M-модели упрутся в потолок и останется время до заморозки 27.10) |
 | `microsoft/codebert-base` | 125M | `RobertaModel` | 512 (**28.6% trunc**) | Full FT FP16 | ~3.5–4.5 ГБ | ~3–4 мин | MIT | Устаревший: критическое усечение контекста |
 | `microsoft/codereviewer` | 220M | T5 Seq2Seq (Diff-tokens) | 512 (ext 1024) | Full FT (Enc) / LoRA | ~7.0–8.5 ГБ | ~12–16 мин | Apache-2.0 | Diff-специалист, только как feature-extractor |
 
@@ -111,13 +111,13 @@ $p_{50} \approx 340,\; p_{75} \approx 560,\; p_{90} \approx 870,\; p_{95} \appro
 
 ## 4. Архитектурный норматив DualHead (согласовано с R10)
 
-- **Пулинг по умолчанию (энкодеры):** `[CLS]`. Пулинг `Masked Mean` допустим только как абляция E3 (слот 9).
+- **Пулинг по умолчанию (энкодеры):** `[CLS]`. Пулинг `Masked Mean` допустим только как абляция E3 (слот 10+).
 - **Пулинг для каузальных декодеров (факультатив E8):** `Last Non-Pad` (последний непаддинговый токен последовательности). В каузальной архитектуре нулевой токен не агрегирует последующий контекст из-за треугольной маски внимания; полный receptive field всей пары имеет только последний токен.
 - **Критерий потерь:** Masked Conditional Loss:
-  $$\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{BCE}}(z_{\text{stale}}, y_{\text{stale}}) + \lambda \cdot \mathbb{I}(y_{\text{stale}} = 1) \cdot \mathcal{L}_{\text{CE}}(z_{\text{drift}}, y_{\text{drift}})$$
-  где для строк с $y_{\text{stale}} = 0$ метка дрейфа маскируется (`ignore_index = -100`), а $\lambda \in \{0.3, 0.6, 1.0\}$ подбирается по валидации (стартовое значение: $\lambda = 0.6$).
+  $$\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{BCE}}(z_{\text{stale}}, y_{\text{stale}}) + 0.6 \cdot \mathbb{I}(y_{\text{stale}} = 1 \land y_{\text{drift}} \ne \text{unknown}) \cdot \mathcal{L}_{\text{CE}}(z_{\text{drift}}, y_{\text{drift}})$$
+  где таргет дрейфа маскируется (`ignore_index = -100`) для строк с $y_{\text{stale}} = 0$ и для строк с $y_{\text{drift}} = \text{unknown}$; $\lambda = 0.6$ фиксирован (сетка lr×λ снята как не помещающаяся в бюджет FD-24).
 - **Гейт инференса:** Если $p_{\text{stale}} \le \tau$ (порог из FD-25), инференс возвращает `stale = 0, drift_type = None`, не опрашивая голову типов дрейфа.
-- **Метрика дрейфа:** Macro-F1 головы типов дрейфа оценивается **строго на подвыборке истинного рассинхрона ($y_{\text{stale}} = 1$)**.
+- **Метрика дрейфа:** Macro-F1 головы типов дрейфа оценивается **строго на подвыборке истинного рассинхрона с известным типом ($y_{\text{stale}} = 1 \land y_{\text{drift}} \ne \text{unknown}$)**.
 
 ```python
 import torch
@@ -148,7 +148,9 @@ class DualHeadCodeClassifier(nn.Module):
             loss_s = self.stale_criterion(logit_s, labels_stale.float())
             if labels_drift is not None:
                 mask_d = labels_drift.clone()
-                mask_d[labels_stale == 0] = -100
+                # Маскируются строки без рассинхрона И строки с неизвестным типом
+                # (порядок классов: 0-5 sig-типы, 6 behavior_changed, 7 unknown)
+                mask_d[(labels_stale == 0) | (labels_drift == 7)] = -100
                 loss = loss_s + lambda_drift * self.drift_criterion(logit_d, mask_d)
             else:
                 loss = loss_s
@@ -161,7 +163,7 @@ class DualHeadCodeClassifier(nn.Module):
 ## 5. Итоговый ранжированный ТОП моделей для FreshDoc
 
 1. **ТОП-1 (Основная цель улучшения M2 v2, FD-24): `Alibaba-NLP/gte-modernbert-base` (149M)**  
-   *Обоснование:* Нативный контекст до 8192 (0.7% усечения при $L=2048$), современная архитектура RoPE/GeGLU/unpadding, полная совместимость с `ModernBertForSequenceClassification`. Предобучен на текстовых relevance-парах (GTE/mGTE), валидирован на коде (COIR 79.3/80.0); bi-encoder архитектура, а готовая sequence classification head присутствует в чекпоинте `gte-reranker-modernbert-base`; целевой бэкбон под DualHead Cross-Encoder.
+   *Обоснование:* Нативный контекст до 8192 (0.7% усечения при $L=2048$), современная архитектура RoPE/GeGLU/unpadding, полная совместимость с `ModernBertForSequenceClassification`. Предобучен на текстовых relevance-парах (GTE/mGTE), валидирован на коде (COIR 79.3/80.0); bi-encoder архитектура; целевой бэкбон под DualHead Cross-Encoder (со своими головами; веса reranker-чекпоинта — только слот 11).
 2. **ТОП-2 (Факториальный контроль M2 v2, FD-24): `answerdotai/ModernBERT-base` (149M)**  
    *Обоснование:* Необходим для чистого экспериментального разделения: сколько прироста дает снятие усечения контекста ($1024 \to 2048$), а сколько — парный претрейн весов GTE.
 3. **ТОП-3 (Обязательный базовый бейзлайн M2 v1, FD-21): `microsoft/unixcoder-base` (125M)**  
