@@ -5,7 +5,7 @@
 > рядом в `reports/deep_model_research.md`; метрики — в `reports/tables/e1.csv`.
 > `workflow.md` (ссылки FD-xx / R-xx ниже) — внешний план-документ, не часть репозитория.
 
-**Дата составления:** 18.10.2026 (ревизия 6: возвращена сетка $\lambda \in \{0.3, 0.6, 1.0\}$, разгружен слот 8 бюджета, описан гейт инференса и протокол macro-F1 на $y_{stale}=1$)  
+**Дата актуализации:** 19.10.2026 (ревизия 7: синхронизация с Deep Research v2, интеграция бэкбонов Granite R2 / Jina-Code / Granite-350m, фиксация gte-reranker-modernbert-base, флаг NCCL_P2P_DISABLE=1 для Kaggle DDP)  
 **Контекст проекта:** FreshDoc (мониторинг актуальности документации по изменениям кода)  
 **Аппаратная среда:** Kaggle Notebooks, 2× NVIDIA Tesla T4 16 ГБ (Turing, SM 7.5, PCIe 3.0), квота 30 ч/нед  
 **Отчет глубокого ресёрча моделей:** [reports/deep_model_research.md](deep_model_research.md) (рядом в этой же папке; см. правило R15)  
@@ -31,7 +31,7 @@
 ## 2. Архитектурный выбор моделей: синтез Deep-Research и профиля данных
 
 ### 2.1. Профиль данных и штраф усечения контекста (Truncation Penalty)
-- Квантили длин токенов датасета (22k train, 5.2k val/test): $p_{50}=340, p_{75}=560, p_{90}=870, p_{95}=1100, p_{99}=1950, \max=3800$. Измерено на BPE типа RoBERTa; для Qwen — отдельно.
+- Квантили длин токенов датасета (22k train, 5.2k val/test): $p_{50}=340, p_{75}=560, p_{90}=870, p_{95}=1100, p_{99}=1950, \max=3800$ (измерено на BPE-токенизаторах типа RoBERTa / ModernBERT).
 - **Лимит 512 токенов** (`CodeBERT`, `GraphCodeBERT`, `DeBERTa-v3`): **усекается 28.6% примеров** ($p_{75}=560$). Теряется либо целевой docstring в конце конкатенации, либо фрагменты диффа.
 - **Окно 1024 токена** (`UniXcoder-base`, рабочий 1024, поз. растяжка, не натив): потеря контекста сокращается до **4.4%** (покрытие 95.6%).
 - **Окно 2048 токенов** (`ModernBERT-base`, нативный контекст до 8192): потеря контекста падает до **0.7%** (покрытие 99.3%).
@@ -54,17 +54,28 @@
 
 ### 2.3. Сравнительная матрица кандидатов (с реалистичными оценками)
 
-| Модель | Архитектура | Контекст | Режим (16 ГБ T4) | Расчетный VRAM (нижняя граница) | Оценка времени 1 эпохи (sustained MFU 25-35%) | Статус в проекте |
-|---|---|---|---|---|---|---|
-| **`microsoft/unixcoder-base`** (125M) | Encoder (Multi-task) | 1024 (4.4% trunc) | Full FT FP16 | ~4.5–5.5 GB | **~6–8 мин** (пилот FD-05) | ⭐ **Бейзлайн M2 v1 (FD-21)** |
-| **`answerdotai/ModernBERT-base`** (149M) | Encoder (RoPE, GeGLU) | **8 192** (0.7% trunc @2048) | **Full FT FP16** | **~5.5–6.5 GB** (@1024) | **~8–11 мин** (@1024) | ⭐ **Цель улучшения M2 v2 (FD-24)** |
-| `answerdotai/ModernBERT-large` (395M) | Encoder (RoPE, GeGLU) | 8 192 | Full FT FP16 | ~11–13 GB (@1024) | ~18–24 мин | Резерв высокой емкости |
-| `microsoft/codebert-base` (125M) | Encoder (RoBERTa) | 512 (28.6% trunc) | Full FT FP16 | ~3.5–4.5 GB | ~3–4 мин | Устаревший аналог (усечение) |
-| `microsoft/codereviewer` (220M) | T5 Seq2Seq (Diff-tokens) | 512 (ext 1024) | Full FT (Enc) / LoRA | ~7.0–8.5 GB | ~12–16 мин | Дополнительный feature-extractor |
-| **`Qwen/Qwen2.5-Coder-1.5B`** | Causal Decoder | 32 768 | **LoRA FP16** ($r=16$) | **~8.5–10.0 GB** | **~30–45 мин** | Опциональный E8 (факультатив) |
-| `Qwen/Qwen2.5-Coder-0.5B` | Causal Decoder | 32 768 | Full FT + 8-bit Adam | ~10–12 GB | ~16–22 мин | Causal контроль |
-| `Qwen/Qwen2.5-Coder-7B` | Causal Decoder | 32 768 | QLoRA 4-bit | ~10.5–12.0 GB | >60 мин (программный INT4) | ❌ Дисквалифицирован |
-| `DeepSeek-Coder-V2-Lite` | MoE (16B / 2.4B act) | 128k | QLoRA 4-bit | >14.5 GB | >90 мин (краш MLA на T4) | ❌ Дисквалифицирован |
+| Модель | Архитектура | Контекст | Режим (16 ГБ T4) | Расчетный VRAM (нижняя граница) | Оценка времени 1 эпохи (sustained MFU 25-35%) | Лицензия | Статус в проекте |
+|---|---|---|---|---|---|---|---|
+| **`Alibaba-NLP/gte-modernbert-base`** (и **`gte-reranker-modernbert-base`**) | Encoder (RoPE, GeGLU, GTE-tuned) | **8 192** (0.7% trunc @2048) | **Full FT FP16** (+GC на 2048) | **~5.5–6.5 ГБ** (@1024) / ~9–12 ГБ (@2048) | **~8–11 мин** (@1024) / ~14–18 мин (@2048) | Apache-2.0 | ⭐ **ТОП-1 (Цель улучшения M2 v2, FD-24)**. Готовая голова классификации — у чекпоинта `gte-reranker-modernbert-base` |
+| **`answerdotai/ModernBERT-base`** (149M) | Encoder (RoPE, GeGLU, MLM) | 8 192 (0.7% trunc @2048) | Full FT FP16 (+GC на 2048) | ~5.5–6.5 ГБ (@1024) | ~8–11 мин (@1024) | Apache-2.0 | ⭐ **ТОП-2 (Факториальный контроль M2 v2, FD-24)** |
+| **`microsoft/unixcoder-base`** (125M) | Encoder (Multi-task, BPE) | 1024 (4.4% trunc) | Full FT FP16 | ~4.5–5.5 ГБ | **~6–8 мин** (пилот FD-05) | Apache-2.0 | ⭐ **ТОП-3 (Бейзлайн M2 v1, FD-21)** |
+| `ibm-granite/granite-embedding-english-r2` (149M) | Encoder (ModernBERT) | 8 192 (0.7% trunc @2048) | Full FT FP16 | ~5.5–6.5 ГБ (@1024) | ~8–11 мин | Apache-2.0 | ⭐ **ТОП-4 (Резерв ModernBERT)**. Drop-in альтернатива GTE |
+| `jinaai/jina-embeddings-v2-base-code` (161M) | Encoder (BERT + ALiBi) | 8 192 (0.7% trunc @2048) | Full FT FP16 | ~5.5–6.5 ГБ (@1024) | ~8–10 мин | Apache-2.0 | ⭐ **ТОП-5 (Независимый ALiBi-fallback без ModernBERT)** |
+| `ibm-granite/granite-embedding-small-english-r2` (48M) | Encoder (ModernBERT) | 8 192 | Full FT FP16 | ~2.5–3.5 ГБ | **~2–3 мин** | Apache-2.0 | Скоростной smoke-тест DDP инфраструктуры (FD-02) |
+| `answerdotai/ModernBERT-large` (395M) | Encoder (RoPE, GeGLU) | 8 192 | Full FT FP16 + GC | ~11–13 ГБ (@1024) | ~18–24 мин | Apache-2.0 | Резерв высокой емкости (слот 9) |
+| `microsoft/codebert-base` (125M) | Encoder (RoBERTa) | 512 (28.6% trunc) | Full FT FP16 | ~3.5–4.5 ГБ | ~3–4 мин | MIT | Устаревший аналог (критическое усечение) |
+| `microsoft/codereviewer` (220M) | T5 Seq2Seq (Diff-tokens) | 512 (ext 1024) | Full FT (Enc) / LoRA | ~7.0–8.5 ГБ | ~12–16 мин | Apache-2.0 | Дополнительный diff-extractor |
+| **`ibm-granite/granite-4.0-350m`** (352M) | Dense Causal Decoder | 32 768 / **1024** | **Full FT FP16 + GC** | **~8.0–9.5 ГБ** (@1024) | **~9–12 мин** (@1024) | Apache-2.0* | ⭐ **Приоритетный факультатив E8** (Full FT без OOM на T4) |
+| **`Qwen/Qwen2.5-Coder-1.5B`** (1.54B) | Causal Decoder | 32 768 / **1024** | **LoRA FP16** ($r=16$) | **~8.5–10.0 ГБ** | **~30–45 мин** | Apache-2.0 | Тяжелый семантический эталон E8 |
+| `01-ai/Yi-Coder-1.5B` (1.48B) | Causal Decoder | 131k / 1024 | LoRA FP16 ($r=16$) | ~8.5–10.0 ГБ | ~30–45 мин | Apache-2.0 | Прямая альтернатива Qwen 1.5B для E8 |
+| `infly/OpenCoder-1.5B-Instruct` (1.91B) | Causal Decoder | 4096 / 1024 | LoRA FP16 ($r=16$) | ~8.5–10.0 ГБ | ~30–45 мин | ⚠️ INF Custom | Лицензия КНР (суды Шанхая). Жёлтый статус $\triangle$ |
+| `Qwen/Qwen2.5-Coder-0.5B` (494M) | Causal Decoder | 32 768 | Full FT + 8-bit Adam | ~10–12 ГБ | ~16–22 мин | Apache-2.0 | Causal-контроль (риск OOM при Full FT) |
+| `Qwen/Qwen2.5-Coder-3B` (3.09B) | Causal Decoder | 32 768 | LoRA / QLoRA | — | — | ❌ Qwen Research | Дисквалифицирован (несвободная лицензия) |
+| `jinaai/jina-embeddings-v3` (572M) | Bi-encoder | 8 192 | Full FT | — | — | ❌ CC-BY-NC-4.0 | Дисквалифицирован (некоммерческая лицензия) |
+| `Qwen/Qwen2.5-Coder-7B` | Causal Decoder | 32 768 | QLoRA 4-bit | ~10.5–12.0 GB | >60 мин (программный INT4) | Apache-2.0 | ❌ Дисквалифицирован (квота T4) |
+| `DeepSeek-Coder-V2-Lite` | MoE (16B / 2.4B act) | 128k | QLoRA 4-bit | >14.5 GB | >90 мин (краш MLA на T4) | DeepSeek Lic. | ❌ Дисквалифицирован (краш MLA на T4) |
+
+*\*Примечание к лицензии Granite-350m:* в репозитории на Hugging Face файл LICENSE отдает HTTP 404, хотя в метаданных `README.md` зафиксирована Apache-2.0. Перед релизом в production требуется контрольная проверка юридической чистоты.
 
 ---
 
@@ -118,7 +129,7 @@
 | **3** | E2(c) | UniXcoder-base | 1024 | Реальные + AST | ~20–25 мин | Базовая смесь |
 | **4** | E2(d) | UniXcoder-base | 1024 | Реальные + AST + LLM P1/P2 | ~20–25 мин | Оценка адресного вклада LLM-пар на sig_same |
 | **5** | E2c (контроль) | ModernBERT-base | 1024 | Полная смесь | ~25–35 мин | Факториальный контроль: домен UniXcoder vs ModernBERT при равной длине |
-| **6** | E2c (целевой) | ModernBERT-base | 2048 | Полная смесь | ~45–55 мин | Оценка снятия усечения (0.7% trunc, Full FT + GC) |
+| **6** | E2c (целевой) | GTE-ModernBERT-base (или ModernBERT) | 2048 | Полная смесь | ~45–55 мин | Оценка снятия усечения (0.7% trunc, Full FT + GC) и парного GTE-претрейна на relevance-парах (COIR-оценка) |
 | **7** | E2b (стэкинг) | M1 + M2 (single-split) | — | Предсказания на val | ~10–15 мин | Обучение мета-модели на val без 5-кратного переобучения M2 |
 | **8** | E3 (абляция) | Лучший энкодер | по рез. 5/6 | Без `diff_code` | ~25–35 мин | Проверка ключевой гипотезы о вкладе диффа кода |
 
@@ -127,7 +138,7 @@
 
 **Опциональные расширения (при наличии резерва времени сессии):**
 - *Слот 9 (E3 pooling):* Абляция `Mean vs CLS pooling` на датасете FreshDoc (+30 мин GPU, суммарный расход возрастет до ~4.2–4.8 ч GPU, что остается в пределах 16% квоты).
-- *Факультатив E8:* Прогон `Qwen2.5-Coder-1.5B` (LoRA FP16, ~1.5–2 часа на 3 эпохи).
+- *Факультатив E8 (Causal Decoder):* Приоритетный легковесный декодер — `ibm-granite/granite-4.0-350m` (Full FT FP16 + GC, ~27–36 мин на 3 эпохи, экономия 70% квоты T4). При наличии дополнительного резерва времени сессии — тяжелый эталон `Qwen/Qwen2.5-Coder-1.5B` (или `01-ai/Yi-Coder-1.5B`, LoRA FP16, ~1.5–2 часа на 3 эпохи).
 
 ---
 
@@ -138,7 +149,9 @@
 ### 1. Задача FD-02 (Настройка окружения Colab/Kaggle)
 - **Целевой блок:** `#### FD-02 · Colab/Kaggle и предобученные веса`, пункт «Шаги».
 - **Дополнение:**
-  - В шаг smoke-test добавить проверку версий библиотек для поддержки современных энкодеров: `transformers>=4.48.0` (необходимо для архитектуры `ModernBertForSequenceClassification`), `torch>=2.2.0` (для нативного PyTorch SDPA без FlashAttention-2).
+  - В шаг smoke-test добавить проверку версий библиотек для поддержки современных энкодеров: `transformers>=4.48.0` (необходимо для архитектуры `ModernBertForSequenceClassification`), `torch>=2.2.0` (для нативного PyTorch SDPA без FlashAttention-2), `accelerate>=0.34.0`.
+  - Зафиксировать DDP-переменную окружения: `export NCCL_P2P_DISABLE=1` (на шине PCIe 3.0 без NVLink предотвращает зависания peer-to-peer allreduce в PyTorch DDP).
+  - Рекомендовать сверхбыстрый smoke-тест пайплайна на компактном бэкбоне `ibm-granite/granite-embedding-small-english-r2` (48M, 2–3 мин на эпоху) для экономии квоты.
 
 ### 2. Задача FD-21 (Бейзлайн M2)
 - **Целевой блок:** `#### FD-21 · M2: реализация и первое обучение`, пункт «Шаги».
@@ -152,7 +165,7 @@
   - В шаге 1 зафиксировать сетку гиперпараметров: `lr ∈ {1e-5, 2e-5, 5e-5}`, вес задачи $\lambda \in \{0.3, 0.6, 1.0\}$, `warmup = 6%`, оптимизатор AdamW (`per_device_batch_size=8`, `accum=2`, eff_batch=32). Указать, что время прогонов калибруется пилотом.
   - В шаге 2 сохранить полную сетку E2: (a) real-only, (b) synth-only, (c) synth+real, (d) +LLM-пары.
   - Добавить шаг E2b: single-split стэкинг M1 + M2 (обучение мета-бустинга на отложенных предсказаниях `val` без утечки).
-  - В шаге 4 (альтернативный энкодер) прописать факториальное сравнение: `microsoft/unixcoder-base` @1024 против `answerdotai/ModernBERT-base` @1024 (контроль домена) и `ModernBERT-base` @2048 (контроль контекста).
+  - В шаге 4 (альтернативный энкодер) прописать факториальное сравнение: `microsoft/unixcoder-base` @1024 против `answerdotai/ModernBERT-base` @1024 (контроль домена), `ModernBERT-base` @2048 (контроль контекста) и целевого `Alibaba-NLP/gte-modernbert-base` (или `gte-reranker-modernbert-base`) @2048 (целевая модель: снятие усечения + парный претрейн relevance-весов). В качестве drop-in резерва фиксируется `ibm-granite/granite-embedding-english-r2` (149M), а как архитектурный fallback вне ModernBERT — `jinaai/jina-embeddings-v2-base-code` (161M, ALiBi).
   - В блоке E3 выполнить строго абляцию `без diff_code`. Сравнение стратегий пулинга (`Mean vs CLS pooling`) отложено из обязательного бюджета, допустимо как слот 9; абляции остальных текстовых полей отложены.
   - Ограничение: строго не более 8 обязательных запусков в соответствии с таблицей бюджета.
 
@@ -171,20 +184,24 @@
   - Вход: конкатенация `[sig_old + diff_code]` и `[doc_old]`.
   - Модели:
     * Бейзлайн M2 v1 (FD-21) — строго `microsoft/unixcoder-base` (125M, рабочий 1024 [поз. растяжка, не натив], CLS-пулинг).
-    * Улучшение M2 v2 (FD-24) — `answerdotai/ModernBERT-base` (149M, max_len 1024/2048, RoPE, SDPA attention, зависимость `transformers>=4.48.0`).
-    * Факультатив M2 v3 (E8) — `Qwen/Qwen2.5-Coder-1.5B` (LoRA FP16, Last Non-Pad Pooling).
+    * Цель улучшения M2 v2 (FD-24) — `Alibaba-NLP/gte-modernbert-base` (149M, max_len 2048, RoPE, SDPA attention, зависимость `transformers>=4.48.0`; для готовой головы классификации пар — чекпоинт `gte-reranker-modernbert-base`).
+    * Факториальный контроль M2 v2 — `answerdotai/ModernBERT-base` (149M, max_len 1024/2048).
+    * Резерв ModernBERT — `ibm-granite/granite-embedding-english-r2` (149M).
+    * Архитектурный fallback вне ModernBERT — `jinaai/jina-embeddings-v2-base-code` (161M, ALiBi, 8192).
+    * Факультатив M2 v3 (E8) — приоритетно `ibm-granite/granite-4.0-350m` (352M, Full FT FP16 + GC, Last Non-Pad Pooling); тяжелый эталон — `Qwen/Qwen2.5-Coder-1.5B` / `01-ai/Yi-Coder-1.5B` (LoRA FP16).
   - Архитектура голов: бинарная голова $z_{stale} \in \mathbb{R}^1$ + мультикласс $z_{drift} \in \mathbb{R}^8$.
   - Лосс: Masked Conditional Loss $\mathcal{L}_{total} = \mathcal{L}_{BCE} + \lambda \cdot \mathbb{I}(y_{stale}=1)\mathcal{L}_{CE}$, где $\lambda \in \{0.3, 0.6, 1.0\}$ валидируется на `val` (старт $\lambda=0.6$).
   - Инференс: гейт $p_{stale} > \tau$ (тип дрейфа отдается только если предсказан рассинхрон).
   - Пулинг: по умолчанию `[CLS]`; сравнение `Mean vs CLS pooling` отложено из обязательного бюджета, допустимо как слот 9.
-  - Обучение на Kaggle 2x T4: PyTorch DDP, режим FP16 (аппаратный BF16 запрещен), `per_device_batch_size=8`, `gradient_accumulation_steps=2`, Gradient Checkpointing при max_len $\ge 2048$.
+  - Обучение на Kaggle 2x T4: PyTorch DDP, режим FP16 (аппаратный BF16 запрещен), переменная окружения `NCCL_P2P_DISABLE=1`, `per_device_batch_size=8`, `gradient_accumulation_steps=2`, Gradient Checkpointing при max_len $\ge 2048$.
+  - Лицензионный фильтр: строго permissive-лицензии (Apache-2.0, MIT). Модели с CC-BY-NC, Qwen Research License или иностранной исключительной юрисдикцией (INF Custom) в продакшн-контур не допускаются.
 
 ### 7. Справочник R11 (Метрики и эксперименты)
 - **Целевой блок:** `### R11. Метрики и эксперименты`.
 - **Замена строк таблицы и протокола:**
   - `E2`: обучение на реальных / синтетике / синтетика + реальные / + LLM-пары.
   - `E2b`: single-split стэкинг M1 + M2 (исследовательская гипотеза).
-  - `E2c`: факториальное сравнение домена и контекста (UniXcoder @1024 vs ModernBERT @1024 vs ModernBERT @2048).
+  - `E2c`: факториальное сравнение домена и контекста (UniXcoder @1024 vs ModernBERT @1024 vs ModernBERT @2048 vs GTE-ModernBERT @2048).
   - `E3`: абляция диффа (`без diff_code`).
   - **Протокол Macro-F1 для головы drift_type:** вычисляется строго на сэмплах с $y_{\text{stale}} = 1$. Оценка головы дрейфа на синхронизированных примерах исключена.
 
