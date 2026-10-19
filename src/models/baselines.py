@@ -25,6 +25,12 @@ import pandas as pd
 
 from src.data.drift import extract_signature
 from src.data.normalizer import parse_function_ast
+from src.data.docsections import (
+    _RE_ARGS,
+    _RE_RAISES,
+    _RE_RETURNS,
+    doc_section_flags,
+)
 
 #: Колонки датасета, которые разрешено читать при построении признаков.
 #: Всё остальное (project, source, label_*, drift_type, split, _leak_*, _aux_*)
@@ -69,27 +75,9 @@ FEATURE_COLS = [
     "link_default_mentioned",
 ]
 
-# Маркер раздела документации: заголовок с двоеточием в начале строки
-# (Google-стиль "Args:"/"Returns:"/"Raises:"), RST-маркеры (":param:", ":returns:",
-# ":raises:"), NumPy-подчёркивания ("Parameters\n----------"). Голые слова без
-# маркера ("Returns the value.", "Handles network errors.") секцией НЕ считаются.
-_RE_ARGS = re.compile(
-    r"(?m)^\s*(?:args|arguments|parameters|params)\s*:"
-    r"|^\s*(?:args|arguments|parameters|params)\s*\n\s*[-=]{2,}"
-    r"|:param\b"
-)
-_RE_RETURNS = re.compile(
-    r"(?m)^\s*(?:returns?|return value|rtype)\s*:"
-    r"|^\s*returns?\s*\n\s*[-=]{2,}"
-    r"|^\s*(?:возврат|возвращает)\s*:"
-    r"|:returns?\b|:return\b|:rtype\b"
-)
-_RE_RAISES = re.compile(
-    r"(?m)^\s*(?:raises?|exceptions?)\s*:"
-    r"|^\s*(?:raises?|exceptions?)\s*\n\s*[-=]{2,}"
-    r"|^\s*(?:исключения?|ошибки?)\s*:"
-    r"|:raises?\b|:exception\b"
-)
+# Маркеры разделов docstring — единый источник: src/data/docsections.py
+# (Google-стиль, RST, NumPy-подчёркивания). Импортированы выше как
+# _RE_ARGS / _RE_RETURNS / _RE_RAISES для совместимости.
 
 
 def predict_m0(df: pd.DataFrame) -> pd.Series:
@@ -164,11 +152,7 @@ def _word_in_doc(name: str, doc: str) -> bool:
 
 
 def _doc_section_flags(doc: str) -> tuple[int, int, int]:
-    low = doc.lower()
-    has_args = int(bool(_RE_ARGS.search(low)))
-    has_returns = int(bool(_RE_RETURNS.search(low)))
-    has_raises = int(bool(_RE_RAISES.search(low)))
-    return has_args, has_returns, has_raises
+    return doc_section_flags(doc if isinstance(doc, str) else "")
 
 
 def extract_features(df: pd.DataFrame) -> pd.DataFrame:
