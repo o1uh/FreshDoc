@@ -63,6 +63,17 @@ $env:OPENCODE_API_KEY="..."  # или строка OPENCODE_API_KEY=... в .env 
 M3 покрывает только test_real+gold; пустые срезы val/test_synth дают nan
 (протокол R11, без усреднений). Порог F1 — по реальным строкам val.
 
+**Не забыть на FD-23 (E1 v0): в сводную таблицу внести ОБЕ строки —
+M3 (предикты `reports/preds/m3.csv` ← `data/m3_judge`) и M3max (предикты
+регенерируются командой ниже из `data/m3_judge_max`, в git не хранятся).
+В таблице E1 v0 у каждой строки указывать N (M0/M1 — полный test_real n=2895,
+M3/M3max — сабсет n=300; gold n=200 везде) и бутстрэп-CI — прямое сравнение
+PR-AUC без учёта N и CI некорректно:**
+```powershell
+.venv\Scripts\python scripts/m3_judge.py import-api --dir data/m3_judge_max --out <preds_max.csv> --report <report_max.md>
+.venv\Scripts\python scripts/evaluate.py --pred M0=reports/preds/m0.csv --pred M1=reports/preds/m1.csv --pred M3=reports/preds/m3.csv --pred M3max=<preds_max.csv>
+```
+
 ## 5. Прогон с effort=max (чувствительность, вне FD-22)
 
 ```powershell
