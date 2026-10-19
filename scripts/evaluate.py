@@ -167,7 +167,8 @@ def main() -> int:
                 ev["threshold"] = float(thr)
                 if has_type and len(g):
                     d = evaluate_drift(g["drift_type"].to_numpy(),
-                                       g["type_pred"].fillna("unknown").to_numpy())
+                                       g["type_pred"].fillna("unknown").to_numpy(),
+                                       g["label_stale"].to_numpy(dtype=int))
                     ev.update(d)
                 model_entry["splits"][split][group] = ev
                 flat_rows.append(ev)
