@@ -37,6 +37,16 @@ class DualHeadCodeClassifier(nn.Module):
                                                    ignore_index=-100)
         self.num_drift_classes = num_drift_classes
 
+    def gradient_checkpointing_enable(self, **kwargs):
+        """Делегация бэкбону: нужна Trainer'у при gradient_checkpointing=true
+        (FD-24 @2048). Без неё: AttributeError (DualHead — nn.Module)."""
+        if hasattr(self.backbone, "gradient_checkpointing_enable"):
+            self.backbone.gradient_checkpointing_enable(**kwargs)
+
+    def gradient_checkpointing_disable(self):
+        if hasattr(self.backbone, "gradient_checkpointing_disable"):
+            self.backbone.gradient_checkpointing_disable()
+
     def forward(self, input_ids=None, attention_mask=None, labels_stale=None,
                 labels_drift=None, sample_weight=None, lambda_drift: float = LAMBDA_DRIFT):
         outputs = self.backbone(input_ids=input_ids, attention_mask=attention_mask)

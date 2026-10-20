@@ -113,8 +113,12 @@ os.environ["NCCL_P2P_DISABLE"] = "1"
 !python scripts/predict_m2.py --checkpoint /kaggle/working/checkpoints/m2_run1/best \
     --dataset /kaggle/input/freshdoc-dataset/dataset_v1.parquet \
     --out /kaggle/working/m2.csv
+# reports/preds/ в .gitignore — после clone m0/m1.csv нет, регенерируем (~20 c)
+!python scripts/baselines_m0_m1.py --dataset /kaggle/input/freshdoc-dataset/dataset_v1.parquet \
+    --out_m0 /kaggle/working/m0.csv --out_m1 /kaggle/working/m1.csv \
+    --out_model /kaggle/working/m1_hgb.joblib --out_report /kaggle/working/m1_report.json
 !python scripts/evaluate.py --dataset /kaggle/input/freshdoc-dataset/dataset_v1.parquet \
-    --pred M0=reports/preds/m0.csv --pred M1=reports/preds/m1.csv --pred M2=/kaggle/working/m2.csv \
+    --pred M0=/kaggle/working/m0.csv --pred M1=/kaggle/working/m1.csv --pred M2=/kaggle/working/m2.csv \
     --out_metrics /kaggle/working/metrics_m2.json --out_table /kaggle/working/e1_m2.csv
 ```
 

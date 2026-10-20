@@ -43,13 +43,18 @@ def drift_to_id(drift_type: str) -> int:
     return DRIFT_TO_ID.get(d, -100)
 
 
+import re
+
+#: Строгий признак сигнатурной строки диффа: после маркера -/+ идёт
+#: необязательный отступ и сразу def/async def. Намеренно не ловим "def"
+#: внутри строк/комментариев (напр. `-    s = "def x"` или `-    # def h`).
+_SIG_LINE_RE = re.compile(r"^[-+]\s*(async\s+)?def\b")
+
+
 def is_sig_hunk(hunk: str) -> bool:
-    """Ханк затрагивает сигнатуру: есть +/- строки с def."""
+    """Ханк затрагивает сигнатуру: есть +/- строки с def (строгое начало)."""
     for line in hunk.splitlines():
-        s = line.strip()
-        if s.startswith(("-def", "+def", "-async def", "+async def")):
-            return True
-        if (line.startswith("-") or line.startswith("+")) and "def " in line:
+        if _SIG_LINE_RE.match(line):
             return True
     return False
 
@@ -109,13 +114,18 @@ def encode_pair(tokenizer, sig_old: str, diff_code: str, doc_old: str,
                  doc_budget: int = DOC_BUDGET_TOKENS) -> dict:
     """Закодировать пару в input_ids/attention_mask по R10.
 
-    Возвращает dict(input_ids, attention_mask, truncated, n_a_tok, n_b_tok).
-    truncated=True, если A пришлось резать под бюджет.
+    Возвращает dict(input_ids, attention_mask, truncated, doc_truncated,
+    n_a_tok, n_b_tok).
+    truncated=True, если A пришлось резать под бюджет;
+    doc_truncated=True, если docstring пришлось резать до doc_budget
+    (обрезка B молча отбрасывает хвост — обычно Returns/Raises).
     """
     text_a = build_text_a(sig_old, diff_code)
     doc = doc_old or ""
     # B: первые doc_budget токенов без спецтокенов
-    b_ids: list[int] = tokenizer.encode(doc, add_special_tokens=False)[:doc_budget]
+    b_ids_full: list[int] = tokenizer.encode(doc, add_special_tokens=False)
+    doc_truncated = len(b_ids_full) > doc_budget
+    b_ids = b_ids_full[:doc_budget]
     n_special = n_special_tokens(tokenizer)
     budget_a = max(0, max_len - len(b_ids) - n_special)
     a_ids_full: list[int] = tokenizer.encode(text_a, add_special_tokens=False)
@@ -141,6 +151,7 @@ def encode_pair(tokenizer, sig_old: str, diff_code: str, doc_old: str,
         "input_ids": input_ids,
         "attention_mask": attention_mask,
         "truncated": bool(truncated),
+        "doc_truncated": bool(doc_truncated),
         "n_a_tok": len(a_ids),
         "n_b_tok": len(b_ids),
     }

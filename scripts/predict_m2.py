@@ -29,6 +29,23 @@ from src.models.m2_data import DRIFT_CLASSES, encode_pair
 from src.models.m2_model import DualHeadCodeClassifier
 
 IN_DATASET = PROJECT_ROOT / "data" / "processed" / "dataset_v1.parquet"
+RISK_YAML = PROJECT_ROOT / "config" / "risk.yaml"
+
+
+def resolve_threshold(cli_value, risk_path=None):
+    """Порог гейта R10: CLI > risk.yaml:threshold > 0.5 (minor 1).
+
+    После FD-25 рабочий порог живёт в config/risk.yaml; явный CLI
+    всегда побеждает (нужен для свипов чувствительности E6).
+    """
+    if cli_value is not None:
+        return float(cli_value)
+    try:
+        _risk = yaml.safe_load(Path(risk_path or RISK_YAML).read_text(
+            encoding="utf-8")) or {}
+        return float(_risk.get("threshold", 0.5))
+    except Exception:
+        return 0.5
 
 
 def main() -> int:
@@ -38,9 +55,13 @@ def main() -> int:
     ap.add_argument("--out", default="reports/preds/m2.csv")
     ap.add_argument("--config", default="config/train.yaml")
     ap.add_argument("--batch_size", type=int, default=32)
-    ap.add_argument("--threshold", type=float, default=0.5,
-                    help="гейт R10: type_pred_gated = type_pred если p_stale > tau иначе 'none'")
+    ap.add_argument("--threshold", type=float, default=None,
+                    help="гейт R10: type_pred_gated = type_pred если p_stale > tau иначе 'none'. "
+                         "По умолчанию: --threshold > config/risk.yaml:threshold > 0.5 "
+                         "(minor 1: после FD-25 рабочий порог живёт в risk.yaml)")
     args = ap.parse_args()
+
+    tau = resolve_threshold(args.threshold)
 
     ckpt = Path(args.checkpoint)
     # Fail-fast до тяжёлого I/O: опечатка в пути к чекпоинту не должна
@@ -142,8 +163,7 @@ def main() -> int:
             p_all.extend([float(v) for v in p])
             t_all.extend([DRIFT_CLASSES[int(v)] for v in t])
             if (start // args.batch_size) % 50 == 0:
-                print(f"  {start + len(sub)}/{len(df)}")
-    tau = float(args.threshold)
+                print(f"  {start + len(batch_ids)}/{len(df)}")
     gated = [t if p > tau else "none" for p, t in zip(p_all, t_all)]
     out_df = pd.DataFrame({"pair_id": df["pair_id"].astype(str),
                            "p_stale": p_all, "type_pred": t_all,

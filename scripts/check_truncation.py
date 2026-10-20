@@ -54,19 +54,30 @@ def main() -> int:
           f"max_len={args.max_len}, doc_budget={args.doc_budget}")
     print(f"Токенизатор: cls={tok.cls_token} sep={tok.sep_token} "
           f"model_max_length={getattr(tok, 'model_max_length', '?')}")
+    # NaN-защита как в train_m2/predict_m2: сначала fillna, потом astype(str)
+    # (str(np.nan) дал бы литерал "nan" в тексте входа).
+    sigs = df["sig_old"].fillna("").astype(str)
+    diffs = df["diff_code"].fillna("").astype(str)
+    docs = df["doc_old"].fillna("").astype(str)
 
     rows = []
-    for split, sub in df.groupby("split"):
-        n_trunc = 0
-        for _, r in sub.iterrows():
-            enc = encode_pair(tok, str(r["sig_old"]), str(r["diff_code"]),
-                              str(r["doc_old"]), max_len=args.max_len,
-                              doc_budget=args.doc_budget)
+    for split, idx in df.groupby("split").groups.items():
+        sub = df.loc[idx]
+        n_trunc = n_doc_trunc = 0
+        for j in sub.index:
+            enc = encode_pair(tok, sigs.loc[j], diffs.loc[j], docs.loc[j],
+                              max_len=args.max_len, doc_budget=args.doc_budget)
             n_trunc += int(enc["truncated"])
-        frac = n_trunc / max(1, len(sub))
-        rows.append({"split": split, "n": int(len(sub)),
-                     "n_truncated": int(n_trunc), "frac": float(frac)})
-        print(f"  {split}: n={len(sub)} truncated={n_trunc} frac={frac:.4f}")
+            n_doc_trunc += int(enc["doc_truncated"])
+        n = len(sub)
+        frac = n_trunc / max(1, n)
+        doc_frac = n_doc_trunc / max(1, n)
+        rows.append({"split": split, "n": int(n),
+                     "n_truncated": int(n_trunc), "frac": float(frac),
+                     "n_doc_truncated": int(n_doc_trunc),
+                     "doc_frac": float(doc_frac)})
+        print(f"  {split}: n={n} truncA={n_trunc} frac={frac:.4f} "
+              f"truncDoc={n_doc_trunc} doc_frac={doc_frac:.4f}")
     out = {"model": args.model, "max_len": args.max_len,
            "doc_budget": args.doc_budget, "dataset_rows": int(len(df)),
            "sample": int(args.sample or 0),

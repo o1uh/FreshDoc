@@ -67,13 +67,15 @@ class M2Dataset(Dataset):
             if "drift_type" in frame.columns else ["unknown"] * len(frame)
         self.drift = np.array([drift_to_id(d) for d in drifts], dtype=np.int64)
         self.encs: list[dict] = []
-        n_trunc = 0
+        n_trunc = n_doc_trunc = 0
         for s, d, doc in zip(sigs, diffs, docs):
             e = encode_pair(tokenizer, s, d, doc, max_len=max_len,
                             doc_budget=doc_budget)
             n_trunc += int(e["truncated"])
+            n_doc_trunc += int(e["doc_truncated"])
             self.encs.append(e)
         self.n_truncated = n_trunc
+        self.n_doc_truncated = n_doc_trunc
 
     def __len__(self):
         return len(self.pair_ids)
@@ -202,6 +204,14 @@ def main() -> int:
     ap.add_argument("--max_steps", type=int, default=0)
     ap.add_argument("--per_device_batch", type=int, default=None)
     ap.add_argument("--accum", type=int, default=None)
+    ap.add_argument("--weight_overrides", default=None,
+                    help="перевес обучения без пересборки датасета, формат "
+                         "'label_source:вес,...' (напр. 'llm_p1:1.0'). "
+                         "По умолчанию веса датасета (llm_p1=0.5 по решению "
+                         "команды 13.10 после аудита 56-60%% шума; см. S3).")
+    ap.add_argument("--runs_csv", default="reports/runs.csv",
+                    help="куда дописать строку прогона (формат FD-24). "
+                         "Пустая строка отключает запись.")
     args = ap.parse_args()
 
     cfg = load_config(Path(args.config))
@@ -238,6 +248,27 @@ def main() -> int:
     print(f"train: {len(train_df)} (pos={int(train_df['label_stale'].sum())}), "
           f"val_real: {len(val_df)} (pos={int(val_df['label_stale'].sum())})")
 
+    # Перевес обучения (S3): меняет веса только в этом прогоне, датасет не трогает.
+    # Дефолт — веса датасета (llm_p1=0.5 — решение команды 13.10 по аудиту шума).
+    weight_overrides: dict[str, float] = {}
+    if args.weight_overrides:
+        for item in str(args.weight_overrides).split(","):
+            src, _, w = item.partition(":")
+            src, w = src.strip(), w.strip()
+            if not src or not w:
+                print(f"ОШИБКА: плохой --weight_overrides: {item!r}")
+                return 2
+            weight_overrides[src] = float(w)
+    if weight_overrides:
+        unknown = sorted(set(weight_overrides) - set(train_df["label_source"].unique()))
+        if unknown:
+            print(f"ОШИБКА: неизвестные label_source в --weight_overrides: {unknown}")
+            return 2
+        train_df = train_df.copy()
+        for src, w in weight_overrides.items():
+            train_df.loc[train_df["label_source"] == src, "weight"] = w
+        print(f"Перевес обучения: {weight_overrides}")
+
     if args.overfit_test:
         # Стратифицированная выборка 100 pos + 100 neg: первые 200 строк
         # train состоят из одних pos (head(200) даёт один класс -> PR-AUC nan
@@ -258,9 +289,23 @@ def main() -> int:
     train_ds = M2Dataset(train_df, tok, max_len, doc_budget)
     val_ds = M2Dataset(val_df, tok, max_len, doc_budget)
     print(f"Усечение A (train): {train_ds.n_truncated}/{len(train_ds)} = "
-          f"{train_ds.n_truncated / max(1, len(train_ds)):.4f}")
+          f"{train_ds.n_truncated / max(1, len(train_ds)):.4f}; "
+          f"doc: {train_ds.n_doc_truncated}/{len(train_ds)} = "
+          f"{train_ds.n_doc_truncated / max(1, len(train_ds)):.4f}")
     print(f"Усечение A (val_real): {val_ds.n_truncated}/{len(val_ds)} = "
-          f"{val_ds.n_truncated / max(1, len(val_ds)):.4f}")
+          f"{val_ds.n_truncated / max(1, len(val_ds)):.4f}; "
+          f"doc: {val_ds.n_doc_truncated}/{len(val_ds)} = "
+          f"{val_ds.n_doc_truncated / max(1, len(val_ds)):.4f}")
+    # Состав обучения для run_meta (S2): источник x метка + эффективные веса.
+    _mix = train_df.groupby(["source", "label_stale"]).size()
+    train_mix = {f"{s}/{int(l)}": {"n": int(n),
+                 "frac": float(n / max(1, len(train_df)))}
+                 for (s, l), n in _mix.items()}
+    _wa = train_df.groupby(["label_source", "weight"]).size()
+    weight_audit = {f"{s}/{float(w)}": int(n) for (s, w), n in _wa.items()}
+    val_pos, val_n = int(val_df["label_stale"].sum()), len(val_df)
+    print(f"train_mix: {train_mix}")
+    print(f"weight_audit: {weight_audit}")
 
     from transformers import AutoConfig
     backbone = AutoModel.from_pretrained(model_name)
@@ -319,10 +364,25 @@ def main() -> int:
     train_time = time.time() - t0
     print(f"Обучение: {train_time:.1f} c ({train_time / 60:.1f} мин)")
 
+    def _json_safe(v):
+        # run_meta обязан быть строгим JSON: NaN/inf -> None (minor 2).
+        if isinstance(v, float) and (v != v or v in (float("inf"), float("-inf"))):
+            return None
+        if isinstance(v, dict):
+            return {k: _json_safe(x) for k, x in v.items()}
+        if isinstance(v, (list, tuple)):
+            return [_json_safe(x) for x in v]
+        return v
+
     metrics = trainer.evaluate()
     print(f"Eval val_real: {metrics}")
-    best_dir = out_dir / "best"
-    trainer.save_model(str(best_dir))
+    is_main = trainer.is_world_process_zero()
+    if is_main:
+        best_dir = out_dir / "best"
+        # trainer.save_model внутри защищён should_save (только rank 0),
+        # остальные записи ниже — нет, поэтому весь блок под гардом (S5/2.1):
+        # два процесса torchrun иначе пишут одни файлы конкурентно.
+        trainer.save_model(str(best_dir))
     tok.save_pretrained(str(best_dir))
     # DualHead — обычный nn.Module без config.json: для офлайн-инференса
     # сохраняем конфиг бэкбона и мета DualHead рядом с model.safetensors.
@@ -353,19 +413,57 @@ def main() -> int:
         "n_train": int(len(train_ds)), "n_val_real": int(len(val_ds)),
         "train_truncated_frac": train_ds.n_truncated / max(1, len(train_ds)),
         "val_truncated_frac": val_ds.n_truncated / max(1, len(val_ds)),
+        "train_doc_truncated_frac": train_ds.n_doc_truncated / max(1, len(train_ds)),
+        "val_doc_truncated_frac": val_ds.n_doc_truncated / max(1, len(val_ds)),
+        "train_mix": train_mix,
+        "val_pos": val_pos, "val_n": val_n,
+        "val_prevalence": float(val_pos / max(1, val_n)),
+        "weight_audit": weight_audit,
+        "weight_overrides": weight_overrides,
         "train_time_sec": round(train_time, 1),
-        "eval_val_real": {k: float(v) for k, v in metrics.items()
-                          if isinstance(v, (int, float))},
+        "eval_val_real": _json_safe({k: float(v) for k, v in metrics.items()
+                                     if isinstance(v, (int, float))}),
         "overfit_test": bool(args.overfit_test),
         "drift_classes": DRIFT_CLASSES,
     }
-    out_dir.mkdir(parents=True, exist_ok=True)
-    (out_dir / "run_meta.json").write_text(
-        json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"Мета: {out_dir / 'run_meta.json'}")
+    if is_main:
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / "run_meta.json").write_text(
+            json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"Мета: {out_dir / 'run_meta.json'}")
+        # Строка прогона для reports/runs.csv (формат FD-24; minor 6).
+        # Только полные прогоны (не пилот/overfit/max_steps).
+        if args.runs_csv and not args.overfit_test and not args.pilot_steps \
+                and not args.max_steps:
+            _runs = Path(args.runs_csv)
+            _row = {"timestamp": meta["built_at"], "output_dir": str(out_dir),
+                    "model_name": model_name, "max_len": max_len,
+                    "seed": seed, "epochs": epochs,
+                    "train_time_sec": meta["train_time_sec"],
+                    "eval_pr_auc": (meta["eval_val_real"] or {}).get("eval_pr_auc"),
+                    "n_train": meta["n_train"], "n_val_real": meta["n_val_real"]}
+            _runs.parent.mkdir(parents=True, exist_ok=True)
+            import csv as _csv
+            _new = not _runs.exists()
+            with _runs.open("a", encoding="utf-8", newline="") as _f:
+                _w = _csv.DictWriter(_f, fieldnames=list(_row))
+                if _new:
+                    _w.writeheader()
+                _w.writerow(_row)
+            print(f"Строка runs.csv: {_runs}")
     if args.overfit_test:
-        print("Критерий шага 2 FD-21: loss -> ~0, PR-AUC на тех же 200 -> ~1. "
-              "Иначе искать ошибку (маска, метки, обрезка, веса).")
+        # Машинный критерий шага 2 FD-21 (S4): PR-AUC>=0.99 на тех же 200.
+        _p = (meta["eval_val_real"] or {}).get("eval_pr_auc")
+        _pass = _p is not None and _p == _p and _p >= 0.99
+        _verdict = {"overfit_pr_auc": _p, "pass": bool(_pass),
+                    "threshold": 0.99, "n": int(len(train_ds))}
+        if is_main:
+            (out_dir / "overfit_verdict.json").write_text(
+                json.dumps(_verdict, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"OVERFIT verdict: {_verdict}")
+        if not _pass:
+            print("ПРОВАЛ критерия шага 2 FD-21: PR-AUC < 0.99", file=sys.stderr)
+            return 3
     else:
         print("Далее: scripts/predict_m2.py + scripts/evaluate.py "
               "(шаг 5 FD-21). Выбор эпохи — по val_real PR-AUC.")

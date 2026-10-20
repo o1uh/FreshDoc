@@ -89,9 +89,15 @@ for m in ["microsoft/unixcoder-base"]:
 !python scripts/predict_m2.py --checkpoint /kaggle/working/checkpoints/m2_run1/best \
   --dataset /kaggle/input/freshdoc-dataset/dataset_v1.parquet \
   --out /kaggle/working/m2.csv
-!python scripts/evaluate.py --pred M0=reports/preds/m0.csv --pred M1=reports/preds/m1.csv \
-  --pred M2=/kaggle/working/m2.csv --dataset /kaggle/input/freshdoc-dataset/dataset_v1.parquet \
+# reports/preds/ в .gitignore — после clone m0/m1.csv нет, регенерируем (~20 c, M1 ~1.2 c обучения)
+!python scripts/baselines_m0_m1.py --dataset /kaggle/input/freshdoc-dataset/dataset_v1.parquet \
+  --out_m0 /kaggle/working/m0.csv --out_m1 /kaggle/working/m1.csv \
+  --out_model /kaggle/working/m1_hgb.joblib --out_report /kaggle/working/m1_report.json
+!python scripts/evaluate.py --dataset /kaggle/input/freshdoc-dataset/dataset_v1.parquet \
+  --pred M0=/kaggle/working/m0.csv --pred M1=/kaggle/working/m1.csv --pred M2=/kaggle/working/m2.csv \
   --out_metrics /kaggle/working/metrics_m2.json --out_table /kaggle/working/e1_m2.csv
+# Альтернатива: положить m0.csv/m1.csv в Kaggle-датасет freshdoc-dataset (тогда regen не нужен).
+# M0/M1 не должны пересчитываться на каждом прогоне без нужды — regen выше детерминирован (seed 42).
 ```
 
 ## 2. Что забрать из Output
@@ -116,7 +122,9 @@ for m in ["microsoft/unixcoder-base"]:
 - HF-веса доступны, лицензии Apache-2.0: `microsoft/unixcoder-base`,
   `answerdotai/ModernBERT-base` (нужен `transformers>=4.48.0`),
   `Alibaba-NLP/gte-modernbert-base`, `ibm-granite/granite-embedding-small-english-r2`.
-- Локальное усечение @1024 (unixcoder): train 1.75%, val 3.76%, test_real 1.69%,
-  test_synth 2.64%, gold 2.50% — ниже оценки 4.4% из workflow §3.
+- Локальное усечение @1024 (unixcoder): сторона A — train 1.75%, val 3.76%, test_real 1.69%,
+  test_synth 2.64%, gold 2.50%; сторона B (docstring, кап 192) — train 21.21%, val 18.96%,
+  test_real 13.54%, test_synth 22.68%, gold 12.50%. Хвост docstring режется у ~1/5 строк —
+  учесть в записке (кап по R10, влияние не измерено).
 - `reports/data_stats.md` устарел (27143 строк, без gold-патча);
   канон — `reports/dataset_v1.manifest.json` (27203) + `data/processed/dataset_v1.parquet`.

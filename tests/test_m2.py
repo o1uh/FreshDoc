@@ -22,9 +22,11 @@ class _FakeTok:
 
     def encode(self, text, add_special_tokens=False):
         # детерминированное псевдо-токенизирование по словам
+        # (hash() запрещён: соль PYTHONHASHSEED делает тесты flaky)
+        import zlib
         out = []
         for w in str(text).split():
-            out.append(10 + (abs(hash(w)) % 1000))
+            out.append(10 + (zlib.crc32(w.encode("utf-8")) % 1000))
         return out
 
 
@@ -67,8 +69,11 @@ def test_encode_roberta_vs_modernbert_specials():
     er = encode_pair(tok_r, "def f(a):", "-x\n+y", "Docstring here.", max_len=64)
     em = encode_pair(tok_m, "def f(a):", "-x\n+y", "Docstring here.", max_len=64)
     # RoBERTa: <s> A </s></s> B </s> ; ModernBERT: [CLS] A [SEP] B [SEP]
-    assert er["input_ids"][0] == 0 and er["input_ids"].count(2) == 3
-    assert em["input_ids"][0] == 101 and em["input_ids"].count(102) == 2
+    # (структурно, а не count(): id токенов слов могут случайно совпасть со спецтокенами)
+    assert er["input_ids"][0] == 0 and er["input_ids"][-1] == 2
+    assert er["input_ids"][er["n_a_tok"] + 1:er["n_a_tok"] + 3] == [2, 2]
+    assert em["input_ids"][0] == 101 and em["input_ids"][-1] == 102
+    assert em["input_ids"][em["n_a_tok"] + 1] == 102
     assert not er["truncated"] and not em["truncated"]
 
 
@@ -145,6 +150,91 @@ def test_m2_data_collator_picklable():
     assert out["labels_stale"].tolist() == [1, 0]
 
 
+def test_is_sig_hunk_strict_def_start():
+    # "def" внутри строки/комментария удалённой строки — не сигнатура (minor 7)
+    assert not is_sig_hunk("@@ -1 +1 @@\n-    s = \"def foo\"\n+    y = 1")
+    assert not is_sig_hunk("@@ -1 +1 @@\n-    # def helper\n+    pass")
+    assert not is_sig_hunk("@@ -1 +1 @@\n-    body = _get(url)\n+    body_tmp = _get(url)")
+    # настоящие сигнатурные правки — сигнатура
+    assert is_sig_hunk("@@ -1 +1 @@\n-def f(a):\n+def f(b):")
+    assert is_sig_hunk("@@ -1 +1 @@\n+async def f(a):\n+    pass")
+    assert is_sig_hunk("@@ -1 +1 @@\n-async def f(a):\n+async def g(a):")
+
+
+def test_encode_pair_doc_truncated_flag():
+    # S1: обрезка B считается отдельно — раньше молча терялся хвост Returns/Raises
+    tok = _FakeTok()
+    short = encode_pair(tok, "def f(a):", "-x\n+y", "Short docstring here.",
+                        max_len=64)
+    assert short["doc_truncated"] is False
+    long_doc = " ".join(f"word{i}" for i in range(500))
+    long = encode_pair(tok, "def f(a):", "-x\n+y", long_doc, max_len=256)
+    assert long["doc_truncated"] is True
+    assert long["n_b_tok"] == 192  # кап B по R10
+    assert len(long["input_ids"]) == 1 + long["n_a_tok"] + 2 + 192 + 1
+
+
+def test_resolve_threshold_priority():
+    # minor 1: CLI > risk.yaml > 0.5
+    import scripts.predict_m2 as pm
+    assert pm.resolve_threshold(0.3) == 0.3
+    assert pm.resolve_threshold(None) == 0.5  # risk.yaml пуст
+    import tempfile
+    from pathlib import Path
+    with tempfile.TemporaryDirectory() as d:
+        rp = Path(d) / "risk.yaml"
+        rp.write_text("threshold: 0.8\n", encoding="utf-8")
+        assert pm.resolve_threshold(None, risk_path=rp) == 0.8
+        assert pm.resolve_threshold(0.2, risk_path=rp) == 0.2
+
+
+def test_predict_main_end_to_end_fake_backbone(tmp_path, monkeypatch, capsys):
+    """Регрессия B1/2.3: полный проход predict_m2 (раньше падал NameError len(sub))."""
+    import sys
+
+    import pandas as pd
+    from safetensors.torch import save_file
+
+    import scripts.predict_m2 as pm
+    from src.models.m2_model import DualHeadCodeClassifier
+
+    torch.manual_seed(0)
+
+    df = pd.DataFrame({
+        "pair_id": ["p1", "p2", "p3"],
+        "sig_old": ["def f(a):", "def g(x):", "def h():"],
+        "diff_code": ["-a\n+b", "-x\n+y", "-m\n+n"],
+        "doc_old": ["Doc one here.", "Doc two here.", "Doc three here."],
+        "label_stale": [1, 0, 1],
+        "drift_type": ["param_renamed", "none", "param_added"],
+        "weight": [1.0, 0.5, 1.0],
+        "split": ["test_real", "test_real", "gold"],
+        "source": ["codocbench", "history_neg", "gold"],
+    })
+    ds_path = tmp_path / "mini.parquet"
+    df.to_parquet(ds_path, index=False)
+
+    backbone = _TinyBackbone(hidden=16)
+    model = DualHeadCodeClassifier(backbone, hidden_size=16, num_drift_classes=8)
+    ckpt = tmp_path / "ckpt"
+    ckpt.mkdir()
+    save_file(model.state_dict(), ckpt / "model.safetensors")
+
+    monkeypatch.setattr(pm.AutoTokenizer, "from_pretrained",
+                        staticmethod(lambda *a, **k: _FakeTok()))
+    monkeypatch.setattr(pm, "AutoModel", _FakeAutoModelFactory)
+    out_path = tmp_path / "m2.csv"
+    monkeypatch.setattr(sys, "argv", ["predict_m2.py", "--checkpoint", str(ckpt),
+                                     "--dataset", str(ds_path),
+                                     "--out", str(out_path),
+                                     "--batch_size", "2"])
+    assert pm.main() == 0
+    got = pd.read_csv(out_path)
+    assert len(got) == 3
+    assert set(got.columns) >= {"pair_id", "p_stale", "type_pred", "type_pred_gated"}
+    assert ((got["p_stale"] >= 0.0) & (got["p_stale"] <= 1.0)).all()
+
+
 def test_dualhead_gated_inference():
     torch.manual_seed(1)
     backbone = _FakeBackbone()
@@ -193,3 +283,29 @@ class _FakeBackbone(torch.nn.Module):
         b, n = input_ids.shape
         hs = torch.randn(b, n, 16)
         return type("O", (), {"last_hidden_state": hs})()
+
+
+class _TinyBackbone(torch.nn.Module):
+    """Стебовый бэкбон фиксированной ширины для сквозного теста инференса."""
+
+    def __init__(self, hidden: int = 16):
+        super().__init__()
+        self.config = type("C", (), {"hidden_size": hidden})()
+        self._hidden = hidden
+
+    def forward(self, input_ids=None, attention_mask=None):
+        b, n = input_ids.shape
+        hs = torch.randn(b, n, self._hidden)
+        return type("O", (), {"last_hidden_state": hs})()
+
+
+class _FakeAutoModelFactory:
+    """Замена AutoModel.from_pretrained/from_config в тесте инференса."""
+
+    @staticmethod
+    def from_pretrained(*args, **kwargs):
+        return _TinyBackbone(hidden=16)
+
+    @staticmethod
+    def from_config(*args, **kwargs):
+        return _TinyBackbone(hidden=16)
