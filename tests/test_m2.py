@@ -120,6 +120,31 @@ def test_dualhead_all_masked_keeps_graph():
     assert model.drift_head.weight.grad is not None
 
 
+def test_m2_data_collator_picklable():
+    """Регрессия блокера: коллатор обязан пережить pickle (num_workers>0)."""
+    import pickle
+
+    from scripts.train_m2 import M2DataCollator, m2_collator
+    col = M2DataCollator(_FakeTok())
+    col2 = pickle.loads(pickle.dumps(col))
+    assert col2.pad_id == 1
+    # фабрика-обёртка возвращает тот же picklable класс
+    assert isinstance(m2_collator(_FakeTok()), M2DataCollator)
+    batch = [
+        {"input_ids": torch.tensor([1, 2, 3]), "attention_mask": torch.tensor([1, 1, 1]),
+         "labels_stale": torch.tensor(1), "labels_drift": torch.tensor(0),
+         "sample_weight": torch.tensor(1.0)},
+        {"input_ids": torch.tensor([4, 5]), "attention_mask": torch.tensor([1, 1]),
+         "labels_stale": torch.tensor(0), "labels_drift": torch.tensor(-100),
+         "sample_weight": torch.tensor(0.5)},
+    ]
+    out = col2(batch)
+    assert out["input_ids"].shape == (2, 3)
+    assert out["input_ids"][1, 2].item() == 1  # pad_id _FakeTok
+    assert out["attention_mask"][1, 2].item() == 0
+    assert out["labels_stale"].tolist() == [1, 0]
+
+
 def test_dualhead_gated_inference():
     torch.manual_seed(1)
     backbone = _FakeBackbone()

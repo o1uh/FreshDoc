@@ -89,19 +89,28 @@ class M2Dataset(Dataset):
         }
 
 
-def m2_collator(tokenizer):
-    pad_id = tokenizer.pad_token_id
-    if pad_id is None:
-        pad_id = tokenizer.eos_token_id if tokenizer.eos_token_id is not None else 0
+class M2DataCollator:
+    """Паддинг батча R10 (верхнеуровневый класс — picklable для num_workers>0).
 
-    def _collate(batch: list[dict]) -> dict:
+    Замыкание m2_collator падало в DataLoader-воркерах:
+    AttributeError: Can't pickle local object 'm2_collator.<locals>._collate'.
+    Храним только pad_id (int), сам токенизатор не pickle'им.
+    """
+
+    def __init__(self, tokenizer):
+        pad_id = tokenizer.pad_token_id
+        if pad_id is None:
+            pad_id = tokenizer.eos_token_id if tokenizer.eos_token_id is not None else 0
+        self.pad_id = pad_id
+
+    def __call__(self, batch: list[dict]) -> dict:
         max_n = max(len(b["input_ids"]) for b in batch)
         ids, masks = [], []
         for b in batch:
             n = len(b["input_ids"])
             pad = max_n - n
             ids.append(torch.cat([b["input_ids"],
-                                  torch.full((pad,), pad_id, dtype=torch.long)]))
+                                  torch.full((pad,), self.pad_id, dtype=torch.long)]))
             masks.append(torch.cat([b["attention_mask"],
                                     torch.zeros(pad, dtype=torch.long)]))
         return {
@@ -112,7 +121,10 @@ def m2_collator(tokenizer):
             "sample_weight": torch.stack([b["sample_weight"] for b in batch]),
         }
 
-    return _collate
+
+def m2_collator(tokenizer):
+    """Совместимость: фабрика поверх picklable M2DataCollator."""
+    return M2DataCollator(tokenizer)
 
 
 class M2Trainer(Trainer):
@@ -299,7 +311,7 @@ def main() -> int:
 
     trainer = M2Trainer(model=model, args=targs,
                         train_dataset=train_ds, eval_dataset=val_ds,
-                        data_collator=m2_collator(tok),
+                        data_collator=M2DataCollator(tok),
                         compute_metrics=compute_metrics_pr_auc,
                         lambda_drift=lambda_drift)
     t0 = time.time()
