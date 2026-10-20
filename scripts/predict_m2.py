@@ -43,8 +43,24 @@ def main() -> int:
     args = ap.parse_args()
 
     ckpt = Path(args.checkpoint)
+    # Fail-fast до тяжёлого I/O: опечатка в пути к чекпоинту не должна
+    # стоить чтения 27k parquet + скачивания бэкбона с HF Hub (~15 c).
+    _state_path = ckpt / "pytorch_model.bin"
+    _alt_path = ckpt / "model.safetensors"
+    if not _state_path.exists() and not _alt_path.exists():
+        print(f"ОШИБКА: в {ckpt} нет весов DualHead "
+              f"(pytorch_model.bin/model.safetensors). "
+              f"Инференс на random-init запрещён (fail-fast): "
+              f"метрики ~0.5 легко принять за результат.", file=sys.stderr)
+        return 2
+
     df = pd.read_parquet(args.dataset)
     print(f"Датасет: {args.dataset} ({len(df)} строк)")
+    # NaN-защита: str(np.nan) даёт литерал "nan" в тексте входа.
+    # Как в train_m2.py: сначала fillna(""), потом astype(str).
+    sigs = df["sig_old"].fillna("").astype(str).tolist()
+    diffs = df["diff_code"].fillna("").astype(str).tolist()
+    docs = df["doc_old"].fillna("").astype(str).tolist()
 
     cfg = {}
     cfg_path = Path(args.config)
@@ -84,16 +100,8 @@ def main() -> int:
     # backbone уже внутри; иначе веса backbone из HF
     model = DualHeadCodeClassifier(backbone, hidden_size=backbone.config.hidden_size,
                                    num_drift_classes=len(DRIFT_CLASSES))
-    state_path = ckpt / "pytorch_model.bin"
-    alt_path = ckpt / "model.safetensors"
-    weights_path = state_path if state_path.exists() else (
-        alt_path if alt_path.exists() else None)
-    if weights_path is None:
-        print(f"ОШИБКА: в {ckpt} нет весов DualHead "
-              f"(pytorch_model.bin/model.safetensors). "
-              f"Инференс на random-init запрещён (fail-fast): "
-              f"метрики ~0.5 легко принять за результат.", file=sys.stderr)
-        return 2
+    # Ранняя проверка выше гарантирует наличие файла; здесь только загрузка.
+    weights_path = _state_path if _state_path.exists() else _alt_path
     try:
         if weights_path.suffix == ".bin":
             state = torch.load(str(weights_path), map_location="cpu")
@@ -114,12 +122,10 @@ def main() -> int:
     p_all, t_all = [], []
     with torch.no_grad():
         for start in range(0, len(df), args.batch_size):
-            sub = df.iloc[start:start + args.batch_size]
             batch_ids, batch_masks = [], []
-            for _, r in sub.iterrows():
-                e = encode_pair(tok, str(r["sig_old"]), str(r["diff_code"]),
-                                str(r["doc_old"]), max_len=max_len,
-                                doc_budget=doc_budget)
+            for j in range(start, min(start + args.batch_size, len(df))):
+                e = encode_pair(tok, sigs[j], diffs[j], docs[j],
+                                max_len=max_len, doc_budget=doc_budget)
                 batch_ids.append(e["input_ids"])
                 batch_masks.append(e["attention_mask"])
             max_n = max(len(x) for x in batch_ids)

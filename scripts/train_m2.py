@@ -201,7 +201,9 @@ def main() -> int:
     seed = int(args.seed if args.seed is not None else cfg.get("seed", 42))
     lr = float(cfg.get("learning_rate", 2e-5))
     wd = float(cfg.get("weight_decay", 0.01))
-    warmup = float(cfg.get("warmup_ratio", 0.06))
+    # transformers>=5: warmup_ratio удалён; warmup_steps<1 трактуется как доля.
+    # Поддержаны оба ключа (старый warmup_ratio — для совместимости).
+    warmup = float(cfg.get("warmup_steps", cfg.get("warmup_ratio", 0.06)))
     lambda_drift = float(cfg.get("lambda_drift", LAMBDA_DRIFT))
     per_device = int(args.per_device_batch or cfg.get("per_device_batch_size", 8))
     accum = int(args.accum or cfg.get("gradient_accumulation_steps", 2))
@@ -265,7 +267,7 @@ def main() -> int:
         gradient_accumulation_steps=accum,
         learning_rate=lr,
         weight_decay=wd,
-        warmup_ratio=warmup,
+        warmup_steps=warmup,
         max_grad_norm=float(cfg.get("max_grad_norm", 1.0)),
         lr_scheduler_type=cfg.get("lr_scheduler_type", "linear"),
         optim=cfg.get("optim", "adamw_torch"),
@@ -332,7 +334,7 @@ def main() -> int:
         "max_len": max_len,
         "doc_budget": doc_budget,
         "lambda_drift": lambda_drift,
-        "lr": lr, "weight_decay": wd, "warmup_ratio": warmup,
+        "lr": lr, "weight_decay": wd, "warmup_steps": warmup,
         "epochs": epochs, "seed": seed,
         "per_device_batch_size": per_device, "accum": accum,
         "eff_batch": per_device * accum * max(1, torch.cuda.device_count()),

@@ -41,7 +41,9 @@ class DualHeadCodeClassifier(nn.Module):
                 labels_drift=None, sample_weight=None, lambda_drift: float = LAMBDA_DRIFT):
         outputs = self.backbone(input_ids=input_ids, attention_mask=attention_mask)
         cls_rep = outputs.last_hidden_state[:, 0, :]
-        pooled = self.layer_norm(self.dropout(cls_rep))
+        # Dropout после LayerNorm: dropout до нормы сдвигает mean/var
+        # между train и eval (занулённые элементы входят в статистику).
+        pooled = self.dropout(self.layer_norm(cls_rep))
         logit_s = self.stale_head(pooled).squeeze(-1)
         logit_d = self.drift_head(pooled)
         loss = None
@@ -55,10 +57,13 @@ class DualHeadCodeClassifier(nn.Module):
                 loss_s = raw_s.mean()
             loss = loss_s
             if labels_drift is not None:
-                mask_d = labels_drift.clone()
-                # маскируются строки без рассинхрона и с неизвестным типом
-                # (unknown закодирован как -100 в drift_to_id, резерв без супервизии)
+                # Жёсткая маска: y=0 и неизвестный тип (-100) не учат голову дрейфа.
+                # mask_d обязан содержать -100 на invalid-позициях, иначе
+                # CrossEntropy посчитает конечный лосс, а 0.0 * inf даст NaN
+                # (в train/val/test таких строк нет, но в gold их 76).
                 invalid = (labels_stale == 0) | (labels_drift == -100)
+                mask_d = labels_drift.clone()
+                mask_d[invalid] = -100
                 # CrossEntropy сам игнорит -100, но для взвешивания строим маску
                 raw_d = self.drift_criterion(logit_d, mask_d)
                 valid = (~invalid).float()

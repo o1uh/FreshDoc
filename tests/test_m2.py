@@ -133,6 +133,36 @@ def test_dualhead_gated_inference():
     assert set(out["drift_gated"].tolist()) <= set(list(range(8)) + [-1])
 
 
+def test_stale_zero_with_known_drift_still_masked():
+    """y=0 с известным типом дрейфа (как 76 строк gold): голова дрейфа
+    не учится — градиент нулевой, но граф жив (защита от 0.0*inf=NaN)."""
+    torch.manual_seed(0)
+    model = DualHeadCodeClassifier(_FakeBackbone(), hidden_size=16,
+                                   num_drift_classes=8)
+    ids = torch.randint(0, 50, (4, 8))
+    mask = torch.ones(4, 8, dtype=torch.long)
+    stale = torch.tensor([0, 0, 0, 0])
+    drift = torch.tensor([0, 2, 5, 1])  # валидные id, но y=0 -> маска
+    out = model(input_ids=ids, attention_mask=mask, labels_stale=stale,
+                labels_drift=drift)
+    assert torch.isfinite(out["loss"])
+    out["loss"].backward()
+    assert model.drift_head.weight.grad is not None
+    assert torch.allclose(model.drift_head.weight.grad,
+                          torch.zeros_like(model.drift_head.weight.grad))
+
+
+def test_training_args_warmup_steps_ratio():
+    """transformers>=5.19: warmup_ratio удалён, warmup_steps<1 — доля."""
+    from transformers import TrainingArguments
+    import inspect
+    assert "warmup_ratio" not in inspect.signature(TrainingArguments.__init__).parameters
+    a = TrainingArguments(output_dir="checkpoints/t", warmup_steps=0.06,
+                          report_to="none")
+    # 6% от эпохи 688 шагов = 42 шага разогрева
+    assert a.get_warmup_steps(688) == 42
+
+
 class _FakeBackbone(torch.nn.Module):
     def forward(self, input_ids=None, attention_mask=None):
         b, n = input_ids.shape

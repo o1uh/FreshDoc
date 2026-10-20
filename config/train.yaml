@@ -9,10 +9,11 @@ lambda_drift: 0.6
 dropout: 0.1
 
 # Оптимизация (R10): AdamW, lr 2e-5, wd 0.01, 3 эпохи, warmup 6%, clip 1.0.
+# transformers>=5: warmup_ratio удалён, warmup_steps<1 = доля (ratio).
 learning_rate: 0.00002
 weight_decay: 0.01
 num_train_epochs: 3
-warmup_ratio: 0.06
+warmup_steps: 0.06
 max_grad_norm: 1.0
 lr_scheduler_type: linear
 optim: adamw_torch
