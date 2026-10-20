@@ -10,6 +10,8 @@
 """
 from __future__ import annotations
 
+import re
+
 
 #: 8 классов головы дрейфа R10 (класса none в голове нет).
 DRIFT_CLASSES = [
@@ -42,8 +44,6 @@ def drift_to_id(drift_type: str) -> int:
         return -100
     return DRIFT_TO_ID.get(d, -100)
 
-
-import re
 
 #: Строгий признак сигнатурной строки диффа: после маркера -/+ идёт
 #: необязательный отступ и сразу def/async def. Намеренно не ловим "def"

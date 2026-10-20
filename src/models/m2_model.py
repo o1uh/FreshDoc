@@ -100,3 +100,33 @@ class DualHeadCodeClassifier(nn.Module):
         drift_id = out["logits_drift"].argmax(dim=-1)
         gated = torch.where(p > threshold, drift_id, torch.full_like(drift_id, -1))
         return {"p_stale": p, "drift_id": drift_id, "drift_gated": gated}
+
+
+def backbone_position_capacity(backbone) -> int | None:
+    """Ёмкость абсолютных позиций бэкбона (None = RoPE/ALiBi/относительные).
+
+    RoBERTa/BERT хранят фиксированную матрицу
+    backbone.embeddings.position_embeddings (у roberta-base 514 = 512 + 2,
+    у unixcoder-base 1026). Вход длиннее матрицы падает в рантайме
+    (index out of bounds), а не обрезается — проверять до обучения.
+    """
+    mod = getattr(getattr(backbone, "embeddings", None), "position_embeddings", None)
+    if isinstance(mod, torch.nn.Embedding):
+        return int(mod.num_embeddings)
+    return None
+
+
+def check_input_capacity(backbone, max_len: int, model_name: str = "") -> None:
+    """Fail-fast: max_len не должен превышать позиционную ёмкость бэкбона.
+
+    Поймано дымовым тестом: tiny-RoBERTa (512 позиций) + max_len=1024
+    падает в первом же forward (index 512 out of bounds), сжигая запуск.
+    """
+    cap = backbone_position_capacity(backbone)
+    if cap is not None and max_len > cap:
+        raise ValueError(
+            f"max_len={max_len} превышает позиционную ёмкость бэкбона ({cap}). "
+            f"Модель {model_name or '?'} использует абсолютные позиции: вход "
+            f"длиннее матрицы падает с index out of bounds. "
+            f"Уменьшите max_len до <={cap}."
+        )

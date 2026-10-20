@@ -26,7 +26,7 @@ import yaml
 from transformers import AutoModel, AutoTokenizer
 
 from src.models.m2_data import DRIFT_CLASSES, encode_pair
-from src.models.m2_model import DualHeadCodeClassifier
+from src.models.m2_model import DualHeadCodeClassifier, check_input_capacity
 
 IN_DATASET = PROJECT_ROOT / "data" / "processed" / "dataset_v1.parquet"
 RISK_YAML = PROJECT_ROOT / "config" / "risk.yaml"
@@ -121,6 +121,11 @@ def main() -> int:
     # backbone уже внутри; иначе веса backbone из HF
     model = DualHeadCodeClassifier(backbone, hidden_size=backbone.config.hidden_size,
                                    num_drift_classes=len(DRIFT_CLASSES))
+    try:
+        check_input_capacity(backbone, max_len, model_name)
+    except ValueError as e:
+        print(f"ОШИБКА: {e}", file=sys.stderr)
+        return 2
     # Ранняя проверка выше гарантирует наличие файла; здесь только загрузка.
     weights_path = _state_path if _state_path.exists() else _alt_path
     try:

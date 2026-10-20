@@ -42,7 +42,8 @@ from transformers import (AutoModel, AutoTokenizer, Trainer,
 from src.data.dataset import REAL_SOURCES
 from src.models.m2_data import (DOC_BUDGET_TOKENS, DRIFT_CLASSES,
                                 drift_to_id, encode_pair)
-from src.models.m2_model import LAMBDA_DRIFT, DualHeadCodeClassifier
+from src.models.m2_model import (LAMBDA_DRIFT, DualHeadCodeClassifier,
+                                 check_input_capacity)
 
 IN_DATASET = PROJECT_ROOT / "data" / "processed" / "dataset_v1.parquet"
 IN_CONFIG = PROJECT_ROOT / "config" / "train.yaml"
@@ -188,6 +189,37 @@ def load_config(path: Path) -> dict:
     return cfg
 
 
+def append_runs_csv(path, row: dict) -> None:
+    """Дописать строку прогона (формат принадлежит FD-24, писатель уже в FD-21).
+
+    Если файл существует (заголовок FD-24), строка конформится под
+    существующий заголовок: лишние поля отбрасываются, недостающие -> "".
+    Иначе заголовок пишется из строки. Так CSV не разъезжается по колонкам.
+    Относительный путь резолвится от PROJECT_ROOT, а не от CWD.
+    """
+    import csv as _csv
+
+    p = Path(path)
+    if not p.is_absolute():
+        p = PROJECT_ROOT / p
+    p.parent.mkdir(parents=True, exist_ok=True)
+    if p.exists():
+        with p.open("r", encoding="utf-8", newline="") as _f:
+            header = _csv.DictReader(_f).fieldnames or []
+        if not header:
+            header = list(row)
+        out_row = {k: row.get(k, "") for k in header}
+        with p.open("a", encoding="utf-8", newline="") as _f:
+            _w = _csv.DictWriter(_f, fieldnames=header)
+            _w.writerow(out_row)
+    else:
+        with p.open("a", encoding="utf-8", newline="") as _f:
+            _w = _csv.DictWriter(_f, fieldnames=list(row))
+            _w.writeheader()
+            _w.writerow(row)
+    print(f"Строка runs.csv: {p}")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="FD-21: обучение M2 (R10).")
     ap.add_argument("--config", default=str(IN_CONFIG))
@@ -199,6 +231,12 @@ def main() -> int:
     ap.add_argument("--seed", type=int, default=None)
     ap.add_argument("--overfit_test", action="store_true",
                     help="шаг 2 FD-21: 200 строк x 20 эпох")
+    ap.add_argument("--overfit_lr", type=float, default=5e-3,
+                    help="lr протокола переобучения (не рабочего обучения). "
+                         "Эмпирика прогона: lr=2e-5 за ~140 шагов не запоминает "
+                         "200 строк (PR-AUC 0.63, verdict fail), lr=5e-3 "
+                         "запоминает (PR-AUC 0.999, verdict pass). Высоким lr "
+                         "проверяем способность+plumbing, не гиперпараметры.")
     ap.add_argument("--pilot_steps", type=int, default=0,
                     help="калибровка скорости: остановить после N шагов")
     ap.add_argument("--max_steps", type=int, default=0)
@@ -279,9 +317,16 @@ def main() -> int:
             n=min(200, len(pos) + len(neg)), random_state=seed).reset_index(drop=True)
         val_df = train_df.copy()
         epochs = 20
+        # Протокол переобучения ≠ рабочее обучение: цель — доказать, что
+        # модель В ПРИНЦИПЕ запоминает 200 строк (ёмкость + plumbing).
+        # Эмпирика: 2e-5 за ~140 шагов не запоминает (fail — и это нормально),
+        # 5e-3 запоминает (PR-AUC 0.999). Высокий lr здесь не переносить в FD-24.
+        if args.overfit_lr:
+            lr = float(args.overfit_lr)
         print(f"OVERFIT-TEST: {len(train_df)} строк "
               f"(pos={int(train_df['label_stale'].sum())}, "
-              f"neg={int((train_df['label_stale'] == 0).sum())}) x {epochs} эпох "
+              f"neg={int((train_df['label_stale'] == 0).sum())}) x {epochs} эпох, "
+              f"lr={lr} "
               f"(ожидание: loss -> 0, PR-AUC -> ~1)")
 
     tok = AutoTokenizer.from_pretrained(model_name, use_fast=True)
@@ -314,6 +359,11 @@ def main() -> int:
                                    num_drift_classes=len(DRIFT_CLASSES),
                                    dropout=float(cfg.get("dropout", 0.1)))
     print(f"Модель: {model_name} hidden={hidden} drift_classes={DRIFT_CLASSES}")
+    try:
+        check_input_capacity(backbone, max_len, model_name)
+    except ValueError as e:
+        print(f"ОШИБКА: {e}", file=sys.stderr)
+        return 2
 
     out_dir = Path(args.output_dir)
     targs_kwargs = dict(
@@ -376,6 +426,15 @@ def main() -> int:
 
     metrics = trainer.evaluate()
     print(f"Eval val_real: {metrics}")
+    # История PR-AUC по эпохам в артефакт (наблюдение прогона: гейт виден
+    # только в финале; при провале нужно знать, на какой эпохе поехало).
+    eval_history = [
+        {"epoch": e.get("epoch"),
+         "eval_pr_auc": e.get("eval_pr_auc"),
+         "eval_loss": e.get("eval_loss")}
+        for e in trainer.state.log_history
+        if any(k.startswith("eval_") for k in e)
+    ]
     is_main = trainer.is_world_process_zero()
     if is_main:
         best_dir = out_dir / "best"
@@ -423,6 +482,7 @@ def main() -> int:
         "train_time_sec": round(train_time, 1),
         "eval_val_real": _json_safe({k: float(v) for k, v in metrics.items()
                                      if isinstance(v, (int, float))}),
+        "eval_history": _json_safe(eval_history),
         "overfit_test": bool(args.overfit_test),
         "drift_classes": DRIFT_CLASSES,
     }
@@ -431,26 +491,17 @@ def main() -> int:
         (out_dir / "run_meta.json").write_text(
             json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
         print(f"Мета: {out_dir / 'run_meta.json'}")
-        # Строка прогона для reports/runs.csv (формат FD-24; minor 6).
+        # Строка прогона для reports/runs.csv (формат FD-24; minor 6, N2).
         # Только полные прогоны (не пилот/overfit/max_steps).
         if args.runs_csv and not args.overfit_test and not args.pilot_steps \
                 and not args.max_steps:
-            _runs = Path(args.runs_csv)
             _row = {"timestamp": meta["built_at"], "output_dir": str(out_dir),
                     "model_name": model_name, "max_len": max_len,
                     "seed": seed, "epochs": epochs,
                     "train_time_sec": meta["train_time_sec"],
                     "eval_pr_auc": (meta["eval_val_real"] or {}).get("eval_pr_auc"),
                     "n_train": meta["n_train"], "n_val_real": meta["n_val_real"]}
-            _runs.parent.mkdir(parents=True, exist_ok=True)
-            import csv as _csv
-            _new = not _runs.exists()
-            with _runs.open("a", encoding="utf-8", newline="") as _f:
-                _w = _csv.DictWriter(_f, fieldnames=list(_row))
-                if _new:
-                    _w.writeheader()
-                _w.writerow(_row)
-            print(f"Строка runs.csv: {_runs}")
+            append_runs_csv(args.runs_csv, _row)
     if args.overfit_test:
         # Машинный критерий шага 2 FD-21 (S4): PR-AUC>=0.99 на тех же 200.
         _p = (meta["eval_val_real"] or {}).get("eval_pr_auc")

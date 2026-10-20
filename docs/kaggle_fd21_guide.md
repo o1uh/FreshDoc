@@ -102,9 +102,11 @@ for m in ["microsoft/unixcoder-base"]:
 
 ## 2. Что забрать из Output
 
-- `checkpoints/m2_run1/best/` (веса + токенизатор), `run_meta.json` (время, усечение, eval val_real)
+- `checkpoints/m2_run1/best/` (веса + токенизатор), `run_meta.json` (время, усечение, eval val_real, состав train, история PR-AUC по эпохам)
 - `m2_truncation.json` (фактические доли усечения по сплитам — в `docs/data_notes.md`)
 - `m2.csv` (pair_id, p_stale, type_pred), `metrics_m2.json`, `e1_m2.csv`
+- `reports/runs.csv` (строка прогона дописывается автоматически; формат принадлежит FD-24)
+- `overfit_verdict.json` из overfit-прогона (артефакт приёма шага 2: pass/fail + PR-AUC)
 - Скопировать `run_meta.json` + `m2_truncation.json` в `reports/` репозитория (PR без весов).
 
 ## 3. Частые сбои

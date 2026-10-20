@@ -174,18 +174,20 @@ def test_encode_pair_doc_truncated_flag():
     assert len(long["input_ids"]) == 1 + long["n_a_tok"] + 2 + 192 + 1
 
 
-def test_resolve_threshold_priority():
-    # minor 1: CLI > risk.yaml > 0.5
+def test_resolve_threshold_priority(tmp_path):
+    # Hermetic: не зависит от репозиторного config/risk.yaml
+    # (сломается на FD-25, когда туда ляжет рабочий порог).
     import scripts.predict_m2 as pm
-    assert pm.resolve_threshold(0.3) == 0.3
-    assert pm.resolve_threshold(None) == 0.5  # risk.yaml пуст
-    import tempfile
     from pathlib import Path
-    with tempfile.TemporaryDirectory() as d:
-        rp = Path(d) / "risk.yaml"
-        rp.write_text("threshold: 0.8\n", encoding="utf-8")
-        assert pm.resolve_threshold(None, risk_path=rp) == 0.8
-        assert pm.resolve_threshold(0.2, risk_path=rp) == 0.2
+    rp = tmp_path / "risk.yaml"
+    rp.write_text("threshold: 0.8\n", encoding="utf-8")
+    empty = tmp_path / "empty.yaml"
+    empty.write_text("", encoding="utf-8")
+    assert pm.resolve_threshold(0.3, risk_path=rp) == 0.3
+    assert pm.resolve_threshold(None, risk_path=rp) == 0.8
+    assert pm.resolve_threshold(0.2, risk_path=rp) == 0.2
+    assert pm.resolve_threshold(None, risk_path=empty) == 0.5  # пустой файл -> дефолт
+    assert pm.resolve_threshold(None, risk_path=tmp_path / "nope.yaml") == 0.5
 
 
 def test_predict_main_end_to_end_fake_backbone(tmp_path, monkeypatch, capsys):
@@ -276,6 +278,51 @@ def test_training_args_warmup_steps_ratio():
                           report_to="none")
     # 6% от эпохи 688 шагов = 42 шага разогрева
     assert a.get_warmup_steps(688) == 42
+
+
+def test_append_runs_csv_conforms_to_existing_header(tmp_path):
+    # N2: писатель FD-21 не должен разъезжать CSV форматом FD-24.
+    import csv
+
+    from scripts.train_m2 import append_runs_csv
+    p = tmp_path / "runs.csv"
+    with p.open("w", encoding="utf-8", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["timestamp", "model_name", "extra_fd24"])
+        w.writeheader()
+        w.writerow({"timestamp": "t0", "model_name": "m0", "extra_fd24": "x"})
+    append_runs_csv(p, {"timestamp": "t1", "model_name": "m1", "seed": 42,
+                        "eval_pr_auc": 0.9})
+    rows = list(csv.DictReader(p.open(encoding="utf-8")))
+    assert len(rows) == 2
+    assert set(rows[1].keys()) == {"timestamp", "model_name", "extra_fd24"}
+    assert rows[1] == {"timestamp": "t1", "model_name": "m1", "extra_fd24": ""}
+    # нового файла: заголовок из строки
+    p2 = tmp_path / "new.csv"
+    append_runs_csv(p2, {"a": 1})
+    assert list(csv.DictReader(p2.open(encoding="utf-8")))[0] == {"a": "1"}
+
+
+def test_check_input_capacity():
+    # Fail-fast: max_len сверх позиционной матрицы бэкбона (поймано дымовым
+    # тестом: tiny-RoBERTa 512 + max_len=1024 -> index out of bounds).
+    import pytest
+
+    from src.models.m2_model import (backbone_position_capacity,
+                                     check_input_capacity)
+
+    class _B(torch.nn.Module):
+        def __init__(self, n):
+            super().__init__()
+            self.embeddings = torch.nn.Module()
+            if n is not None:
+                self.embeddings.position_embeddings = torch.nn.Embedding(n, 4)
+
+    assert backbone_position_capacity(_B(512)) == 512
+    assert backbone_position_capacity(_B(1026)) == 1026
+    assert backbone_position_capacity(_B(None)) is None  # RoPE/ALiBi -> пропуск
+    check_input_capacity(_B(1026), 1024, "unixcoder")  # FD-21: ок
+    with pytest.raises(ValueError):
+        check_input_capacity(_B(512), 1024, "tiny")
 
 
 def test_train_saves_guarded_by_is_main():
