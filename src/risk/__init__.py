@@ -12,6 +12,7 @@ from src.risk.config import RiskConfig, load_risk_config
 from src.risk.fan_in import (
     analyze_repo_fan_in,
     count_symbol_calls,
+    extract_leaf_symbol,
     parse_fan_in_from_source,
 )
 
@@ -26,5 +27,6 @@ __all__ = [
     "is_public_symbol",
     "analyze_repo_fan_in",
     "count_symbol_calls",
+    "extract_leaf_symbol",
     "parse_fan_in_from_source",
 ]

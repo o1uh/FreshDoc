@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 import math
-from typing import Sequence
 
 from src.risk.config import RiskConfig, load_risk_config
 

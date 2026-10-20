@@ -29,6 +29,11 @@ def _extract_call_names(node: ast.Call) -> str | None:
     return None
 
 
+def extract_leaf_symbol(symbol: str) -> str:
+    """Extract leaf identifier from qualified name, e.g. 'Client.fetch' -> 'fetch'."""
+    return symbol.rsplit(".", 1)[-1].strip()
+
+
 def parse_fan_in_from_source(source_code: str) -> Counter[str]:
     """Extract call count for all symbols called in source code.
 
@@ -57,12 +62,24 @@ def analyze_repo_fan_in(
     Per R12:
       fan_in is the approximate number of calls to the function by name across
       the repository. Same-named symbols across modules are merged.
+
+    Supports qualified symbol names in target_symbols (e.g. 'Client.fetch').
     """
     base = Path(repo_path)
     if not base.exists():
         return {}
 
-    targets = set(target_symbols) if target_symbols is not None else None
+    target_list = list(target_symbols) if target_symbols is not None else None
+    targets_leaf_map: dict[str, str] = {}
+    leaf_set: set[str] = set()
+
+    if target_list is not None:
+        for sym in target_list:
+            leaf = extract_leaf_symbol(sym)
+            targets_leaf_map[sym] = leaf
+            if leaf:
+                leaf_set.add(leaf)
+
     total_counts: Counter[str] = Counter()
 
     if base.is_file():
@@ -79,21 +96,26 @@ def analyze_repo_fan_in(
         try:
             content = p.read_text(encoding="utf-8", errors="ignore")
             file_counts = parse_fan_in_from_source(content)
-            if targets is not None:
-                for sym in targets:
-                    if sym in file_counts:
-                        total_counts[sym] += file_counts[sym]
+            if target_list is not None:
+                for leaf in leaf_set:
+                    if leaf in file_counts:
+                        total_counts[leaf] += file_counts[leaf]
             else:
                 total_counts.update(file_counts)
         except Exception:
             continue
 
-    if targets is not None:
-        return {sym: total_counts.get(sym, 0) for sym in targets}
+    if target_list is not None:
+        return {sym: total_counts.get(targets_leaf_map[sym], 0) for sym in target_list}
     return dict(total_counts)
 
 
 def count_symbol_calls(repo_path: Path | str, symbol: str) -> int:
-    """Return total call count of a symbol across repository."""
+    """Return total call count of a symbol across repository.
+
+    Supports qualified names (e.g. 'Client.fetch' -> counts calls to 'fetch').
+    """
+    if not symbol:
+        return 0
     result = analyze_repo_fan_in(repo_path, target_symbols=[symbol])
     return result.get(symbol, 0)

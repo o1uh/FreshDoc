@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 from pathlib import Path
 
 import pytest
@@ -13,6 +12,7 @@ from src.risk import (
     compute_impact,
     compute_urgency,
     count_symbol_calls,
+    extract_leaf_symbol,
     is_public_symbol,
     load_risk_config,
     parse_fan_in_from_source,
@@ -158,6 +158,12 @@ class TestConfigLoading:
         assert cfg.fan_in_cap == 20.0
         assert cfg.threshold == 0.5
 
+    def test_default_config_path_resolved_from_project_root(self) -> None:
+        from src.risk.config import DEFAULT_CONFIG_PATH
+
+        assert DEFAULT_CONFIG_PATH.name == "risk.yaml"
+        assert DEFAULT_CONFIG_PATH.exists()
+
     def test_load_custom_yaml(self, tmp_path: Path) -> None:
         custom_yaml = tmp_path / "custom_risk.yaml"
         custom_yaml.write_text(
@@ -231,3 +237,34 @@ def sample():
         # count_symbol_calls
         assert count_symbol_calls(tmp_path, "fetch") == 3
         assert count_symbol_calls(tmp_path, "absent") == 0
+
+    def test_extract_leaf_symbol(self) -> None:
+        assert extract_leaf_symbol("fetch") == "fetch"
+        assert extract_leaf_symbol("Client.fetch") == "fetch"
+        assert extract_leaf_symbol("pkg.sub.Class.method") == "method"
+        assert extract_leaf_symbol("") == ""
+
+    def test_qualified_symbol_calls_and_targets(self, tmp_path: Path) -> None:
+        pkg_dir = tmp_path / "pkg"
+        pkg_dir.mkdir()
+        (pkg_dir / "service.py").write_text(
+            "client.fetch('url'); self.calculate(10); fetch('raw')",
+            encoding="utf-8",
+        )
+
+        # Both direct 'fetch' and qualified 'Client.fetch' match the leaf call
+        assert count_symbol_calls(tmp_path, "Client.fetch") == 2
+        assert count_symbol_calls(tmp_path, "fetch") == 2
+        assert count_symbol_calls(tmp_path, "Calculator.calculate") == 1
+        assert count_symbol_calls(tmp_path, "Calculator.missing") == 0
+
+        # analyze_repo_fan_in preserves requested qualified keys
+        results = analyze_repo_fan_in(
+            tmp_path,
+            target_symbols=["Client.fetch", "Calculator.calculate", "Missing.sym"],
+        )
+        assert results == {
+            "Client.fetch": 2,
+            "Calculator.calculate": 1,
+            "Missing.sym": 0,
+        }

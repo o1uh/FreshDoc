@@ -3,11 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 import os
 from pathlib import Path
-from typing import Any
 
 import yaml
 
-DEFAULT_CONFIG_PATH = Path("config/risk.yaml")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+DEFAULT_CONFIG_PATH = PROJECT_ROOT / "config" / "risk.yaml"
 
 DEFAULT_TYPE_WEIGHTS: dict[str, float] = {
     "docstring": 1.0,
@@ -44,6 +44,8 @@ def load_risk_config(config_path: Path | str | None = None) -> RiskConfig:
             path_to_use = Path(env_val)
         elif DEFAULT_CONFIG_PATH.exists():
             path_to_use = DEFAULT_CONFIG_PATH
+        elif Path("config/risk.yaml").exists():
+            path_to_use = Path("config/risk.yaml")
 
     if path_to_use is None or not path_to_use.exists():
         return RiskConfig()
