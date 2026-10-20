@@ -33,7 +33,7 @@ except Exception:
     # Запасной вариант при публичном репозитории или прямом вводе
     repo_url = "https://github.com/o1uh/FreshDoc.git"
 
-!git clone {repo_url}
+!if [ ! -d FreshDoc ]; then git clone --quiet {repo_url} > /tmp/clone.log 2>&1 || (echo "CLONE FAILED:"; sed -E 's#(https?://)[^@]+@#\1***@#g' /tmp/clone.log); fi
 %cd /kaggle/working/FreshDoc
 
 # 3. Переключение на целевую ветку экспериментов (при необходимости)
@@ -151,11 +151,12 @@ except Exception:
     repo_url = "https://github.com/o1uh/FreshDoc.git"
 
 %cd /content
-!git clone {repo_url}
+!if [ ! -d FreshDoc ]; then git clone --quiet {repo_url} > /tmp/clone.log 2>&1 || (echo "CLONE FAILED:"; sed -E 's#(https?://)[^@]+@#\1***@#g' /tmp/clone.log); fi
 %cd /content/FreshDoc
 
 # 3. Переключение ветки и установка пакетов
 !git checkout feat/FD-21-m2-train
+!git pull --ff-only origin feat/FD-21-m2-train || echo "PULL SKIPPED: убедись, что код свежий"
 !pip install -q -r requirements.txt
 %env NCCL_P2P_DISABLE=1
 ```
@@ -169,7 +170,9 @@ except Exception:
 !python scripts/train_m2.py \
     --config config/train.yaml \
     --data_path /content/drive/MyDrive/FreshDoc_Artifacts/data/dataset_v1.parquet \
-    --output_dir /content/drive/MyDrive/FreshDoc_Artifacts/checkpoints/m2_run1
+    --output_dir /content/drive/MyDrive/FreshDoc_Artifacts/checkpoints/m2_run1 \
+    --accum 4
+# --accum 4 обязателен на 1 GPU: иначе eff_batch 16 вместо 32 (per_device 8 x accum 2 x 1 GPU).
 # Усечение/предсказания/оценка — как в шаге 5 Kaggle-варианта (пути на Drive).
 ```
 
@@ -190,5 +193,10 @@ for m in ["microsoft/unixcoder-base", "answerdotai/ModernBERT-base",
     out = mod(**tok("def test(): pass", return_tensors="pt").to("cuda"))
     print(m, tuple(out.last_hidden_state.shape))
 print("Тест GPU и моделей пройден успешно.")
+# Освободить ~2 ГБ VRAM перед обучением (иначе висит занятой весь прогон)
+del mod, out, tok
+import gc; gc.collect()
+torch.cuda.empty_cache()
+print("GPU freed.")
 ```
 Быстрый smoke-тест пайплайна — на `granite-embedding-small-english-r2` (48M).

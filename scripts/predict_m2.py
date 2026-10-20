@@ -25,7 +25,7 @@ import torch
 import yaml
 from transformers import AutoModel, AutoTokenizer
 
-from src.models.m2_data import DRIFT_CLASSES, encode_pair
+from src.models.m2_data import (DOC_BUDGET_TOKENS, DRIFT_CLASSES, encode_pair)
 from src.models.m2_model import DualHeadCodeClassifier, check_input_capacity
 
 IN_DATASET = PROJECT_ROOT / "data" / "processed" / "dataset_v1.parquet"
@@ -90,7 +90,7 @@ def main() -> int:
         cfg = _yaml.safe_load(cfg_path.read_text(encoding="utf-8")) or {}
     model_name = cfg.get("model_name", "microsoft/unixcoder-base")
     max_len = int(cfg.get("max_len", 1024))
-    doc_budget = int(cfg.get("doc_budget", 192))
+    doc_budget = int(cfg.get("doc_budget", DOC_BUDGET_TOKENS))
 
     # checkpoint — директория Trainer (best/): model.safetensors (полный DualHead),
     # config.json (конфиг бэкбона, пишет train_m2.py), dualhead_config.json,

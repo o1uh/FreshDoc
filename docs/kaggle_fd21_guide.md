@@ -21,15 +21,31 @@
 Если в Kaggle `dataset_v1.parquet` даёт другое число строк — **стоп, не обучать**,
 сверить хэш с `reports/dataset_v1.manifest.json` и перезалить.
 
-## 1. Ноутбук за 6 клеток
+## 1. Ноутбук за 7 клеток
 
 Клетка 1 — клон и зависимости:
 
 ```bash
 %cd /kaggle/working
-!git clone https://github.com/o1uh/FreshDoc.git
+```
+```python
+# Приватный репозиторий (до релиза): токен из Add-ons -> Secrets -> GITHUB_TOKEN.
+# Без токена клон упадёт на аутентификации; публичный URL — только запасной вариант.
+import os
+from kaggle_secrets import UserSecretsClient
+try:
+    _tok = UserSecretsClient().get_secret("GITHUB_TOKEN")
+    _repo = f"https://{_tok}@github.com/o1uh/FreshDoc.git"
+    print("clone: private (token)")
+except Exception:
+    _repo = "https://github.com/o1uh/FreshDoc.git"
+    print("clone: public fallback (repo must be public)")
+```
+```bash
+!if [ ! -d FreshDoc ]; then git clone --quiet {_repo} > /tmp/clone.log 2>&1 || (echo "CLONE FAILED:"; sed -E 's#(https?://)[^@]+@#\1***@#g' /tmp/clone.log); fi
 %cd /kaggle/working/FreshDoc
 !git checkout feat/FD-21-m2-train
+!git pull --ff-only origin feat/FD-21-m2-train || echo "PULL SKIPPED: убедись, что код свежий"
 !pip install -q -r requirements.txt
 ```
 ```python
@@ -41,7 +57,22 @@ os.environ["NCCL_P2P_DISABLE"] = "1"
 !nvidia-smi
 ```
 
-Клетка 2 — веса и токенизатор (smoke, ~1 мин, FD-02):
+Клетка 2 — проверка датасета (стоп при несовпадении):
+
+```python
+import pandas as pd
+_p = "/kaggle/input/freshdoc-dataset/dataset_v1.parquet"
+_df = pd.read_parquet(_p, columns=["split"])
+assert len(_df) == 27203, f"dataset rows {len(_df)} != 27203 (старый файл без gold-патча?)"
+_exp = {"train": 21997, "val": 559, "test_real": 2895, "test_synth": 1552, "gold": 200}
+_got = _df["split"].value_counts().to_dict()
+assert _got == _exp, f"split mismatch: {_got}"
+print("dataset OK:", _got)
+del _df
+```
+# Дальше — только при пройденной проверке, иначе сверить хэш с `reports/dataset_v1.manifest.json` и перезалить датасет.
+
+Клетка 3 — веса и токенизатор (smoke, ~1 мин, FD-02):
 
 ```python
 import torch
@@ -51,9 +82,13 @@ for m in ["microsoft/unixcoder-base"]:
     mod = AutoModel.from_pretrained(m).to("cuda")
     out = mod(**tok("def test(): pass", return_tensors="pt").to("cuda"))
     print(m, tuple(out.last_hidden_state.shape))
+del mod, out, tok
+import gc; gc.collect()
+torch.cuda.empty_cache()
+print("GPU freed")
 ```
 
-Клетка 3 — пилот скорости (100 шагов, калибровка с/шаг):
+Клетка 4 — пилот скорости (100 шагов, калибровка с/шаг):
 
 ```bash
 !python scripts/train_m2.py --config config/train.yaml \
@@ -62,7 +97,7 @@ for m in ["microsoft/unixcoder-base"]:
 # записать с/шаг -> пересчитать время эпохи: 688 шагов * с/шаг (ожидание 0.7-1.0 с/шаг)
 ```
 
-Клетка 4 — тест на переобучение (шаг 2 FD-21, критерий приёмки):
+Клетка 5 — тест на переобучение (шаг 2 FD-21, критерий приёмки):
 
 ```bash
 !python scripts/train_m2.py --config config/train.yaml \
@@ -71,16 +106,17 @@ for m in ["microsoft/unixcoder-base"]:
 # ожидание: loss -> ~0, PR-AUC на тех же 200 -> ~1. Иначе стоп (маска/метки/обрезка/веса).
 ```
 
-Клетка 5 — полный прогон (шаг 3 FD-21, DDP 2×T4):
+Клетка 6 — полный прогон (шаг 3 FD-21, DDP 2×T4):
 
 ```bash
 !torchrun --nproc_per_node=2 scripts/train_m2.py --config config/train.yaml \
   --data_path /kaggle/input/freshdoc-dataset/dataset_v1.parquet \
   --output_dir /kaggle/working/checkpoints/m2_run1
-# fallback без DDP: python scripts/train_m2.py ... (медленнее ~1.6x)
+# fallback без DDP (1 GPU): та же команда через python + --accum 4
+# (обязательно: иначе eff_batch 16 вместо 32 = per_device 8 x accum 2 x 1 GPU)
 ```
 
-Клетка 6 — усечение + предсказания + оценка (шаги 4–5 FD-21):
+Клетка 7 — усечение + предсказания + оценка (шаги 4–5 FD-21):
 
 ```bash
 !python scripts/check_truncation.py --model microsoft/unixcoder-base --max_len 1024 \
@@ -129,5 +165,6 @@ for m in ["microsoft/unixcoder-base"]:
 test_synth 3.09%, gold 3.00%; сторона B (docstring) — train 9.48%, val 9.48%,
 test_real 4.11%, test_synth 10.50%, gold 4.00%. Хвост docstring режется у ~1/10 строк
 (было ~1/5 при капе 192) — учесть в записке (кап по решению команды, влияние не измерено).
-- `reports/data_stats.md` устарел (27143 строк, без gold-патча);
-  канон — `reports/dataset_v1.manifest.json` (27203) + `data/processed/dataset_v1.parquet`.
+- `reports/data_stats.md` актуален (27203 строк, с gold-патчем; регенерируется
+скриптом `scripts/refresh_data_stats.py`, свежесть стережет `tests/test_data_stats.py`);
+канон — `reports/dataset_v1.manifest.json` + `data/processed/dataset_v1.parquet`.

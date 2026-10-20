@@ -281,6 +281,19 @@ def test_training_args_warmup_steps_ratio():
     assert a.get_warmup_steps(688) == 42
 
 
+def test_doc_budget_defaults_consistent():
+    # Дефолт doc_budget един: train.yaml == DOC_BUDGET_TOKENS (384, решение
+    # команды 20.10.2026). predict/check_truncation берут его же — рассинхрон
+    # нарезки входа между обучением и инференсом исключён.
+    import yaml
+    from pathlib import Path
+
+    from src.models.m2_data import DOC_BUDGET_TOKENS
+    repo_root = Path(__file__).resolve().parent.parent
+    cfg = yaml.safe_load((repo_root / "config" / "train.yaml").read_text(encoding="utf-8"))
+    assert cfg["doc_budget"] == DOC_BUDGET_TOKENS == 384
+
+
 def test_append_runs_csv_conforms_to_existing_header(tmp_path):
     # N2: писатель FD-21 не должен разъезжать CSV форматом FD-24.
     import csv
