@@ -1,0 +1,23 @@
+# FreshDoc Risk Engine Configuration (R12)
+# Reference: workflow.md (R12) & FD-28
+
+# Weight by documentation type
+type_weight:
+  docstring: 1.0
+  api_ref: 1.0
+  tutorial: 0.7
+  readme: 0.8
+
+# Impact heuristic parameters
+impact:
+  fan_in_cap: 20
+  private_factor: 0.5
+
+# Urgency heuristic parameters
+urgency:
+  age_cap_days: 180
+  age_gain: 0.5
+
+# Operating drift threshold
+# Baseline value 0.5 per R12; to be replaced by calibrated threshold from FD-25 (Precision >= 0.80)
+threshold: 0.5
