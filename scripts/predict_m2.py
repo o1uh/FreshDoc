@@ -86,26 +86,26 @@ def main() -> int:
                                    num_drift_classes=len(DRIFT_CLASSES))
     state_path = ckpt / "pytorch_model.bin"
     alt_path = ckpt / "model.safetensors"
-    if state_path.exists():
-        state = torch.load(str(state_path), map_location="cpu")
-        # Trainer save_model сохраняет полный DualHead -> прямая загрузка
-        try:
-            model.load_state_dict(state, strict=True)
-            print(f"Веса DualHead загружены: {state_path}")
-        except RuntimeError as e:
-            print(f"ВНИМАНИЕ: strict загрузка не удалась ({e}); "
-                  f"используются веса backbone")
-    elif alt_path.exists():
-        from safetensors.torch import load_file
-        state = load_file(str(alt_path))
-        try:
-            model.load_state_dict(state, strict=True)
-            print(f"Веса DualHead загружены: {alt_path}")
-        except RuntimeError as e:
-            print(f"ВНИМАНИЕ: strict загрузка не удалась ({e})")
-    else:
-        print(f"ВНИМАНИЕ: файл весов не найден в {ckpt} "
-              f"(pytorch_model.bin/model.safetensors) — инференс на backbone-init")
+    weights_path = state_path if state_path.exists() else (
+        alt_path if alt_path.exists() else None)
+    if weights_path is None:
+        print(f"ОШИБКА: в {ckpt} нет весов DualHead "
+              f"(pytorch_model.bin/model.safetensors). "
+              f"Инференс на random-init запрещён (fail-fast): "
+              f"метрики ~0.5 легко принять за результат.", file=sys.stderr)
+        return 2
+    try:
+        if weights_path.suffix == ".bin":
+            state = torch.load(str(weights_path), map_location="cpu")
+        else:
+            from safetensors.torch import load_file
+            state = load_file(str(weights_path))
+        model.load_state_dict(state, strict=True)
+        print(f"Веса DualHead загружены: {weights_path}")
+    except RuntimeError as e:
+        print(f"ОШИБКА: strict загрузка весов не удалась ({e}); "
+              f"продолжение на backbone-init запрещено.", file=sys.stderr)
+        return 2
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device).eval()

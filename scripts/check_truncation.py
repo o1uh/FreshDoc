@@ -31,10 +31,19 @@ def main() -> int:
     ap.add_argument("--model", default="microsoft/unixcoder-base")
     ap.add_argument("--max_len", type=int, default=1024)
     ap.add_argument("--doc_budget", type=int, default=192)
-    ap.add_argument("--out", default=str(OUT_JSON))
+    ap.add_argument("--out", default=None,
+                    help="куда писать JSON. По умолчанию reports/m2_truncation.json, "
+                         "но при --sample>0 --out обязателен (защита канона от затирания)")
     ap.add_argument("--sample", type=int, default=0,
                     help="0 = весь датасет; иначе первые N строк для быстрой прикидки")
     args = ap.parse_args()
+
+    if args.sample and not args.out:
+        print("ОШИБКА: --sample>0 требует явный --out "
+              "(канон reports/m2_truncation.json затирать запрещено).",
+              file=sys.stderr)
+        return 2
+    out_path = Path(args.out) if args.out else OUT_JSON
 
     from transformers import AutoTokenizer
     tok = AutoTokenizer.from_pretrained(args.model, use_fast=True)
@@ -60,13 +69,14 @@ def main() -> int:
         print(f"  {split}: n={len(sub)} truncated={n_trunc} frac={frac:.4f}")
     out = {"model": args.model, "max_len": args.max_len,
            "doc_budget": args.doc_budget, "dataset_rows": int(len(df)),
+           "sample": int(args.sample or 0),
            "by_split": rows,
            "note": "Оценки workflow §3 (полный текст): 28.6% @512 / 4.4% @1024 / ~1% @2048. "
                    "Фактические доли — на токенизаторе рабочей модели."}
-    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
-    Path(args.out).write_text(json.dumps(out, ensure_ascii=False, indent=2),
-                              encoding="utf-8")
-    print(f"Отчёт: {args.out}")
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(out, ensure_ascii=False, indent=2),
+                        encoding="utf-8")
+    print(f"Отчёт: {out_path}")
     return 0
 
 
