@@ -383,21 +383,21 @@ def main() -> int:
         # остальные записи ниже — нет, поэтому весь блок под гардом (S5/2.1):
         # два процесса torchrun иначе пишут одни файлы конкурентно.
         trainer.save_model(str(best_dir))
-    tok.save_pretrained(str(best_dir))
-    # DualHead — обычный nn.Module без config.json: для офлайн-инференса
-    # сохраняем конфиг бэкбона и мета DualHead рядом с model.safetensors.
-    try:
-        backbone.config.save_pretrained(str(best_dir))
-        (best_dir / "dualhead_config.json").write_text(
-            json.dumps({"model_name": model_name, "hidden_size": hidden,
-                        "num_drift_classes": len(DRIFT_CLASSES),
-                        "drift_classes": DRIFT_CLASSES,
-                        "max_len": max_len, "doc_budget": doc_budget,
-                        "backbone_config": "config.json (бэкбон)"},
-                       ensure_ascii=False, indent=2), encoding="utf-8")
-        print(f"Конфиг бэкбона + dualhead_config.json: {best_dir}")
-    except Exception as e:
-        print(f"ВНИМАНИЕ: не удалось сохранить конфиг бэкбона ({e})")
+        tok.save_pretrained(str(best_dir))
+        # DualHead — обычный nn.Module без config.json: для офлайн-инференса
+        # сохраняем конфиг бэкбона и мета DualHead рядом с model.safetensors.
+        try:
+            backbone.config.save_pretrained(str(best_dir))
+            (best_dir / "dualhead_config.json").write_text(
+                json.dumps({"model_name": model_name, "hidden_size": hidden,
+                            "num_drift_classes": len(DRIFT_CLASSES),
+                            "drift_classes": DRIFT_CLASSES,
+                            "max_len": max_len, "doc_budget": doc_budget,
+                            "backbone_config": "config.json (бэкбон)"},
+                           ensure_ascii=False, indent=2), encoding="utf-8")
+            print(f"Конфиг бэкбона + dualhead_config.json: {best_dir}")
+        except Exception as e:
+            print(f"ВНИМАНИЕ: не удалось сохранить конфиг бэкбона ({e})")
 
     meta = {
         "task": "FD-21",

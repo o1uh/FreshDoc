@@ -278,6 +278,57 @@ def test_training_args_warmup_steps_ratio():
     assert a.get_warmup_steps(688) == 42
 
 
+def test_train_saves_guarded_by_is_main():
+    """Регрессия S5/2.1: на rank 1 (is_main False) не должно быть ни записей,
+    ни NameError. Все использования best_dir в main() обязаны лежать
+    внутри `if is_main:` (иначе UnboundLocalError роняет torchrun-ноду)."""
+    import ast
+    from pathlib import Path
+
+    from scripts import train_m2
+
+    src = Path(train_m2.__file__).read_text(encoding="utf-8")
+    tree = ast.parse(src)
+    main_fn = next(n for n in ast.walk(tree)
+                   if isinstance(n, ast.FunctionDef) and n.name == "main")
+
+    class GuardVisit(ast.NodeVisitor):
+        def __init__(self):
+            self.stack: list[ast.AST] = []
+            self.loads_outside: list[int] = []
+            self.assign_in_guard = False
+
+        def _in_is_main(self) -> bool:
+            return any(isinstance(n, ast.If)
+                       and isinstance(n.test, ast.Name)
+                       and n.test.id == "is_main"
+                       for n in self.stack)
+
+        def visit_Name(self, node: ast.Name):
+            if node.id == "best_dir" and isinstance(node.ctx, ast.Load):
+                if not self._in_is_main():
+                    self.loads_outside.append(node.lineno)
+            self.generic_visit(node)
+
+        def visit_Assign(self, node: ast.Assign):
+            targets = [t.id for t in ast.walk(node)
+                       if isinstance(t, ast.Name) and isinstance(t.ctx, ast.Store)]
+            if "best_dir" in targets and self._in_is_main():
+                self.assign_in_guard = True
+            self.generic_visit(node)
+
+        def generic_visit(self, node):
+            self.stack.append(node)
+            super().generic_visit(node)
+            self.stack.pop()
+
+    v = GuardVisit()
+    v.visit(main_fn)
+    assert v.assign_in_guard, "best_dir должен создаваться внутри if is_main:"
+    assert not v.loads_outside, \
+        f"best_dir используется вне if is_main: (строки {v.loads_outside})"
+
+
 class _FakeBackbone(torch.nn.Module):
     def forward(self, input_ids=None, attention_mask=None):
         b, n = input_ids.shape
