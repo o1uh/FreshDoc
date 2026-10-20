@@ -19,7 +19,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 import pandas as pd
 
-from src.models.m2_data import encode_pair
+from src.models.m2_data import DOC_BUDGET_TOKENS, encode_pair
 
 IN_DATASET = PROJECT_ROOT / "data" / "processed" / "dataset_v1.parquet"
 OUT_JSON = PROJECT_ROOT / "reports" / "m2_truncation.json"
@@ -30,7 +30,7 @@ def main() -> int:
     ap.add_argument("--dataset", default=str(IN_DATASET))
     ap.add_argument("--model", default="microsoft/unixcoder-base")
     ap.add_argument("--max_len", type=int, default=1024)
-    ap.add_argument("--doc_budget", type=int, default=192)
+    ap.add_argument("--doc_budget", type=int, default=DOC_BUDGET_TOKENS)
     ap.add_argument("--out", default=None,
                     help="куда писать JSON. По умолчанию reports/m2_truncation.json, "
                          "но при --sample>0 --out обязателен (защита канона от затирания)")

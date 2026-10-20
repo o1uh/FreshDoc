@@ -1,49 +1,49 @@
 {
   "model": "microsoft/unixcoder-base",
   "max_len": 1024,
-  "doc_budget": 192,
+  "doc_budget": 384,
   "dataset_rows": 27203,
   "sample": 0,
   "by_split": [
     {
       "split": "gold",
       "n": 200,
-      "n_truncated": 5,
-      "frac": 0.025,
-      "n_doc_truncated": 25,
-      "doc_frac": 0.125
+      "n_truncated": 6,
+      "frac": 0.03,
+      "n_doc_truncated": 8,
+      "doc_frac": 0.04
     },
     {
       "split": "test_real",
       "n": 2895,
-      "n_truncated": 49,
-      "frac": 0.01692573402417962,
-      "n_doc_truncated": 392,
-      "doc_frac": 0.13540587219343697
+      "n_truncated": 58,
+      "frac": 0.02003454231433506,
+      "n_doc_truncated": 119,
+      "doc_frac": 0.041105354058721934
     },
     {
       "split": "test_synth",
       "n": 1552,
-      "n_truncated": 41,
-      "frac": 0.026417525773195876,
-      "n_doc_truncated": 352,
-      "doc_frac": 0.2268041237113402
+      "n_truncated": 48,
+      "frac": 0.030927835051546393,
+      "n_doc_truncated": 163,
+      "doc_frac": 0.10502577319587629
     },
     {
       "split": "train",
       "n": 21997,
-      "n_truncated": 385,
-      "frac": 0.017502386689093968,
-      "n_doc_truncated": 4666,
-      "doc_frac": 0.2121198345228895
+      "n_truncated": 515,
+      "frac": 0.02341228349320362,
+      "n_doc_truncated": 2086,
+      "doc_frac": 0.0948311133336364
     },
     {
       "split": "val",
       "n": 559,
-      "n_truncated": 21,
-      "frac": 0.03756708407871199,
-      "n_doc_truncated": 106,
-      "doc_frac": 0.18962432915921287
+      "n_truncated": 31,
+      "frac": 0.055456171735241505,
+      "n_doc_truncated": 53,
+      "doc_frac": 0.09481216457960644
     }
   ],
   "note": "Оценки workflow §3 (полный текст): 28.6% @512 / 4.4% @1024 / ~1% @2048. Фактические доли — на токенизаторе рабочей модели."

@@ -124,9 +124,10 @@ for m in ["microsoft/unixcoder-base"]:
 - HF-веса доступны, лицензии Apache-2.0: `microsoft/unixcoder-base`,
   `answerdotai/ModernBERT-base` (нужен `transformers>=4.48.0`),
   `Alibaba-NLP/gte-modernbert-base`, `ibm-granite/granite-embedding-small-english-r2`.
-- Локальное усечение @1024 (unixcoder): сторона A — train 1.75%, val 3.76%, test_real 1.69%,
-  test_synth 2.64%, gold 2.50%; сторона B (docstring, кап 192) — train 21.21%, val 18.96%,
-  test_real 13.54%, test_synth 22.68%, gold 12.50%. Хвост docstring режется у ~1/5 строк —
-  учесть в записке (кап по R10, влияние не измерено).
+- Локальное усечение @1024 (unixcoder, doc_budget 384 — отклонение от R10/192,
+решение команды 20.10.2026): сторона A — train 2.34%, val 5.55%, test_real 2.00%,
+test_synth 3.09%, gold 3.00%; сторона B (docstring) — train 9.48%, val 9.48%,
+test_real 4.11%, test_synth 10.50%, gold 4.00%. Хвост docstring режется у ~1/10 строк
+(было ~1/5 при капе 192) — учесть в записке (кап по решению команды, влияние не измерено).
 - `reports/data_stats.md` устарел (27143 строк, без gold-патча);
   канон — `reports/dataset_v1.manifest.json` (27203) + `data/processed/dataset_v1.parquet`.

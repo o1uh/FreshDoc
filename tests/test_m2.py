@@ -163,6 +163,7 @@ def test_is_sig_hunk_strict_def_start():
 
 def test_encode_pair_doc_truncated_flag():
     # S1: обрезка B считается отдельно — раньше молча терялся хвост Returns/Raises
+    from src.models.m2_data import DOC_BUDGET_TOKENS
     tok = _FakeTok()
     short = encode_pair(tok, "def f(a):", "-x\n+y", "Short docstring here.",
                         max_len=64)
@@ -170,8 +171,8 @@ def test_encode_pair_doc_truncated_flag():
     long_doc = " ".join(f"word{i}" for i in range(500))
     long = encode_pair(tok, "def f(a):", "-x\n+y", long_doc, max_len=256)
     assert long["doc_truncated"] is True
-    assert long["n_b_tok"] == 192  # кап B по R10
-    assert len(long["input_ids"]) == 1 + long["n_a_tok"] + 2 + 192 + 1
+    assert long["n_b_tok"] == DOC_BUDGET_TOKENS
+    assert len(long["input_ids"]) == 1 + long["n_a_tok"] + 2 + DOC_BUDGET_TOKENS + 1
 
 
 def test_resolve_threshold_priority(tmp_path):

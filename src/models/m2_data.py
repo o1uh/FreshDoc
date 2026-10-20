@@ -1,11 +1,13 @@
 """FD-21: построение входа M2 по R10.
 
-Вход: A = sig_old + diff (ханки с сигнатурой первыми) + B = doc_old (до 192 токенов).
+Вход: A = sig_old + diff (ханки с сигнатурой первыми) + B = doc_old (до 384 токенов;
+кап поднят с 192 по R10 решением команды 20.10.2026 — замер кривой усечения,
+см. config/train.yaml).
 Формат зависит от семейства токенизатора:
 - RoBERTa (UniXcoder, CodeBERT): <s> A </s></s> B </s>  (4 спецтокена)
 - ModernBERT: [CLS] A [SEP] B [SEP]  (3 спецтокена)
 
-Бюджет: len(B) <= 192 токена; len(A) <= max_len - len(B) - n_special.
+Бюджет: len(B) <= 384 токена; len(A) <= max_len - len(B) - n_special.
 Усечение фиксируется флагом truncated (для шага 4 FD-21).
 """
 from __future__ import annotations
@@ -28,7 +30,7 @@ DRIFT_CLASSES = [
 DRIFT_TO_ID = {c: i for i, c in enumerate(DRIFT_CLASSES)}
 UNKNOWN_ID = DRIFT_TO_ID["unknown"]
 
-DOC_BUDGET_TOKENS = 192
+DOC_BUDGET_TOKENS = 384  # кап B; R10 требует 192, поднят решением команды 20.10.2026
 
 
 def drift_to_id(drift_type: str) -> int:
