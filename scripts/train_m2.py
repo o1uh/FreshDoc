@@ -41,8 +41,7 @@ from transformers import (AutoModel, AutoTokenizer, Trainer,
 
 from src.data.dataset import REAL_SOURCES
 from src.models.m2_data import (DOC_BUDGET_TOKENS, DRIFT_CLASSES,
-                                UNKNOWN_ID, build_text_a, drift_to_id,
-                                encode_pair, n_special_tokens)
+                                drift_to_id, encode_pair)
 from src.models.m2_model import LAMBDA_DRIFT, DualHeadCodeClassifier
 
 IN_DATASET = PROJECT_ROOT / "data" / "processed" / "dataset_v1.parquet"
@@ -226,10 +225,18 @@ def main() -> int:
           f"val_real: {len(val_df)} (pos={int(val_df['label_stale'].sum())})")
 
     if args.overfit_test:
-        train_df = train_df.head(200).reset_index(drop=True)
+        # Стратифицированная выборка 100 pos + 100 neg: первые 200 строк
+        # train состоят из одних pos (head(200) даёт один класс -> PR-AUC nan
+        # и срыв выбора лучшей эпохи). Перемешиваем сидом для детерминизма.
+        pos = train_df.loc[train_df["label_stale"] == 1].head(100)
+        neg = train_df.loc[train_df["label_stale"] == 0].head(100)
+        train_df = pd.concat([pos, neg], ignore_index=True).sample(
+            n=min(200, len(pos) + len(neg)), random_state=seed).reset_index(drop=True)
         val_df = train_df.copy()
         epochs = 20
-        print(f"OVERFIT-TEST: {len(train_df)} строк x {epochs} эпох "
+        print(f"OVERFIT-TEST: {len(train_df)} строк "
+              f"(pos={int(train_df['label_stale'].sum())}, "
+              f"neg={int((train_df['label_stale'] == 0).sum())}) x {epochs} эпох "
               f"(ожидание: loss -> 0, PR-AUC -> ~1)")
 
     tok = AutoTokenizer.from_pretrained(model_name, use_fast=True)
@@ -275,7 +282,11 @@ def main() -> int:
         bf16=False,
         gradient_checkpointing=bool(cfg.get("gradient_checkpointing", False)),
         dataloader_num_workers=int(cfg.get("dataloader_num_workers", 2)),
-        ddp_find_unused_parameters=False,
+        # True: голова дрейфа условная (маска y=1 и известный тип) — на шагах
+        # без валидных строк drift_head не участвует в backward; с False DDP
+        # падает "Expected to have finished reduction...". Дополнительно
+        # пустой лосс дрейфа держит граф (logit_d.sum()*0.0) в m2_model.py.
+        ddp_find_unused_parameters=True,
     )
     if args.pilot_steps:
         targs_kwargs["max_steps"] = int(args.pilot_steps)
@@ -296,8 +307,23 @@ def main() -> int:
 
     metrics = trainer.evaluate()
     print(f"Eval val_real: {metrics}")
-    trainer.save_model(str(out_dir / "best"))
-    tok.save_pretrained(str(out_dir / "best"))
+    best_dir = out_dir / "best"
+    trainer.save_model(str(best_dir))
+    tok.save_pretrained(str(best_dir))
+    # DualHead — обычный nn.Module без config.json: для офлайн-инференса
+    # сохраняем конфиг бэкбона и мета DualHead рядом с model.safetensors.
+    try:
+        backbone.config.save_pretrained(str(best_dir))
+        (best_dir / "dualhead_config.json").write_text(
+            json.dumps({"model_name": model_name, "hidden_size": hidden,
+                        "num_drift_classes": len(DRIFT_CLASSES),
+                        "drift_classes": DRIFT_CLASSES,
+                        "max_len": max_len, "doc_budget": doc_budget,
+                        "backbone_config": "config.json (бэкбон)"},
+                       ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"Конфиг бэкбона + dualhead_config.json: {best_dir}")
+    except Exception as e:
+        print(f"ВНИМАНИЕ: не удалось сохранить конфиг бэкбона ({e})")
 
     meta = {
         "task": "FD-21",

@@ -3,12 +3,15 @@
     python scripts/predict_m2.py --checkpoint checkpoints/m2_run1/best \\
         --dataset data/processed/dataset_v1.parquet --out reports/preds/m2.csv
 
-Выход: pair_id, p_stale, type_pred (сырой argmax головы дрейфа; гейт tau
-применяется потребителем, оценка macro-F1 — по протоколу R11).
+Выход: pair_id, p_stale, type_pred (сырой argmax головы дрейфа),
+type_pred_gated (R10: p_stale > tau, иначе "none"). Оценка macro-F1
+скриптом evaluate.py идёт по type_pred (качество головы); гейтированный
+столбец — для реестра/эксплуатации.
 """
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -36,7 +39,7 @@ def main() -> int:
     ap.add_argument("--config", default="config/train.yaml")
     ap.add_argument("--batch_size", type=int, default=32)
     ap.add_argument("--threshold", type=float, default=0.5,
-                    help="гейт для type_pred_gated (сырой type_pred без гейта)")
+                    help="гейт R10: type_pred_gated = type_pred если p_stale > tau иначе 'none'")
     args = ap.parse_args()
 
     ckpt = Path(args.checkpoint)
@@ -52,15 +55,31 @@ def main() -> int:
     max_len = int(cfg.get("max_len", 1024))
     doc_budget = int(cfg.get("doc_budget", 192))
 
-    # checkpoint может быть HF-директорией Trainer (best/) с pytorch_model.bin
+    # checkpoint — директория Trainer (best/): model.safetensors (полный DualHead),
+    # config.json (конфиг бэкбона, пишет train_m2.py), dualhead_config.json,
+    # tokenizer.json/vocab.json. Офлайн: всё берётся из ckpt без HF Hub.
+    dual_cfg = {}
+    dual_cfg_path = ckpt / "dualhead_config.json"
+    if dual_cfg_path.exists():
+        dual_cfg = json.loads(dual_cfg_path.read_text(encoding="utf-8"))
+        model_name = dual_cfg.get("model_name", model_name)
+        max_len = int(dual_cfg.get("max_len", max_len))
+        doc_budget = int(dual_cfg.get("doc_budget", doc_budget))
     tok_src = str(ckpt) if (ckpt / "tokenizer.json").exists() or \
         (ckpt / "vocab.json").exists() else model_name
     try:
-        tok = AutoTokenizer.from_pretrained(tok_src, use_fast=True)
+        tok = AutoTokenizer.from_pretrained(tok_src, use_fast=True,
+                                            trust_remote_code=False)
     except Exception:
-        tok = AutoTokenizer.from_pretrained(model_name, use_fast=True)
-    backbone = AutoModel.from_pretrained(str(ckpt) if (ckpt / "config.json").exists()
-                                         else model_name)
+        tok = AutoTokenizer.from_pretrained(model_name, use_fast=True,
+                                            trust_remote_code=False)
+    from transformers import AutoConfig
+    if (ckpt / "config.json").exists():
+        # config.json в ckpt — конфиг бэкбона (сохранён train_m2.py)
+        backbone_cfg = AutoConfig.from_pretrained(str(ckpt), trust_remote_code=False)
+        backbone = AutoModel.from_config(backbone_cfg, trust_remote_code=False)
+    else:
+        backbone = AutoModel.from_pretrained(model_name, trust_remote_code=False)
     # если чекпоинт — полный DualHead (pytorch_model.bin из save_model),
     # backbone уже внутри; иначе веса backbone из HF
     model = DualHeadCodeClassifier(backbone, hidden_size=backbone.config.hidden_size,
@@ -118,8 +137,12 @@ def main() -> int:
             t_all.extend([DRIFT_CLASSES[int(v)] for v in t])
             if (start // args.batch_size) % 50 == 0:
                 print(f"  {start + len(sub)}/{len(df)}")
+    tau = float(args.threshold)
+    gated = [t if p > tau else "none" for p, t in zip(p_all, t_all)]
     out_df = pd.DataFrame({"pair_id": df["pair_id"].astype(str),
-                           "p_stale": p_all, "type_pred": t_all})
+                           "p_stale": p_all, "type_pred": t_all,
+                           "type_pred_gated": gated})
+    print(f"Гейт R10 tau={tau}: gated none = {sum(g == 'none' for g in gated)}/{len(gated)}")
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_df.to_csv(out_path, index=False)

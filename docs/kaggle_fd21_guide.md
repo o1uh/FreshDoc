@@ -31,7 +31,14 @@
 %cd /kaggle/working/FreshDoc
 !git checkout feat/FD-21-m2-train
 !pip install -q -r requirements.txt
-!export NCCL_P2P_DISABLE=1
+```
+```python
+# NCCL на PCIe без NVLink (!export в subshell не сохраняется между клетками)
+import os
+os.environ["NCCL_P2P_DISABLE"] = "1"
+```
+```bash
+!nvidia-smi
 ```
 
 Клетка 2 — веса и токенизатор (smoke, ~1 мин, FD-02):
@@ -98,7 +105,7 @@ for m in ["microsoft/unixcoder-base"]:
 
 | Симптом | Причина | Что делать |
 |---|---|---|
-| DDP висит на старте | PCIe без NVLink | `export NCCL_P2P_DISABLE=1` перед запуском |
+| DDP висит на старте | PCIe без NVLink | `%env NCCL_P2P_DISABLE=1` или `os.environ["NCCL_P2P_DISABLE"]="1"` перед запуском |
 | loss NaN в FP16 (ModernBERT, не UniXcoder) | GeGLU/SDPA в FP16 | снизить lr или отключить unpadding; для FD-21 (UniXcoder) не ожидается |
 | CUDA OOM | батч велик | снизить `per_device_batch_size` 8→4 в `config/train.yaml` |
 | PR-AUC val_real ~0.5 | перепутаны сплиты/веса | проверить `split` и `weight`, выбор эпохи только по val_real |

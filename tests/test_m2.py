@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import torch
 
-from src.models.m2_data import (DRIFT_CLASSES, UNKNOWN_ID, build_text_a,
+from src.models.m2_data import (DRIFT_CLASSES, DRIFT_TO_ID, UNKNOWN_ID,
                                 drift_to_id, encode_pair, is_sig_hunk,
                                 n_special_tokens, prioritize_diff,
                                 split_hunks)
@@ -40,9 +40,13 @@ def test_drift_classes_fixed_order():
                              "default_changed", "return_changed",
                              "exception_changed", "behavior_changed", "unknown"]
     assert drift_to_id("none") == -100
+    assert drift_to_id("") == -100
+    # unknown — резерв без супервизии: в обучение не идёт (маска -100),
+    # индекс 7 используется только для декодирования argmax инференса
+    assert drift_to_id("unknown") == -100
+    assert DRIFT_TO_ID["unknown"] == UNKNOWN_ID == 7
     assert drift_to_id("param_added") == 2
     assert drift_to_id("behavior_changed") == 6
-    assert drift_to_id("unknown") == UNKNOWN_ID
 
 
 def test_sig_hunk_priority():
@@ -85,16 +89,35 @@ def test_dualhead_loss_masking():
     ids = torch.randint(0, 50, (b, 8))
     mask = torch.ones(b, 8, dtype=torch.long)
     stale = torch.tensor([1, 1, 0, 1])
-    # idx1: unknown -> маскируется; idx2: y=0 -> маскируется
-    drift = torch.tensor([0, 7, 0, 2])
+    # R10: y=0 и unknown маскируются (-100); валидны только idx0 и idx3
+    drift = torch.tensor([0, -100, 0, 2])
     out = model(input_ids=ids, attention_mask=mask, labels_stale=stale,
                 labels_drift=drift)
     assert out["loss"] is not None and torch.isfinite(out["loss"])
-    # только drift: валидна idx0 и idx3
-    # loss_d считается только по ним (проверяем градиент течёт)
     out["loss"].backward()
-    grads = [p.grad for p in model.parameters() if p.grad is not None]
-    assert grads, "градиенты отсутствуют"
+    # обе головы получили градиент (валидные строки есть)
+    assert model.stale_head.weight.grad is not None
+    assert model.drift_head.weight.grad is not None
+    assert torch.isfinite(model.stale_head.weight.grad).all()
+    assert torch.isfinite(model.drift_head.weight.grad).all()
+
+
+def test_dualhead_all_masked_keeps_graph():
+    """Пустой батч для головы дрейфа: лосс нулевой, но с графом (DDP не падает)."""
+    torch.manual_seed(0)
+    model = DualHeadCodeClassifier(_FakeBackbone(), hidden_size=16,
+                                   num_drift_classes=8)
+    ids = torch.randint(0, 50, (4, 8))
+    mask = torch.ones(4, 8, dtype=torch.long)
+    stale = torch.tensor([0, 0, 1, 1])
+    drift = torch.tensor([-100, -100, -100, -100])
+    out = model(input_ids=ids, attention_mask=mask, labels_stale=stale,
+                labels_drift=drift)
+    assert torch.isfinite(out["loss"])
+    out["loss"].backward()
+    # градиент drift_head существует (нулевой путь через logit_d.sum()*0.0),
+    # что держит DDP-редукцию даже при find_unused_parameters=True/False
+    assert model.drift_head.weight.grad is not None
 
 
 def test_dualhead_gated_inference():

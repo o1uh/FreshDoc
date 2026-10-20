@@ -30,9 +30,15 @@ DOC_BUDGET_TOKENS = 192
 
 
 def drift_to_id(drift_type: str) -> int:
-    """ID класса дрейфа; none/пустое -> -100 (маскируется в лоссе)."""
+    """ID класса дрейфа для обучения; none/unknown/пустое -> -100 (маска CE).
+
+    Голова дрейфа имеет 8 выходов (индекс unknown = 7), но класс unknown —
+    резерв без супервизии (R10, rev.8): в обучение он не идёт, таргет
+    маскируется через ignore_index=-100. Индекс 7 используется только
+    для декодирования argmax инференса в строку "unknown".
+    """
     d = str(drift_type)
-    if d == "none" or not d:
+    if d in ("none", "unknown", ""):
         return -100
     return DRIFT_TO_ID.get(d, -100)
 
@@ -115,11 +121,6 @@ def encode_pair(tokenizer, sig_old: str, diff_code: str, doc_old: str,
     a_ids_full: list[int] = tokenizer.encode(text_a, add_special_tokens=False)
     truncated = len(a_ids_full) > budget_a
     if truncated:
-        # построчная страховка: режем дифф по строкам с пометкой ...
-        lines = text_a.splitlines()
-        # бинарный поиск по числу строк не нужен: режем с конца до влезания
-        cut = text_a
-        # быстрая оценка: обрезаем токены, но помечаем усечение маркером
         a_ids = a_ids_full[:budget_a]
     else:
         a_ids = a_ids_full

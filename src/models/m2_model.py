@@ -57,6 +57,7 @@ class DualHeadCodeClassifier(nn.Module):
             if labels_drift is not None:
                 mask_d = labels_drift.clone()
                 # маскируются строки без рассинхрона и с неизвестным типом
+                # (unknown закодирован как -100 в drift_to_id, резерв без супервизии)
                 invalid = (labels_stale == 0) | (labels_drift == -100)
                 # CrossEntropy сам игнорит -100, но для взвешивания строим маску
                 raw_d = self.drift_criterion(logit_d, mask_d)
@@ -69,7 +70,10 @@ class DualHeadCodeClassifier(nn.Module):
                     else:
                         loss_d = (raw_d * valid).sum() / valid.sum().clamp_min(1e-8)
                 else:
-                    loss_d = torch.tensor(0.0, device=logit_s.device)
+                    # пустой батч для головы дрейфа: нулевой лосс, но с графом,
+                    # иначе DDP с find_unused_parameters=False падает
+                    # (drift_head не участвует в backward шага)
+                    loss_d = logit_d.sum() * 0.0
                 loss = loss + lambda_drift * loss_d
         return {"loss": loss, "logits_stale": logit_s, "logits_drift": logit_d}
 

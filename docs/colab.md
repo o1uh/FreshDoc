@@ -40,9 +40,13 @@ except Exception:
 !git checkout feat/FD-21-m2-train
 !git pull origin feat/FD-21-m2-train
 
-# 4. Установка зависимостей проекта (нужны transformers>=4.48, accelerate>=0.34)
+# 4. Установка зависимостей проекта (нужны transformers>=4.48, accelerate>=1.1)
 !pip install -q -r requirements.txt
-!export NCCL_P2P_DISABLE=1  # DDP на PCIe без NVLink (иначе зависание allreduce)
+```
+```python
+# NCCL на PCIe без NVLink (!export в subshell между клетками не сохраняется)
+import os
+os.environ["NCCL_P2P_DISABLE"] = "1"
 ```
 ### 2.1. Обмен промежуточными данными команды (FD-03 — FD-11)
 Файловая система `/kaggle/working` изолирована для каждой сессии. Для передачи таблиц между задачами используется промежуточный приватный датасет Kaggle: `freshdoc-interim`.
@@ -149,7 +153,7 @@ except Exception:
 # 3. Переключение ветки и установка пакетов
 !git checkout feat/FD-21-m2-train
 !pip install -q -r requirements.txt
-!export NCCL_P2P_DISABLE=1
+%env NCCL_P2P_DISABLE=1
 ```
 
 ### 3. Пути к данным и чекпоинтам
@@ -169,7 +173,7 @@ except Exception:
 
 ## 3. Верификация базовых энкодеров
 Перед тяжелым запуском убедиться в корректности CUDA и весов
-(нужны `transformers>=4.48.0` для ModernBERT/GTE, `accelerate>=0.34.0` для Trainer/DDP):
+(нужны `transformers>=4.48.0` для ModernBERT/GTE, `accelerate>=1.1.0` для Trainer/DDP):
 ```python
 import torch
 from transformers import AutoModel, AutoTokenizer
