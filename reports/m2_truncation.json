@@ -1,0 +1,39 @@
+{
+  "model": "microsoft/unixcoder-base",
+  "max_len": 1024,
+  "doc_budget": 192,
+  "dataset_rows": 27203,
+  "by_split": [
+    {
+      "split": "gold",
+      "n": 200,
+      "n_truncated": 5,
+      "frac": 0.025
+    },
+    {
+      "split": "test_real",
+      "n": 2895,
+      "n_truncated": 49,
+      "frac": 0.01692573402417962
+    },
+    {
+      "split": "test_synth",
+      "n": 1552,
+      "n_truncated": 41,
+      "frac": 0.026417525773195876
+    },
+    {
+      "split": "train",
+      "n": 21997,
+      "n_truncated": 385,
+      "frac": 0.017502386689093968
+    },
+    {
+      "split": "val",
+      "n": 559,
+      "n_truncated": 21,
+      "frac": 0.03756708407871199
+    }
+  ],
+  "note": "Оценки workflow §3 (полный текст): 28.6% @512 / 4.4% @1024 / ~1% @2048. Фактические доли — на токенизаторе рабочей модели."
+}

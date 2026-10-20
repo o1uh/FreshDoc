@@ -1,6 +1,8 @@
 # Инструкция по запуску обучения в GPU-окружении (Kaggle / Colab)
 
-Документ описывает процедуру развертывания вычислительной среды и запуска обучения моделей (M2, FD-21 / FD-24) для участников команды.
+> Короткая версия для FD-21 — `docs/kaggle_fd21_guide.md` (6 клеток, пилот,
+> overfit-тест, полный прогон, усечение, предсказания, оценка).
+> Этот файл — полная версия с вариантами Colab и обменом промежуточными данными.
 
 ---
 
@@ -35,11 +37,12 @@ except Exception:
 %cd /kaggle/working/FreshDoc
 
 # 3. Переключение на целевую ветку экспериментов (при необходимости)
-!git checkout main
-!git pull origin main
+!git checkout feat/FD-21-m2-train
+!git pull origin feat/FD-21-m2-train
 
-# 4. Установка зависимостей проекта
+# 4. Установка зависимостей проекта (нужны transformers>=4.48, accelerate>=0.34)
 !pip install -q -r requirements.txt
+!export NCCL_P2P_DISABLE=1  # DDP на PCIe без NVLink (иначе зависание allreduce)
 ```
 ### 2.1. Обмен промежуточными данными команды (FD-03 — FD-11)
 Файловая система `/kaggle/working` изолирована для каждой сессии. Для передачи таблиц между задачами используется промежуточный приватный датасет Kaggle: `freshdoc-interim`.
@@ -74,14 +77,41 @@ except Exception:
    - Чекпоинты: `/kaggle/working/FreshDoc/checkpoints/`
    - Отчеты: `/kaggle/working/FreshDoc/reports/`
 
-### 4. Запуск скрипта обучения
+### 4. Запуск скрипта обучения (FD-21: бейзлайн microsoft/unixcoder-base @1024)
 Выполнить из директории `/kaggle/working/FreshDoc`:
 
 ```bash
-!python scripts/train.py \
+# Пилот скорости 100 шагов (калибровка с/шаг, аналог FD-05)
+!python scripts/train_m2.py \
+    --config config/train.yaml \
+    --data_path /kaggle/input/freshdoc-dataset/dataset_v1.parquet \
+    --output_dir /kaggle/working/checkpoints/m2_pilot --pilot_steps 100
+
+# Тест на переобучение 200x20 (шаг 2 FD-21: loss -> 0, PR-AUC -> ~1)
+!python scripts/train_m2.py \
+    --config config/train.yaml \
+    --data_path /kaggle/input/freshdoc-dataset/dataset_v1.parquet \
+    --output_dir /kaggle/working/checkpoints/m2_overfit --overfit_test
+
+# Полный прогон 3 эпохи, 2xT4 DDP (шаг 3 FD-21; выбор эпохи по PR-AUC val_real)
+!torchrun --nproc_per_node=2 scripts/train_m2.py \
     --config config/train.yaml \
     --data_path /kaggle/input/freshdoc-dataset/dataset_v1.parquet \
     --output_dir /kaggle/working/checkpoints/m2_run1
+```
+
+### 5. Усечение, предсказания, оценка (шаги 4-5 FD-21)
+
+```bash
+!python scripts/check_truncation.py --model microsoft/unixcoder-base --max_len 1024 \
+    --dataset /kaggle/input/freshdoc-dataset/dataset_v1.parquet \
+    --out /kaggle/working/m2_truncation.json
+!python scripts/predict_m2.py --checkpoint /kaggle/working/checkpoints/m2_run1/best \
+    --dataset /kaggle/input/freshdoc-dataset/dataset_v1.parquet \
+    --out /kaggle/working/m2.csv
+!python scripts/evaluate.py --dataset /kaggle/input/freshdoc-dataset/dataset_v1.parquet \
+    --pred M0=reports/preds/m0.csv --pred M1=reports/preds/m1.csv --pred M2=/kaggle/working/m2.csv \
+    --out_metrics /kaggle/working/metrics_m2.json --out_table /kaggle/working/e1_m2.csv
 ```
 
 ---
@@ -117,34 +147,40 @@ except Exception:
 %cd /content/FreshDoc
 
 # 3. Переключение ветки и установка пакетов
-!git checkout main
+!git checkout feat/FD-21-m2-train
 !pip install -q -r requirements.txt
+!export NCCL_P2P_DISABLE=1
 ```
 
 ### 3. Пути к данным и чекпоинтам
 - **Данные:** `/content/drive/MyDrive/FreshDoc_Artifacts/data/dataset_v1.parquet`
 - **Чекпоинты:** `/content/drive/MyDrive/FreshDoc_Artifacts/checkpoints/`
 
-### 4. Запуск скрипта обучения
+### 4. Запуск скрипта обучения (FD-21)
 ```bash
-!python scripts/train.py \
+!python scripts/train_m2.py \
     --config config/train.yaml \
     --data_path /content/drive/MyDrive/FreshDoc_Artifacts/data/dataset_v1.parquet \
     --output_dir /content/drive/MyDrive/FreshDoc_Artifacts/checkpoints/m2_run1
+# Усечение/предсказания/оценка — как в шаге 5 Kaggle-варианта (пути на Drive).
 ```
 
 ---
 
 ## 3. Верификация базовых энкодеров
-Перед тяжелым запуском убедиться в корректности CUDA и весов:
+Перед тяжелым запуском убедиться в корректности CUDA и весов
+(нужны `transformers>=4.48.0` для ModernBERT/GTE, `accelerate>=0.34.0` для Trainer/DDP):
 ```python
 import torch
 from transformers import AutoModel, AutoTokenizer
 
-for m in ["microsoft/codebert-base", "microsoft/unixcoder-base"]:
+for m in ["microsoft/unixcoder-base", "answerdotai/ModernBERT-base",
+          "Alibaba-NLP/gte-modernbert-base",
+          "ibm-granite/granite-embedding-small-english-r2"]:
     tok = AutoTokenizer.from_pretrained(m)
     mod = AutoModel.from_pretrained(m).to("cuda")
     out = mod(**tok("def test(): pass", return_tensors="pt").to("cuda"))
-    assert out.last_hidden_state.shape[-1] == 768
+    print(m, tuple(out.last_hidden_state.shape))
 print("Тест GPU и моделей пройден успешно.")
 ```
+Быстрый smoke-тест пайплайна — на `granite-embedding-small-english-r2` (48M).

@@ -1,0 +1,37 @@
+# FD-21: конфиг обучения M2 v1 (R10, rev.8 model_strategy).
+# Бейзлайн строго: microsoft/unixcoder-base @1024. Цель FD-24: gte-modernbert-base @2048.
+model_name: microsoft/unixcoder-base
+max_len: 1024
+doc_budget: 192
+
+# Потери: BCE(веса) + lambda * CE(маска y=1 и тип известен); lambda фиксирован 0.6.
+lambda_drift: 0.6
+dropout: 0.1
+
+# Оптимизация (R10): AdamW, lr 2e-5, wd 0.01, 3 эпохи, warmup 6%, clip 1.0.
+learning_rate: 0.00002
+weight_decay: 0.01
+num_train_epochs: 3
+warmup_ratio: 0.06
+max_grad_norm: 1.0
+lr_scheduler_type: linear
+optim: adamw_torch
+
+# Батч Kaggle 2xT4 DDP: 8 на карту x 2 карты x accum 2 = eff 32.
+per_device_batch_size: 8
+per_device_eval_batch_size: 16
+gradient_accumulation_steps: 2
+
+# Память/точность: FP16 only (BF16 запрещён на Turing SM 7.5), GC только при >=2048.
+fp16: true
+gradient_checkpointing: false
+
+# Чекпоинты и логи.
+save_total_limit: 2
+logging_steps: 25
+dataloader_num_workers: 2
+seed: 42
+
+# Выбор эпохи — по PR-AUC на реальных строках val (не по синтетике).
+metric_for_best_model: pr_auc
+eval_split_for_selection: val_real_only

@@ -1,0 +1,336 @@
+"""FD-21: обучение M2 DualHead (R10, rev.8).
+
+    python scripts/train_m2.py --config config/train.yaml \\
+        --data_path data/processed/dataset_v1.parquet \\
+        --output_dir checkpoints/m2_run1
+
+    Полный запуск (Kaggle 2xT4, DDP): torchrun --nproc_per_node=2 scripts/train_m2.py ...
+    или accelerate launch. Одно-GPU: python scripts/train_m2.py ...
+
+    Режимы отладки:
+    - --overfit_test : 200 строк train x 20 эпох, потери -> 0, PR-AUC -> ~1 (шаг 2 FD-21)
+    - --pilot_steps 100 : 100 шагов для калибровки с/шаг (аналог FD-05)
+
+    Выбор эпохи — по PR-AUC на реальных строках val (шаг 3 FD-21).
+    Предсказания для всех сплитов — scripts/predict_m2.py + scripts/evaluate.py.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+
+os.environ.setdefault("NCCL_P2P_DISABLE", "1")
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+import numpy as np
+import pandas as pd
+import torch
+import yaml
+from sklearn.metrics import average_precision_score
+from torch.utils.data import Dataset
+from transformers import (AutoModel, AutoTokenizer, Trainer,
+                          TrainingArguments)
+
+from src.data.dataset import REAL_SOURCES
+from src.models.m2_data import (DOC_BUDGET_TOKENS, DRIFT_CLASSES,
+                                UNKNOWN_ID, build_text_a, drift_to_id,
+                                encode_pair, n_special_tokens)
+from src.models.m2_model import LAMBDA_DRIFT, DualHeadCodeClassifier
+
+IN_DATASET = PROJECT_ROOT / "data" / "processed" / "dataset_v1.parquet"
+IN_CONFIG = PROJECT_ROOT / "config" / "train.yaml"
+
+
+class M2Dataset(Dataset):
+    """Токенизированные пары R10 (пады — в collator)."""
+
+    def __init__(self, frame: pd.DataFrame, tokenizer, max_len: int,
+                 doc_budget: int = DOC_BUDGET_TOKENS):
+        self.tok = tokenizer
+        self.max_len = max_len
+        self.doc_budget = doc_budget
+        self.pair_ids = frame["pair_id"].astype(str).tolist()
+        sigs = frame["sig_old"].fillna("").astype(str).tolist()
+        diffs = frame["diff_code"].fillna("").astype(str).tolist()
+        docs = frame["doc_old"].fillna("").astype(str).tolist()
+        self.stale = frame["label_stale"].to_numpy(dtype=np.int64)
+        self.weight = frame["weight"].to_numpy(dtype=np.float32) \
+            if "weight" in frame.columns else np.ones(len(frame), dtype=np.float32)
+        drifts = frame["drift_type"].astype(str).tolist() \
+            if "drift_type" in frame.columns else ["unknown"] * len(frame)
+        self.drift = np.array([drift_to_id(d) for d in drifts], dtype=np.int64)
+        self.encs: list[dict] = []
+        n_trunc = 0
+        for s, d, doc in zip(sigs, diffs, docs):
+            e = encode_pair(tokenizer, s, d, doc, max_len=max_len,
+                            doc_budget=doc_budget)
+            n_trunc += int(e["truncated"])
+            self.encs.append(e)
+        self.n_truncated = n_trunc
+
+    def __len__(self):
+        return len(self.pair_ids)
+
+    def __getitem__(self, i: int) -> dict:
+        e = self.encs[i]
+        return {
+            "input_ids": torch.tensor(e["input_ids"], dtype=torch.long),
+            "attention_mask": torch.tensor(e["attention_mask"], dtype=torch.long),
+            "labels_stale": torch.tensor(int(self.stale[i]), dtype=torch.long),
+            "labels_drift": torch.tensor(int(self.drift[i]), dtype=torch.long),
+            "sample_weight": torch.tensor(float(self.weight[i]), dtype=torch.float),
+        }
+
+
+def m2_collator(tokenizer):
+    pad_id = tokenizer.pad_token_id
+    if pad_id is None:
+        pad_id = tokenizer.eos_token_id if tokenizer.eos_token_id is not None else 0
+
+    def _collate(batch: list[dict]) -> dict:
+        max_n = max(len(b["input_ids"]) for b in batch)
+        ids, masks = [], []
+        for b in batch:
+            n = len(b["input_ids"])
+            pad = max_n - n
+            ids.append(torch.cat([b["input_ids"],
+                                  torch.full((pad,), pad_id, dtype=torch.long)]))
+            masks.append(torch.cat([b["attention_mask"],
+                                    torch.zeros(pad, dtype=torch.long)]))
+        return {
+            "input_ids": torch.stack(ids),
+            "attention_mask": torch.stack(masks),
+            "labels_stale": torch.stack([b["labels_stale"] for b in batch]),
+            "labels_drift": torch.stack([b["labels_drift"] for b in batch]),
+            "sample_weight": torch.stack([b["sample_weight"] for b in batch]),
+        }
+
+    return _collate
+
+
+class M2Trainer(Trainer):
+    """Trainer с маскированным условным лоссом R10."""
+
+    def __init__(self, *args, lambda_drift: float = LAMBDA_DRIFT, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.lambda_drift = lambda_drift
+
+    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
+        labels_stale = inputs.pop("labels_stale")
+        labels_drift = inputs.pop("labels_drift", None)
+        sample_weight = inputs.pop("sample_weight", None)
+        # Trainer может подсунуть labels (не наши) — убрать
+        inputs.pop("labels", None)
+        out = model(input_ids=inputs.get("input_ids"),
+                    attention_mask=inputs.get("attention_mask"),
+                    labels_stale=labels_stale,
+                    labels_drift=labels_drift,
+                    sample_weight=sample_weight,
+                    lambda_drift=self.lambda_drift)
+        loss = out["loss"]
+        if return_outputs:
+            return loss, {"logits_stale": out["logits_stale"],
+                          "logits_drift": out["logits_drift"]}
+        return loss
+
+    def prediction_step(self, model, inputs, prediction_loss_only, ignore_keys=None):
+        """Eval: вернуть stale-логиты как `logits` для compute_metrics."""
+        model.eval()
+        with torch.no_grad():
+            labels_stale = inputs.get("labels_stale")
+            has_labels = labels_stale is not None
+            out = model(input_ids=inputs.get("input_ids"),
+                        attention_mask=inputs.get("attention_mask"),
+                        labels_stale=labels_stale if has_labels else None,
+                        labels_drift=inputs.get("labels_drift") if has_labels else None,
+                        sample_weight=None)
+            logits = out["logits_stale"].detach()
+            loss = out["loss"].detach() if out["loss"] is not None else None
+            labels = labels_stale.detach() if has_labels else None
+        return loss, logits, labels
+
+
+def compute_metrics_pr_auc(eval_pred) -> dict:
+    logits, labels = eval_pred.predictions, eval_pred.label_ids
+    y = np.asarray(labels).astype(int).ravel()
+    s = torch.sigmoid(torch.as_tensor(np.asarray(logits).ravel())).numpy()
+    if len(np.unique(y)) < 2:
+        return {"pr_auc": float("nan")}
+    return {"pr_auc": float(average_precision_score(y, s))}
+
+
+def load_config(path: Path) -> dict:
+    if not path.exists():
+        return {}
+    with open(path, encoding="utf-8") as f:
+        cfg = yaml.safe_load(f) or {}
+    return cfg
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description="FD-21: обучение M2 (R10).")
+    ap.add_argument("--config", default=str(IN_CONFIG))
+    ap.add_argument("--data_path", default=str(IN_DATASET))
+    ap.add_argument("--output_dir", default="checkpoints/m2_run1")
+    ap.add_argument("--model_name", default=None)
+    ap.add_argument("--max_len", type=int, default=None)
+    ap.add_argument("--num_train_epochs", type=float, default=None)
+    ap.add_argument("--seed", type=int, default=None)
+    ap.add_argument("--overfit_test", action="store_true",
+                    help="шаг 2 FD-21: 200 строк x 20 эпох")
+    ap.add_argument("--pilot_steps", type=int, default=0,
+                    help="калибровка скорости: остановить после N шагов")
+    ap.add_argument("--max_steps", type=int, default=0)
+    ap.add_argument("--per_device_batch", type=int, default=None)
+    ap.add_argument("--accum", type=int, default=None)
+    args = ap.parse_args()
+
+    cfg = load_config(Path(args.config))
+    model_name = args.model_name or cfg.get("model_name", "microsoft/unixcoder-base")
+    max_len = int(args.max_len or cfg.get("max_len", 1024))
+    doc_budget = int(cfg.get("doc_budget", DOC_BUDGET_TOKENS))
+    epochs = float(args.num_train_epochs if args.num_train_epochs is not None
+                   else cfg.get("num_train_epochs", 3))
+    seed = int(args.seed if args.seed is not None else cfg.get("seed", 42))
+    lr = float(cfg.get("learning_rate", 2e-5))
+    wd = float(cfg.get("weight_decay", 0.01))
+    warmup = float(cfg.get("warmup_ratio", 0.06))
+    lambda_drift = float(cfg.get("lambda_drift", LAMBDA_DRIFT))
+    per_device = int(args.per_device_batch or cfg.get("per_device_batch_size", 8))
+    accum = int(args.accum or cfg.get("gradient_accumulation_steps", 2))
+    fp16 = bool(cfg.get("fp16", True))
+
+    df = pd.read_parquet(args.data_path)
+    need = {"pair_id", "sig_old", "diff_code", "doc_old", "label_stale",
+            "drift_type", "weight", "split", "source"}
+    missing = need - set(df.columns)
+    if missing:
+        print(f"В датасете нет колонок: {sorted(missing)}")
+        return 2
+
+    m_train = df["split"].eq("train").to_numpy()
+    m_val_real = df["split"].eq("val").to_numpy() & df["source"].isin(
+        list(REAL_SOURCES)).to_numpy()
+    train_df = df.loc[m_train].reset_index(drop=True)
+    val_df = df.loc[m_val_real].reset_index(drop=True)
+    print(f"Датасет: {args.data_path} ({len(df)} строк)")
+    print(f"train: {len(train_df)} (pos={int(train_df['label_stale'].sum())}), "
+          f"val_real: {len(val_df)} (pos={int(val_df['label_stale'].sum())})")
+
+    if args.overfit_test:
+        train_df = train_df.head(200).reset_index(drop=True)
+        val_df = train_df.copy()
+        epochs = 20
+        print(f"OVERFIT-TEST: {len(train_df)} строк x {epochs} эпох "
+              f"(ожидание: loss -> 0, PR-AUC -> ~1)")
+
+    tok = AutoTokenizer.from_pretrained(model_name, use_fast=True)
+    print(f"Токенизатор {model_name}: cls={tok.cls_token} sep={tok.sep_token}")
+    train_ds = M2Dataset(train_df, tok, max_len, doc_budget)
+    val_ds = M2Dataset(val_df, tok, max_len, doc_budget)
+    print(f"Усечение A (train): {train_ds.n_truncated}/{len(train_ds)} = "
+          f"{train_ds.n_truncated / max(1, len(train_ds)):.4f}")
+    print(f"Усечение A (val_real): {val_ds.n_truncated}/{len(val_ds)} = "
+          f"{val_ds.n_truncated / max(1, len(val_ds)):.4f}")
+
+    from transformers import AutoConfig
+    backbone = AutoModel.from_pretrained(model_name)
+    hidden = backbone.config.hidden_size
+    model = DualHeadCodeClassifier(backbone, hidden_size=hidden,
+                                   num_drift_classes=len(DRIFT_CLASSES),
+                                   dropout=float(cfg.get("dropout", 0.1)))
+    print(f"Модель: {model_name} hidden={hidden} drift_classes={DRIFT_CLASSES}")
+
+    out_dir = Path(args.output_dir)
+    targs_kwargs = dict(
+        output_dir=str(out_dir),
+        num_train_epochs=epochs,
+        per_device_train_batch_size=per_device,
+        per_device_eval_batch_size=cfg.get("per_device_eval_batch_size", 16),
+        gradient_accumulation_steps=accum,
+        learning_rate=lr,
+        weight_decay=wd,
+        warmup_ratio=warmup,
+        max_grad_norm=float(cfg.get("max_grad_norm", 1.0)),
+        lr_scheduler_type=cfg.get("lr_scheduler_type", "linear"),
+        optim=cfg.get("optim", "adamw_torch"),
+        seed=seed,
+        eval_strategy="epoch",
+        save_strategy="epoch",
+        save_total_limit=int(cfg.get("save_total_limit", 2)),
+        load_best_model_at_end=True,
+        metric_for_best_model="pr_auc",
+        greater_is_better=True,
+        logging_steps=int(cfg.get("logging_steps", 25)),
+        report_to="none",
+        fp16=fp16 and torch.cuda.is_available(),
+        bf16=False,
+        gradient_checkpointing=bool(cfg.get("gradient_checkpointing", False)),
+        dataloader_num_workers=int(cfg.get("dataloader_num_workers", 2)),
+        ddp_find_unused_parameters=False,
+    )
+    if args.pilot_steps:
+        targs_kwargs["max_steps"] = int(args.pilot_steps)
+        print(f"PILOT: остановка после {args.pilot_steps} шагов")
+    elif args.max_steps:
+        targs_kwargs["max_steps"] = int(args.max_steps)
+    targs = TrainingArguments(**targs_kwargs)
+
+    trainer = M2Trainer(model=model, args=targs,
+                        train_dataset=train_ds, eval_dataset=val_ds,
+                        data_collator=m2_collator(tok),
+                        compute_metrics=compute_metrics_pr_auc,
+                        lambda_drift=lambda_drift)
+    t0 = time.time()
+    trainer.train()
+    train_time = time.time() - t0
+    print(f"Обучение: {train_time:.1f} c ({train_time / 60:.1f} мин)")
+
+    metrics = trainer.evaluate()
+    print(f"Eval val_real: {metrics}")
+    trainer.save_model(str(out_dir / "best"))
+    tok.save_pretrained(str(out_dir / "best"))
+
+    meta = {
+        "task": "FD-21",
+        "built_at": datetime.now(timezone.utc).isoformat(),
+        "model_name": model_name,
+        "max_len": max_len,
+        "doc_budget": doc_budget,
+        "lambda_drift": lambda_drift,
+        "lr": lr, "weight_decay": wd, "warmup_ratio": warmup,
+        "epochs": epochs, "seed": seed,
+        "per_device_batch_size": per_device, "accum": accum,
+        "eff_batch": per_device * accum * max(1, torch.cuda.device_count()),
+        "n_train": int(len(train_ds)), "n_val_real": int(len(val_ds)),
+        "train_truncated_frac": train_ds.n_truncated / max(1, len(train_ds)),
+        "val_truncated_frac": val_ds.n_truncated / max(1, len(val_ds)),
+        "train_time_sec": round(train_time, 1),
+        "eval_val_real": {k: float(v) for k, v in metrics.items()
+                          if isinstance(v, (int, float))},
+        "overfit_test": bool(args.overfit_test),
+        "drift_classes": DRIFT_CLASSES,
+    }
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "run_meta.json").write_text(
+        json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"Мета: {out_dir / 'run_meta.json'}")
+    if args.overfit_test:
+        print("Критерий шага 2 FD-21: loss -> ~0, PR-AUC на тех же 200 -> ~1. "
+              "Иначе искать ошибку (маска, метки, обрезка, веса).")
+    else:
+        print("Далее: scripts/predict_m2.py + scripts/evaluate.py "
+              "(шаг 5 FD-21). Выбор эпохи — по val_real PR-AUC.")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
