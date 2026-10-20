@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from functools import lru_cache
 import os
 from pathlib import Path
+import warnings
 
 import yaml
 
@@ -33,8 +35,15 @@ class RiskConfig:
         return self.type_weight.get(doc_type, self.type_weight.get("docstring", 1.0))
 
 
+@lru_cache(maxsize=32)
 def load_risk_config(config_path: Path | str | None = None) -> RiskConfig:
-    """Load RiskConfig from YAML file with fallback to defaults."""
+    """Load RiskConfig from YAML file with fallback to defaults.
+
+    Results are cached per resolved path (lru_cache): replay FD-29 calls
+    compute_urgency thousands of times without re-reading YAML on each call.
+    After editing the YAML on disk call ``load_risk_config.cache_clear()``.
+    Corrupted YAML warns and falls back to defaults (never silent).
+    """
     path_to_use: Path | None = None
     if config_path is not None:
         path_to_use = Path(config_path)
@@ -53,7 +62,11 @@ def load_risk_config(config_path: Path | str | None = None) -> RiskConfig:
     try:
         with open(path_to_use, "r", encoding="utf-8") as f:
             raw = yaml.safe_load(f) or {}
-    except Exception:
+    except Exception as exc:
+        warnings.warn(
+            f"risk config {path_to_use} unreadable ({exc}); using defaults",
+            stacklevel=2,
+        )
         return RiskConfig()
 
     type_weight = dict(raw.get("type_weight") or DEFAULT_TYPE_WEIGHTS)

@@ -93,9 +93,15 @@ class TestPublicity:
         assert is_public_symbol("get_user") is True
         assert is_public_symbol("Module.execute") is True
 
+    def test_dunder_specials_are_public(self) -> None:
+        assert is_public_symbol("__init__") is True
+        assert is_public_symbol("__str__") is True
+        assert is_public_symbol("Module.__len__") is True
+
     def test_private_names(self) -> None:
         assert is_public_symbol("_internal") is False
         assert is_public_symbol("__dunder_or_private") is False
+        assert is_public_symbol("__mangled") is False
         assert is_public_symbol("Module._private_method") is False
         assert is_public_symbol("") is False
         assert is_public_symbol(None) is False
@@ -138,6 +144,12 @@ class TestUrgencyHeuristic:
         assert u_tutorial == pytest.approx(0.5 * 0.7)
         assert u_api_ref == pytest.approx(0.5 * 1.0)
         assert u_unknown == pytest.approx(0.5 * 1.0)
+
+    def test_urgency_may_exceed_one(self) -> None:
+        # Per R12 urgency is not clamped: R=1 at age cap -> 1 + age_gain (1.5).
+        assert compute_urgency(1.0, doc_type="docstring", days_since_verified=180) == pytest.approx(
+            1.5
+        )
 
 
 class TestConfigLoading:
@@ -187,6 +199,20 @@ threshold: 0.65
         assert cfg.age_gain == 0.8
         assert cfg.threshold == 0.65
         assert cfg.get_type_weight("docstring") == 1.2
+
+    def test_corrupt_yaml_warns_and_returns_defaults(self, tmp_path: Path) -> None:
+        bad_yaml = tmp_path / "bad_risk.yaml"
+        bad_yaml.write_text("type_weight: [unclosed\n  bad indent: :", encoding="utf-8")
+        with pytest.warns(UserWarning):
+            cfg = load_risk_config(bad_yaml)
+        assert cfg.fan_in_cap == 20.0
+        assert cfg.threshold == 0.5
+
+    def test_default_config_is_cached(self) -> None:
+        load_risk_config.cache_clear()
+        first = load_risk_config()
+        second = load_risk_config()
+        assert first is second
 
 
 class TestFanInAST:

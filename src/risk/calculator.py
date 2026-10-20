@@ -44,7 +44,9 @@ def accumulate_risk(probabilities: Iterable[float]) -> float:
 def is_public_symbol(symbol: str | None) -> bool:
     """Determine whether a symbol is public by name.
 
-    Per project convention, names starting with '_' are considered private/internal.
+    Per project convention, names starting with '_' are considered private/internal,
+    except dunder specials (``__init__``, ``__str__``): they start and end with
+    double underscore and are part of the public object protocol.
     """
     if not symbol:
         return False
@@ -52,6 +54,8 @@ def is_public_symbol(symbol: str | None) -> bool:
     leaf = symbol.rsplit(".", 1)[-1].strip()
     if not leaf:
         return False
+    if len(leaf) > 4 and leaf.startswith("__") and leaf.endswith("__"):
+        return True
     return not leaf.startswith("_")
 
 
@@ -90,6 +94,12 @@ def compute_urgency(
 
     Formula:
       urgency = R * type_weight * (1 + age_gain * min(days, age_cap) / age_cap)
+
+    Note: per R12 urgency is intentionally NOT clamped to [0, 1] — at R=1
+    it reaches up to 1 + age_gain (1.5 with defaults). FD-30 dashboard
+    must handle values > 1 (normalize or cap for the color map).
+    Default config is cached (see load_risk_config); pass ``config``
+    explicitly in tight replay loops or after editing risk.yaml.
     """
     r_clamped = clamp(float(risk), 0.0, 1.0)
     if r_clamped == 0.0:
