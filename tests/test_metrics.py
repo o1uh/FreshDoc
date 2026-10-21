@@ -277,3 +277,71 @@ def test_no_averaging_across_splits_contract():
             threshold=0.5, n_boot=100, seed=0)
     assert by_split["val"]["f1"] == 1.0
     assert by_split["gold"]["f1"] < 1.0  # разные срезы — разные цифры
+
+
+def test_evaluate_m3subset_runs(tmp_path):
+    import pytest
+    from scripts.evaluate_m3subset import (
+        main as subset_main,
+        IN_DATASET,
+        IN_M3_SELECT,
+        DEFAULT_PRED_PATHS,
+    )
+
+    if not IN_DATASET.exists() or not IN_M3_SELECT.exists():
+        pytest.skip("Отсутствуют входные файлы датасета/выборки (data/ в .gitignore по R15)")
+    if not all(p.exists() for p in DEFAULT_PRED_PATHS.values()):
+        pytest.skip("Отсутствуют файлы предсказаний (reports/preds/ в .gitignore по R15)")
+
+    out_csv = tmp_path / 'e1_m3subset.csv'
+    ret = subset_main(['--out', str(out_csv), '--n_boot', '10'])
+    assert ret == 0
+    assert out_csv.exists()
+    df = pd.read_csv(out_csv)
+    assert len(df) == 15
+    assert set(df['model']) == {'M0', 'M1', 'M2', 'M3', 'M3max'}
+
+
+def test_evaluate_m3subset_mock_cli(tmp_path):
+    """Тест CLI на синтетических данных: всегда исполняется в CI без внешних файлов."""
+    import json
+    from scripts.evaluate_m3subset import main as subset_main
+
+    ds = pd.DataFrame({
+        "pair_id": ["p1", "p2", "p3", "p4"],
+        "label_stale": [1, 1, 0, 0],
+        "split": ["test_real", "test_real", "test_real", "val"],
+        "sig_type": ["param_added", "none", "none", "none"],
+        "drift_type": ["param_added", "none", "none", "none"],
+        "source": ["codocbench", "codocbench", "codocbench", "codocbench"],
+    })
+    ds_path = tmp_path / "ds.parquet"
+    ds.to_parquet(ds_path, index=False)
+
+    sel_path = tmp_path / "select.json"
+    sel_path.write_text(json.dumps({
+        "m3_id_to_pair_id": {"0": "p1", "1": "p2", "2": "p3"}
+    }), encoding="utf-8")
+
+    pred = pd.DataFrame({
+        "pair_id": ["p1", "p2", "p3"],
+        "p_stale": [0.9, 0.7, 0.2],
+        "type_pred": ["param_added", "none", "none"]
+    })
+    pred_path = tmp_path / "pred_test.csv"
+    pred.to_csv(pred_path, index=False)
+
+    out_csv = tmp_path / "out_subset.csv"
+    ret = subset_main([
+        "--dataset", str(ds_path),
+        "--select", str(sel_path),
+        "--pred", f"TestM={pred_path}",
+        "--out", str(out_csv),
+        "--n_boot", "10",
+    ])
+    assert ret == 0
+    assert out_csv.exists()
+    df = pd.read_csv(out_csv)
+    assert len(df) == 3
+    assert df["model"].iloc[0] == "TestM"
+

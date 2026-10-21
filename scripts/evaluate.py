@@ -163,7 +163,9 @@ def main() -> int:
                 ys = g["p_stale"].to_numpy(dtype=float)
                 ev = evaluate_binary(yt, ys, threshold=thr,
                                      n_boot=args.n_boot, seed=args.seed)
-                ev["split"], ev["group"], ev["model"] = split, group, name
+                is_subset = 0 < len(sub) < len(truth.loc[truth["split"] == split])
+                split_label = f"{split}_subset" if is_subset else split
+                ev["split"], ev["group"], ev["model"] = split_label, group, name
                 ev["threshold"] = float(thr)
                 if has_type and len(g):
                     d = evaluate_drift(g["drift_type"].to_numpy(),
