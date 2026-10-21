@@ -1,154 +1,107 @@
 # FD-24: операционный гайд экспериментов M2 в Kaggle (2×T4)
 
-> **Статус документа:** Рабочий драфт для ветки `feat/FD-24-model-research` (детализация шага 3 FD-23 — приоритеты экспериментов недели 3).
+> **Статус:** Инструменты и блокноты готовы для ветки `feat/FD-24-kaggle-experiments`.
 > **Бюджет GPU:** строго $\le 9$ обязательных прогонов (~4.5–5.0 ч суммарно, ~15–17% недельной квоты Kaggle).
-> **Инвариант выбора лучшей модели:** только по PR-AUC на реальных строках `val` (не по тестам и не по синтетике).
-> **Ограничение платформы:** 20 ГБ диска на `/kaggle/working`. Обязательно удалять промежуточные чекпоинты сразу после завершения каждого слота.
+> **Инвариант выбора лучшей модели:** только по PR-AUC на реальных строках `val` (не по тестам и не по синтетике). Абляции (`drop_diff=True`) и стэкинг исключаются автоматически.
+> **Ограничение диска:** 20 ГБ на `/kaggle/working`. Промежуточные чекпоинты (`checkpoint-*`) удаляются автоматически после каждого слота; сохраняются только `best/` (~500 МБ) и артефакты оценки (`preds.csv`, `metrics.json`, `table_e1.csv`, `figures_e1`).
 
 ---
 
-## 0. Архитектура исполнения: 3 независимые сессии (Commit / Run)
+## 0. Архитектура исполнения и блокноты
 
-Запуск всех 9 слотов в одном интерактивном блокноте **запрещен** из-за риска переполнения диска, таймаута сессии и фрагментации VRAM. Процесс разделен на 3 изолированных сессии (ноутбука) в режиме **Save & Run All**:
+Поддерживаются два полноценных сценария запуска:
 
-```
-[Сессия 1: E2 Данные] ────► 4 прогона UniXcoder @1024 (разные смеси) ────► reports/runs.csv (слоты 1-4)
-                                                                                   │
-[Сессия 2: Бэкбоны]   ────► 3 прогона на полной смеси (ModernBERT, GTE)   ────► reports/runs.csv (слоты 5-7) ──► Выбор лучшего бэкбона
-                                                                                   │
-[Сессия 3: Финал]     ────► Слот 8 (стэкинг на CPU) + Слот 9 (абляция)    ────► reports/runs.csv (слоты 8-9) ──► config/train_best.yaml
-```
+### Сценарий А: Единый мастер-блокнот [`notebooks/kaggle_fd24_master.ipynb`](../notebooks/kaggle_fd24_master.ipynb) (в 1 сессии)
+* **Потребление диска:** Диск **не переполнится** (лимит 20 ГБ не будет превышен).
+  * Датасет лежит в `/kaggle/input/` (read-only, **0 байт** из квоты working).
+  * В конце каждого слота промежуточные чекпоинты удаляются (`!rm -rf checkpoint-*`).
+  * Сохраняется только папка `best/` (~500 МБ на модель).
+  * Все 8 нейросетевых слотов с весами `best/` займут суммарно: $8 \times 500 \text{ МБ} \approx 4.0 \text{ ГБ}$.
+  * Таблицы метрик и предсказания: $< 100 \text{ МБ}$.
+  * **Пиковое заполнение диска:** ~4.5–5.0 ГБ из доступных 20 ГБ.
+* Время прогона: ~4.5–5.0 часов (лимит интерактивной сессии Kaggle — 9 часов).
+* Единое окружение исключает ручную передачу артефактов между сессиями.
 
----
+### Сценарий Б: Раздельные сессионные блокноты (в 3 сессиях)
+Если предпочтителен запуск отдельными шагами:
 
-## 1. Подготовительные шаги в ветке FD-24
+| Блокнот | Файл | Слоты | Входные данные | Время |
+|---|---|---|---|---|
+| **Сессия 1: Данные** | [`notebooks/kaggle_fd24_session1_data.ipynb`](../notebooks/kaggle_fd24_session1_data.ipynb) | 1–4 | `freshdoc-dataset` | ~1.5–2.0 ч |
+| **Сессия 2: Бэкбоны** | [`notebooks/kaggle_fd24_session2_backbones.ipynb`](../notebooks/kaggle_fd24_session2_backbones.ipynb) | 5–7 | `freshdoc-dataset` + Output Сессии 1 | ~2.0–2.5 ч |
+| **Сессия 3: Финал** | [`notebooks/kaggle_fd24_session3_final.ipynb`](../notebooks/kaggle_fd24_session3_final.ipynb) | 8–9 | `freshdoc-dataset` + Output Сессии 2 | ~45 мин |
 
-Перед стартом запусков в ветке `feat/FD-24-model-research`:
-1. Расширить CLI `scripts/train_m2.py`:
-   - Флаг `--train_mix` с поддержкой 4 режимов фильтрации обучающей выборки (`split == 'train'`):
-     - `real_only`: только реальные источники (`codocbench`, `history_neg`).
-     - `synth_only`: только синтетика AST (`synth_ast`).
-     - `real_ast`: реальные + AST (`codocbench`, `history_neg`, `synth_ast` без `synth_llm`).
-     - `full` (дефолт): полная смесь датасета v1 (включая LLM P1/P2).
-   - Флаг `--drop_diff` (`action="store_true"`): подменяет поле `diff_code` на пустую строку `""` перед токенизацией (для слота 9).
-   - Флаг `--gradient_checkpointing` (`action="store_true"` или парсер `str2bool`): проброс в `TrainingArguments` (критично для контекста 2048, вызов в CLI: `--gradient_checkpointing`).
-2. Создать вспомогательные скрипты для Сессии 3:
-   - `scripts/train_stacking.py`: single-split стэкинг M1 + M2 на предсказаниях `val` (слот 8).
-   - `scripts/finalize_best_config.py`: авто-выбор лучшего запуска по max PR-AUC на `val` из `reports/runs.csv` и сохранение в `config/train_best.yaml`.
+> **Сквозная преемственность истории `runs.csv` при раздельном запуске:**
+> В Сессии 2 и Сессии 3 встроен автоматический поиск и копирование `runs.csv` из подключенных inputs (`/kaggle/input/**/runs.csv`) в локальный `reports/runs.csv`. Это обеспечивает автоматическое агрегирование истории экспериментов в рабочем пространстве `reports/runs.csv`.
 
 ---
 
-## 2. Сессия 1: Эксперимент E2 — Сравнение смесей данных (Слоты 1–4)
+## 1. Конфигурация Kaggle окружения
 
-- **Модель:** строго `microsoft/unixcoder-base` @1024, `doc_budget: 384`.
-- **Окружение:** Kaggle 2×T4, PyTorch DDP (`torchrun --nproc_per_node=2`), FP16, eff_batch 32 (`per_device=8`, `accum=2`).
-- **Время сессии:** ~1.5–2.0 часа.
-
-### Команды выполнения в блокноте
-
-```bash
-# Клетка 1: Подготовка окружения (аналогично kaggle_fd21_guide.md)
-%cd /kaggle/working/FreshDoc
-export NCCL_P2P_DISABLE=1
-
-# Слот 1: E2(a) Только реальные данные
-!torchrun --nproc_per_node=2 scripts/train_m2.py --config config/train.yaml \
-  --data_path "$DATA_PATH" --train_mix real_only \
-  --output_dir /kaggle/working/checkpoints/slot1_real --runs_csv reports/runs.csv
-!rm -rf /kaggle/working/checkpoints/slot1_real/checkpoint-*
-
-# Слот 2: E2(b) Только синтетика AST
-!torchrun --nproc_per_node=2 scripts/train_m2.py --config config/train.yaml \
-  --data_path "$DATA_PATH" --train_mix synth_only \
-  --output_dir /kaggle/working/checkpoints/slot2_synth --runs_csv reports/runs.csv
-!rm -rf /kaggle/working/checkpoints/slot2_synth/checkpoint-*
-
-# Слот 3: E2(c) Реальные + AST
-!torchrun --nproc_per_node=2 scripts/train_m2.py --config config/train.yaml \
-  --data_path "$DATA_PATH" --train_mix real_ast \
-  --output_dir /kaggle/working/checkpoints/slot3_real_ast --runs_csv reports/runs.csv
-!rm -rf /kaggle/working/checkpoints/slot3_real_ast/checkpoint-*
-
-# Слот 4: E2(d) Полная смесь (+ LLM-пары)
-!torchrun --nproc_per_node=2 scripts/train_m2.py --config config/train.yaml \
-  --data_path "$DATA_PATH" --train_mix full \
-  --output_dir /kaggle/working/checkpoints/slot4_full --runs_csv reports/runs.csv
-!rm -rf /kaggle/working/checkpoints/slot4_full/checkpoint-*
-```
+1. **Датасет `freshdoc-dataset`** (read-only):
+   - Файл: `dataset_v1.parquet` (ровно 27 203 строки; `train: 21997 / val: 559 / test_real: 2895 / test_synth: 1552 / gold: 200`).
+2. **Секреты блокнота (Add-ons -> Secrets):**
+   - Ключ: `GITHUB_TOKEN` (токен с read-правами к GitHub-репозиторию).
+3. **Настройки сессии:**
+   - **Accelerator:** GPU T4 x2.
+   - **Internet:** Always ON.
+4. **Контроль версии transformers в Клетке 1:**
+   - В Клетке 1 всех блокнотов встроен безопасный однострочник:
+     ```bash
+     !python -c "import transformers, sys; from packaging import version; sys.exit(0 if version.parse(transformers.__version__) >= version.parse('4.48.0') else 1)" || pip install --quiet --no-deps "transformers>=4.48.0"
+     ```
+   - Если установлена версия $\ge 4.48.0$, pip не вызывается. При более старой версии устанавливается только пакет transformers без зависимостей (`--no-deps`), что предотвращает конфликты с PyTorch и CUDA.
 
 ---
 
-## 3. Сессия 2: Факториальное сравнение бэкбонов и контекста (Слоты 5–7)
+## 2. Спецификация режимов `--train_mix` (Эксперимент E2)
 
-- **Данные:** все модели обучаются **строго на полной смеси (`--train_mix full`)**.
-- **Время сессии:** ~2.0–2.5 часа.
-
-### Важные технические требования
-1. **Пилот FP16 на ModernBERT:** перед запуском обязателен прогон `--pilot_steps 100`. Если `eval_loss` уходит в NaN — снизить `learning_rate` с `2e-5` до `1e-5`.
-2. **Контекст 2048 токенов:** для слотов 6 и 7 обязательно включать `--gradient_checkpointing true`, иначе гарантирован CUDA OOM на 16 ГБ VRAM карты T4.
-
-### Команды выполнения в блокноте
-
-```bash
-# Клетка 1: Пилот проверки FP16 на ModernBERT
-!python scripts/train_m2.py --config config/train.yaml \
-  --data_path "$DATA_PATH" --model_name answerdotai/ModernBERT-base \
-  --max_len 1024 --pilot_steps 100 --output_dir /kaggle/working/checkpoints/pilot_modernbert
-
-# Слот 5: ModernBERT-base @1024 (контроль домена: UniXcoder vs ModernBERT)
-!torchrun --nproc_per_node=2 scripts/train_m2.py --config config/train.yaml \
-  --data_path "$DATA_PATH" --model_name answerdotai/ModernBERT-base \
-  --max_len 1024 --train_mix full \
-  --output_dir /kaggle/working/checkpoints/slot5_modernbert1024 --runs_csv reports/runs.csv
-!rm -rf /kaggle/working/checkpoints/slot5_modernbert1024/checkpoint-*
-
-# Слот 6: GTE-ModernBERT-base @2048 (целевой: парный претрейн + снятие усечения)
-!torchrun --nproc_per_node=2 scripts/train_m2.py --config config/train.yaml \
-  --data_path "$DATA_PATH" --model_name Alibaba-NLP/gte-modernbert-base \
-  --max_len 2048 --gradient_checkpointing --train_mix full \
-  --output_dir /kaggle/working/checkpoints/slot6_gte2048 --runs_csv reports/runs.csv
-!rm -rf /kaggle/working/checkpoints/slot6_gte2048/checkpoint-*
-
-# Слот 7: ModernBERT-base @2048 (контроль контекста)
-# ПРАВИЛО ПРОПУСКА: если слот 6 показал паритет со слотом 5 в пределах шума ДИ, слот 7 пропускается.
-!torchrun --nproc_per_node=2 scripts/train_m2.py --config config/train.yaml \
-  --data_path "$DATA_PATH" --model_name answerdotai/ModernBERT-base \
-  --max_len 2048 --gradient_checkpointing --train_mix full \
-  --output_dir /kaggle/working/checkpoints/slot7_modernbert2048 --runs_csv reports/runs.csv
-!rm -rf /kaggle/working/checkpoints/slot7_modernbert2048/checkpoint-*
-```
+* `real_only`: только реальные источники (`codocbench` + `history_neg`, 2 393 строки) — базовый вклад реальных данных.
+* `synth_only`: строго `synth_ast` (19 008 строк, **без `synth_llm`**) — измерение доменного сдвига синтетических мутаций.
+* `real_ast`: `codocbench` + `history_neg` + `synth_ast` (21 401 строка) — базовая смесь реальных данных и AST-синтетики.
+* `full`: полная смесь датасета v1 (21 997 строк, включая LLM P1/P2) — оценка вклада LLM-пар на группе `sig_same`.
 
 ---
 
-## 4. Сессия 3: Финализация — Стэкинг и Абляция (Слоты 8–9)
+## 3. Сквозной операционный флоу
 
-- **Время сессии:** ~45 минут.
-- **Вход:** выбор модели-победителя по итогам Сессии 2 (максимальный `eval_pr_auc` на сплите `val`).
+### Шаг 1: Предполётная проверка бэкбонов (workflow.md §6 FD-24)
+1. **Smoke-тест весов на GPU:** Granite (48M), UniXcoder (125M), ModernBERT (149M), GTE-ModernBERT (149M).
+2. **Overfit-test на ModernBERT:** 200 строк × 20 эпох (`--overfit_test`). Критерий: PR-AUC $\ge 0.99$.
+3. **Пилот 100 шагов FP16 на ModernBERT через DDP:**
+   - Запуск через `torchrun --nproc_per_node=2 scripts/train_m2.py ... --pilot_steps 100`.
+   - Проверка NaN в loss. Unpadding в текущей реализации отключен (используется стандартный batch padding до max_len батча).
+   - **Стоп-критерий workflow:** при NaN лосса снизить `learning_rate` с `2e-5` до `1e-5` (`--lr 1e-5`).
+   - Время эпохи рассчитывается динамически по размеру `train_df` (для `full` 687 шагов, для `real_only` 74 шага при batch=32).
+4. **Пилот 20 шагов FP16 на GTE-ModernBERT @2048 через DDP (`--gradient_checkpointing`):**
+   - Ранняя валидация аллокации памяти и стабильности контекста 2048 до запуска основных слотов.
 
-### Команды выполнения в блокноте
+### Слоты 1–4: Эксперимент E2 (UniXcoder @1024, doc_budget 384)
+Каждый слот выполняет:
+1. Обучение: `torchrun --nproc_per_node=2 scripts/train_m2.py --config config/train.yaml --train_mix <РЕЖИМ> ...`
+2. Очистку диска: `rm -rf <output_dir>/checkpoint-*`
+3. Инференс: `python scripts/predict_m2.py --checkpoint <output_dir>/best --dataset "$DATA_PATH" --out <output_dir>/preds.csv`
+4. Оценку: `python scripts/evaluate.py --dataset "$DATA_PATH" --pred M0=m0.csv --pred M1=m1.csv --pred M2=<output_dir>/preds.csv --out_metrics <output_dir>/metrics.json --out_table <output_dir>/table_e1.csv --figdir <output_dir>/figures_e1`
 
-```bash
-# Слот 8: E2b — single-split стэкинг M1 + M2 на val (CPU, ~5-10 мин)
-!python scripts/train_stacking.py --dataset "$DATA_PATH" \
-  --m1_model /kaggle/working/m1_hgb.joblib \
-  --m2_checkpoint /kaggle/working/checkpoints/<ПОБЕДИТЕЛЬ>/best \
-  --output_dir /kaggle/working/stacking --runs_csv reports/runs.csv
+### Слоты 5–7: Факториал бэкбонов и контекста
+* **Слот 5:** ModernBERT-base @1024 (`--model_name answerdotai/ModernBERT-base --max_len 1024 --train_mix full`).
+* **Слот 6:** GTE-ModernBERT-base @2048 (`--model_name Alibaba-NLP/gte-modernbert-base --max_len 2048 --gradient_checkpointing --train_mix full`). Инференс: `--batch_size 16`.
+* **Слот 7:** ModernBERT-base @2048 (`--model_name answerdotai/ModernBERT-base --max_len 2048 --gradient_checkpointing --train_mix full`). Инференс: `--batch_size 16`.
+  * *Правило пропуска:* если слот 6 не превосходит слот 5 на $\ge 0.005$ PR-AUC, слот 7 можно пропустить для экономии ~50 мин GPU.
 
-# Слот 9: E3 — абляция БЕЗ diff_code на лучшем бэкбоне (~25-35 мин GPU)
-!torchrun --nproc_per_node=2 scripts/train_m2.py --config config/train.yaml \
-  --data_path "$DATA_PATH" --model_name <ПОБЕДИТЕЛЬ_ИМЯ> \
-  --max_len <ПОБЕДИТЕЛЬ_MAX_LEN> --drop_diff --train_mix full \
-  --output_dir /kaggle/working/checkpoints/slot9_ablation_no_diff --runs_csv reports/runs.csv
-!rm -rf /kaggle/working/checkpoints/slot9_ablation_no_diff/checkpoint-*
-
-# Фиксация победителя в конфигурации репозитория
-!python scripts/finalize_best_config.py --runs_csv reports/runs.csv \
-  --out_config config/train_best.yaml
-```
+### Слоты 8–9: Финализация
+* **Слот 8 (Стэкинг M1+M2):** single-split стэкинг на `val_real`. Вход: готовый `/kaggle/working/m1.csv` + готовые предсказания победителя `--m2_preds` (или `--m2_checkpoint`).
+  * Порог классификации: читается через `resolve_threshold` (из `config/risk.yaml` или 0.5).
+  * Метрика `val_pr_auc` в `runs.csv` для стэкинга является in-sample диагностикой; стэкинг автоматически исключается из отбора бэкбонов в `finalize_best_config.py`.
+* **Слот 9 (Абляция E3 без `diff_code`):** обучение и инференс с флагами `--drop_diff --batch_size 16` на архитектуре победителя Сессии 2.
+* **Финализация:** `python scripts/finalize_best_config.py --runs_csv reports/runs.csv --out_config config/train_best.yaml`.
+  * Выбор строго по max PR-AUC на реальных строках `val`.
+  * Абляции (`drop_diff=True`) и стэкинг исключаются автоматически.
+  * При равенстве метрик побеждает более поздний запуск по timestamp.
 
 ---
 
-## 5. Сводная таблица бюджета слотов FD-24
+## 4. Сводная таблица бюджета слотов FD-24
 
 | Слот | Код | Модель | Длина | Смесь train | Время GPU | Назначение |
 |---|---|---|---|---|---|---|
@@ -159,14 +112,14 @@ export NCCL_P2P_DISABLE=1
 | **5** | E2c | ModernBERT-base | 1024 | `full` | ~25–35 мин | Контроль претрейна (код vs общий) |
 | **6** | E2c | GTE-ModernBERT | 2048 | `full` | ~45–55 мин | Снятие усечения + relevance претрейн |
 | **7** | E2c | ModernBERT-base | 2048 | `full` | ~45–55 мин | Контроль контекста (пропуск при паритете 5-6) |
-| **8** | E2b | Стэкинг M1+M2 | — | val preds | ~5–10 мин (CPU) | Проверка ансамблирования без утечки |
+| **8** | E2b | Стэкинг M1+M2 | — | val preds | ~1–5 сек (CPU) | Проверка ансамблирования без утечки |
 | **9** | E3 | Лучший бэкбон | 1024/2048 | `full` (no diff) | ~25–35 мин | Абляция признака diff_code |
 
 ---
 
-## 6. Что забрать из Kaggle Output в репозиторий
+## 5. Что забрать из Kaggle Output в репозиторий
 
-1. Полный файл `reports/runs.csv` (содержит метрики всех 9 запусков).
-2. Папку весов лучшей модели: `checkpoints/<ПОБЕДИТЕЛЬ>/best/` (`model.safetensors`, `config.json`, `dualhead_config.json`, токенизатор).
-3. Метаданные запусков: `run_meta.json` для каждого слота.
-4. Сформированный `config/train_best.yaml`.
+1. Полный `reports/runs.csv` со всеми 9 прогонами.
+2. Сформированный `config/train_best.yaml` победителя.
+3. Папка весов лучшей модели: `checkpoints/<ПОБЕДИТЕЛЬ>/best/` (`model.safetensors`, `config.json`, `dualhead_config.json`, токенизатор).
+4. Таблицы `table_e1.csv`, графики `figures_e1/` и `metrics.json` для каждого слота (содержат полный срез метрик по `test_real` и `gold`).

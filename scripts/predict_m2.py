@@ -1,6 +1,6 @@
 """FD-21 шаг 5: инференс M2 для всех сплитов -> preds CSV для scripts/evaluate.py.
 
-    python scripts/predict_m2.py --checkpoint checkpoints/m2_run1/best \\
+    python scripts/predict_m2.py --checkpoint checkpoints/m2_run1/best \
         --dataset data/processed/dataset_v1.parquet --out reports/preds/m2.csv
 
 Выход: pair_id, p_stale, type_pred (сырой argmax головы дрейфа),
@@ -58,13 +58,20 @@ def main() -> int:
     ap.add_argument("--threshold", type=float, default=None,
                     help="гейт R10: type_pred_gated = type_pred если p_stale > tau иначе 'none'. "
                          "По умолчанию: --threshold > config/risk.yaml:threshold > 0.5 "
-                         "(minor 1: после FD-25 рабочий порог живёт в risk.yaml)")
+                         "(после FD-25 рабочий порог живёт в config/risk.yaml)")
+    ap.add_argument("--drop_diff", action="store_true",
+                    help="FD-24: обнулить diff_code при инференсе (E3 абляция)")
     args = ap.parse_args()
 
     tau = resolve_threshold(args.threshold)
 
     ckpt = Path(args.checkpoint)
-    # Fail-fast до тяжёлого I/O: опечатка в пути к чекпоинту не должна
+    if not ckpt.exists():
+        print(f"Чекпоинт не найден: {ckpt}", file=sys.stderr)
+        return 2
+
+    # FAIL-FAST защита: если весов DualHead нет, прерываем ДО загрузки
+    # датасета и HF-бэкбона. Иначе ошибка вылезала в середине и могла
     # стоить чтения 27k parquet + скачивания бэкбона с HF Hub (~15 c).
     _state_path = ckpt / "pytorch_model.bin"
     _alt_path = ckpt / "model.safetensors"
@@ -102,6 +109,10 @@ def main() -> int:
         model_name = dual_cfg.get("model_name", model_name)
         max_len = int(dual_cfg.get("max_len", max_len))
         doc_budget = int(dual_cfg.get("doc_budget", doc_budget))
+    drop_diff = bool(args.drop_diff or dual_cfg.get("drop_diff", False))
+    if drop_diff:
+        diffs = ["" for _ in diffs]
+        print("E3 АБЛЯЦИЯ: diff_code занулён для всех строк (--drop_diff)")
     tok_src = str(ckpt) if (ckpt / "tokenizer.json").exists() or \
         (ckpt / "vocab.json").exists() else model_name
     try:
@@ -145,11 +156,16 @@ def main() -> int:
     model.to(device).eval()
     print(f"Устройство: {device}, max_len={max_len}")
 
+    eff_batch_size = args.batch_size
+    if max_len >= 2048 and eff_batch_size > 16:
+        eff_batch_size = 16
+        print(f"Предотвращение OOM: для max_len={max_len} batch_size скорректирован с {args.batch_size} до {eff_batch_size}")
+
     p_all, t_all = [], []
     with torch.no_grad():
-        for start in range(0, len(df), args.batch_size):
+        for start in range(0, len(df), eff_batch_size):
             batch_ids, batch_masks = [], []
-            for j in range(start, min(start + args.batch_size, len(df))):
+            for j in range(start, min(start + eff_batch_size, len(df))):
                 e = encode_pair(tok, sigs[j], diffs[j], docs[j],
                                 max_len=max_len, doc_budget=doc_budget)
                 batch_ids.append(e["input_ids"])
@@ -167,7 +183,7 @@ def main() -> int:
             t = out["logits_drift"].argmax(dim=-1).cpu().numpy()
             p_all.extend([float(v) for v in p])
             t_all.extend([DRIFT_CLASSES[int(v)] for v in t])
-            if (start // args.batch_size) % 50 == 0:
+            if (start // eff_batch_size) % 50 == 0:
                 print(f"  {start + len(batch_ids)}/{len(df)}")
     gated = [t if p > tau else "none" for p, t in zip(p_all, t_all)]
     out_df = pd.DataFrame({"pair_id": df["pair_id"].astype(str),
