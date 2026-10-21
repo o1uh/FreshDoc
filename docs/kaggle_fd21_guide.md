@@ -44,9 +44,9 @@ except Exception:
 ```bash
 !if [ ! -d FreshDoc ]; then git clone --quiet {_repo} > /tmp/clone.log 2>&1 || (echo "CLONE FAILED:"; sed -E 's#(https?://)[^@]+@#\1***@#g' /tmp/clone.log); fi
 %cd /kaggle/working/FreshDoc
-!git checkout feat/FD-21-m2-train
-!git pull --ff-only origin feat/FD-21-m2-train || echo "PULL SKIPPED: убедись, что код свежий"
-!pip install -q -r requirements.txt
+!git checkout main 2>/dev/null || !git checkout feat/FD-21-m2-train || true
+!git pull --ff-only || echo "PULL SKIPPED: убедись, что код свежий"
+# pip install не требуется: torch, transformers, sklearn уже есть в GPU-образе Kaggle
 ```
 ```python
 # NCCL на PCIe без NVLink (!export в subshell не сохраняется между клетками)
@@ -57,11 +57,17 @@ os.environ["NCCL_P2P_DISABLE"] = "1"
 !nvidia-smi
 ```
 
-Клетка 2 — проверка датасета (стоп при несовпадении):
+Клетка 2 — поиск датасета и валидация (стоп при несовпадении):
 
 ```python
+import os, glob
 import pandas as pd
-_p = "/kaggle/input/freshdoc-dataset/dataset_v1.parquet"
+_cands = glob.glob("/kaggle/input/**/dataset_v1.parquet", recursive=True)
+assert _cands, "dataset_v1.parquet не найден в /kaggle/input (добавь датасет в Inputs блокнота)"
+_p = _cands[0]
+os.environ["DATA_PATH"] = _p
+print(f"Dataset path: {_p}")
+
 _df = pd.read_parquet(_p, columns=["split"])
 assert len(_df) == 27203, f"dataset rows {len(_df)} != 27203 (старый файл без gold-патча?)"
 _exp = {"train": 21997, "val": 559, "test_real": 2895, "test_synth": 1552, "gold": 200}
@@ -92,7 +98,7 @@ print("GPU freed")
 
 ```bash
 !python scripts/train_m2.py --config config/train.yaml \
-  --data_path /kaggle/input/freshdoc-dataset/dataset_v1.parquet \
+  --data_path "$DATA_PATH" \
   --output_dir /kaggle/working/checkpoints/m2_pilot --pilot_steps 100
 # записать с/шаг -> пересчитать время эпохи: 688 шагов * с/шаг (ожидание 0.7-1.0 с/шаг)
 ```
@@ -101,7 +107,7 @@ print("GPU freed")
 
 ```bash
 !python scripts/train_m2.py --config config/train.yaml \
-  --data_path /kaggle/input/freshdoc-dataset/dataset_v1.parquet \
+  --data_path "$DATA_PATH" \
   --output_dir /kaggle/working/checkpoints/m2_overfit --overfit_test
 # ожидание: loss -> ~0, PR-AUC на тех же 200 -> ~1. Иначе стоп (маска/метки/обрезка/веса).
 ```
@@ -110,7 +116,7 @@ print("GPU freed")
 
 ```bash
 !torchrun --nproc_per_node=2 scripts/train_m2.py --config config/train.yaml \
-  --data_path /kaggle/input/freshdoc-dataset/dataset_v1.parquet \
+  --data_path "$DATA_PATH" \
   --output_dir /kaggle/working/checkpoints/m2_run1
 # fallback без DDP (1 GPU): та же команда через python + --accum 4
 # (обязательно: иначе eff_batch 16 вместо 32 = per_device 8 x accum 2 x 1 GPU)
@@ -120,16 +126,16 @@ print("GPU freed")
 
 ```bash
 !python scripts/check_truncation.py --model microsoft/unixcoder-base --max_len 1024 \
-  --dataset /kaggle/input/freshdoc-dataset/dataset_v1.parquet \
+  --dataset "$DATA_PATH" \
   --out /kaggle/working/m2_truncation.json
 !python scripts/predict_m2.py --checkpoint /kaggle/working/checkpoints/m2_run1/best \
-  --dataset /kaggle/input/freshdoc-dataset/dataset_v1.parquet \
+  --dataset "$DATA_PATH" \
   --out /kaggle/working/m2.csv
 # reports/preds/ в .gitignore — после clone m0/m1.csv нет, регенерируем (~20 c, M1 ~1.2 c обучения)
-!python scripts/baselines_m0_m1.py --dataset /kaggle/input/freshdoc-dataset/dataset_v1.parquet \
+!python scripts/baselines_m0_m1.py --dataset "$DATA_PATH" \
   --out_m0 /kaggle/working/m0.csv --out_m1 /kaggle/working/m1.csv \
   --out_model /kaggle/working/m1_hgb.joblib --out_report /kaggle/working/m1_report.json
-!python scripts/evaluate.py --dataset /kaggle/input/freshdoc-dataset/dataset_v1.parquet \
+!python scripts/evaluate.py --dataset "$DATA_PATH" \
   --pred M0=/kaggle/working/m0.csv --pred M1=/kaggle/working/m1.csv --pred M2=/kaggle/working/m2.csv \
   --out_metrics /kaggle/working/metrics_m2.json --out_table /kaggle/working/e1_m2.csv \
   --figdir /kaggle/working/figures_e1
@@ -151,6 +157,8 @@ print("GPU freed")
 | Симптом | Причина | Что делать |
 |---|---|---|
 | DDP висит на старте | PCIe без NVLink | `%env NCCL_P2P_DISABLE=1` или `os.environ["NCCL_P2P_DISABLE"]="1"` перед запуском |
+| `ImportError: cannot import name '_slice' from 'numpy._core.umath'` | Установка `requirements.txt` перезаписала системный NumPy | Не вызывать `pip install -r requirements.txt`; библиотеки Kaggle GPU уже содержат `torch`, `transformers`, `sklearn` |
+| `FileNotFoundError: /kaggle/input/...` | Приватный датасет монтируется с ником (`/kaggle/input/datasets/<user>/...`) | Использовать автоопределение пути через `glob.glob('/kaggle/input/**/dataset_v1.parquet')` |
 | loss NaN в FP16 (ModernBERT, не UniXcoder) | GeGLU/SDPA в FP16 | снизить lr или отключить unpadding; для FD-21 (UniXcoder) не ожидается |
 | CUDA OOM | батч велик | снизить `per_device_batch_size` 8→4 в `config/train.yaml` |
 | PR-AUC val_real ~0.5 | перепутаны сплиты/веса | проверить `split` и `weight`, выбор эпохи только по val_real |
@@ -162,10 +170,10 @@ print("GPU freed")
   `answerdotai/ModernBERT-base` (нужен `transformers>=4.48.0`),
   `Alibaba-NLP/gte-modernbert-base`, `ibm-granite/granite-embedding-small-english-r2`.
 - Локальное усечение @1024 (unixcoder, doc_budget 384 — отклонение от R10/192,
-решение команды 20.10.2026): сторона A — train 2.34%, val 5.55%, test_real 2.00%,
-test_synth 3.09%, gold 3.00%; сторона B (docstring) — train 9.48%, val 9.48%,
-test_real 4.11%, test_synth 10.50%, gold 4.00%. Хвост docstring режется у ~1/10 строк
-(было ~1/5 при капе 192) — учесть в записке (кап по решению команды, влияние не измерено).
+  решение команды 20.10.2026): сторона A — train 2.34%, val 5.55%, test_real 2.00%,
+  test_synth 3.09%, gold 3.00%; сторона B (docstring) — train 9.48%, val 9.48%,
+  test_real 4.11%, test_synth 10.50%, gold 4.00%. Хвост docstring режется у ~1/10 строк
+  (было ~1/5 при капе 192) — учесть в записке (кап по решению команды, влияние не измерено).
 - `reports/data_stats.md` актуален (27203 строк, с gold-патчем; регенерируется
-скриптом `scripts/refresh_data_stats.py`, свежесть стережет `tests/test_data_stats.py`);
-канон — `reports/dataset_v1.manifest.json` + `data/processed/dataset_v1.parquet`.
+  скриптом `scripts/refresh_data_stats.py`, свежесть стережет `tests/test_data_stats.py`);
+  канон — `reports/dataset_v1.manifest.json` + `data/processed/dataset_v1.parquet`.
