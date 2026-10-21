@@ -1,7 +1,7 @@
 {
   "task": "FD-20",
-  "built_at": "2026-10-18T13:37:45.824976+00:00",
-  "dataset": "data\\processed\\dataset_v1.parquet",
+  "built_at": "2026-10-21T07:03:25.289608+00:00",
+  "dataset": "/kaggle/input/datasets/mkplaerr/freshdoc-dataset/dataset_v1.parquet",
   "dataset_rows": 27203,
   "seed": 42,
   "params": {
@@ -40,7 +40,7 @@
   "n_val_real": 559,
   "n_val_real_pos": 211,
   "threshold_val_m0": 1.0,
-  "threshold_val_m1": 0.44298304606964417,
+  "threshold_val_m1": 0.4978702999652788,
   "val_group_diagnostics": {
     "all": {
       "n": 559,
@@ -53,11 +53,11 @@
         "recall_at_p80": 0.5829383886255924
       },
       "M1": {
-        "threshold": 0.44298304606964417,
-        "precision": 0.7452830188679245,
+        "threshold": 0.4978702999652788,
+        "precision": 0.7596153846153846,
         "recall": 0.7488151658767772,
-        "f1": 0.7470449172576832,
-        "recall_at_p80": 0.6682464454976303
+        "f1": 0.7541766109785203,
+        "recall_at_p80": 0.6729857819905213
       }
     },
     "sig_changed": {
@@ -71,7 +71,7 @@
         "recall_at_p80": 0.0
       },
       "M1": {
-        "threshold": 0.44298304606964417,
+        "threshold": 0.4978702999652788,
         "precision": 1.0,
         "recall": 1.0,
         "f1": 1.0,
@@ -89,16 +89,16 @@
         "recall_at_p80": 0.0
       },
       "M1": {
-        "threshold": 0.44298304606964417,
-        "precision": 0.39325842696629215,
+        "threshold": 0.4978702999652788,
+        "precision": 0.4117647058823529,
         "recall": 0.3977272727272727,
-        "f1": 0.3954802259887006,
+        "f1": 0.4046242774566474,
         "recall_at_p80": 0.011363636363636364
       }
     }
   },
-  "train_time_sec": 2.2,
-  "total_time_sec": 22.4,
+  "train_time_sec": 4.1,
+  "total_time_sec": 35.9,
   "forbidden_cols_never_read": [
     "project",
     "source",
@@ -112,9 +112,9 @@
     "_aux_*"
   ],
   "outputs": {
-    "m0": "reports\\preds\\m0.csv",
-    "m1": "reports\\preds\\m1.csv",
-    "model": "checkpoints\\m1_hgb.joblib"
+    "m0": "/kaggle/working/m0.csv",
+    "m1": "/kaggle/working/m1.csv",
+    "model": "/kaggle/working/m1_hgb.joblib"
   },
-  "next": "python scripts/evaluate.py --pred M0=reports\\preds\\m0.csv --pred M1=reports\\preds\\m1.csv"
+  "next": "python scripts/evaluate.py --pred M0=/kaggle/working/m0.csv --pred M1=/kaggle/working/m1.csv"
 }

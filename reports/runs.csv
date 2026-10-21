@@ -1,0 +1,2 @@
+timestamp,output_dir,model_name,max_len,seed,epochs,train_time_sec,eval_pr_auc,n_train,n_val_real
+2026-10-21T06:31:15.128504+00:00,/kaggle/working/checkpoints/m2_run1,microsoft/unixcoder-base,1024,42,3.0,1794.8,0.9790682590052837,21997,559

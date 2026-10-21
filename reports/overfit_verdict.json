@@ -1,0 +1,6 @@
+{
+  "overfit_pr_auc": 0.5300995024875622,
+  "pass": false,
+  "threshold": 0.99,
+  "n": 200
+}
