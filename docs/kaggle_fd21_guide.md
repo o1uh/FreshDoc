@@ -131,7 +131,8 @@ print("GPU freed")
   --out_model /kaggle/working/m1_hgb.joblib --out_report /kaggle/working/m1_report.json
 !python scripts/evaluate.py --dataset /kaggle/input/freshdoc-dataset/dataset_v1.parquet \
   --pred M0=/kaggle/working/m0.csv --pred M1=/kaggle/working/m1.csv --pred M2=/kaggle/working/m2.csv \
-  --out_metrics /kaggle/working/metrics_m2.json --out_table /kaggle/working/e1_m2.csv
+  --out_metrics /kaggle/working/metrics_m2.json --out_table /kaggle/working/e1_m2.csv \
+  --figdir /kaggle/working/figures_e1
 # Альтернатива: положить m0.csv/m1.csv в Kaggle-датасет freshdoc-dataset (тогда regen не нужен).
 # M0/M1 не должны пересчитываться на каждом прогоне без нужды — regen выше детерминирован (seed 42).
 ```

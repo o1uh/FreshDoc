@@ -468,7 +468,7 @@ def main() -> int:
         "lr": lr, "weight_decay": wd, "warmup_steps": warmup,
         "epochs": epochs, "seed": seed,
         "per_device_batch_size": per_device, "accum": accum,
-        "eff_batch": per_device * accum * max(1, torch.cuda.device_count()),
+        "eff_batch": per_device * accum * max(1, getattr(trainer.args, "world_size", 1)),
         "n_train": int(len(train_ds)), "n_val_real": int(len(val_ds)),
         "train_truncated_frac": train_ds.n_truncated / max(1, len(train_ds)),
         "val_truncated_frac": val_ds.n_truncated / max(1, len(val_ds)),
