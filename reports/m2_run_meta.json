@@ -1,0 +1,102 @@
+{
+  "task": "FD-21",
+  "built_at": "2026-10-21T06:31:15.128504+00:00",
+  "model_name": "microsoft/unixcoder-base",
+  "max_len": 1024,
+  "doc_budget": 384,
+  "lambda_drift": 0.6,
+  "lr": 2e-05,
+  "weight_decay": 0.01,
+  "warmup_steps": 0.06,
+  "epochs": 3.0,
+  "seed": 42,
+  "per_device_batch_size": 8,
+  "accum": 2,
+  "eff_batch": 32,
+  "n_train": 21997,
+  "n_val_real": 559,
+  "train_truncated_frac": 0.02341228349320362,
+  "val_truncated_frac": 0.055456171735241505,
+  "train_doc_truncated_frac": 0.0948311133336364,
+  "val_doc_truncated_frac": 0.09481216457960644,
+  "train_mix": {
+    "codocbench/1": {
+      "n": 1265,
+      "frac": 0.05750784197845161
+    },
+    "history_neg/0": {
+      "n": 1128,
+      "frac": 0.05127971996181298
+    },
+    "synth_ast/0": {
+      "n": 9558,
+      "frac": 0.4345137973360004
+    },
+    "synth_ast/1": {
+      "n": 9450,
+      "frac": 0.42960403691412463
+    },
+    "synth_llm/0": {
+      "n": 365,
+      "frac": 0.01659317179615402
+    },
+    "synth_llm/1": {
+      "n": 231,
+      "frac": 0.01050143201345638
+    }
+  },
+  "val_pos": 211,
+  "val_n": 559,
+  "val_prevalence": 0.3774597495527728,
+  "weight_audit": {
+    "ast/1.0": 19008,
+    "llm_p1/0.5": 231,
+    "llm_p2/0.5": 365,
+    "real_coupled/1.0": 1265,
+    "real_strong_neg/1.0": 91,
+    "real_weak_neg/0.5": 1037
+  },
+  "weight_overrides": {},
+  "train_time_sec": 1794.8,
+  "eval_val_real": {
+    "eval_loss": 0.553226888179779,
+    "eval_pr_auc": 0.9790682590052837,
+    "eval_runtime": 5.0198,
+    "eval_samples_per_second": 111.358,
+    "eval_steps_per_second": 3.586,
+    "epoch": 3.0
+  },
+  "eval_history": [
+    {
+      "epoch": 1.0,
+      "eval_pr_auc": 0.9435242481519576,
+      "eval_loss": 0.6658468246459961
+    },
+    {
+      "epoch": 2.0,
+      "eval_pr_auc": 0.9755785831500552,
+      "eval_loss": 0.6883786916732788
+    },
+    {
+      "epoch": 3.0,
+      "eval_pr_auc": 0.9790682590052837,
+      "eval_loss": 0.553226888179779
+    },
+    {
+      "epoch": 3.0,
+      "eval_pr_auc": 0.9790682590052837,
+      "eval_loss": 0.553226888179779
+    }
+  ],
+  "overfit_test": false,
+  "drift_classes": [
+    "param_renamed",
+    "param_removed",
+    "param_added",
+    "default_changed",
+    "return_changed",
+    "exception_changed",
+    "behavior_changed",
+    "unknown"
+  ]
+}

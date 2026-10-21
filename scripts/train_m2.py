@@ -231,12 +231,9 @@ def main() -> int:
     ap.add_argument("--seed", type=int, default=None)
     ap.add_argument("--overfit_test", action="store_true",
                     help="шаг 2 FD-21: 200 строк x 20 эпох")
-    ap.add_argument("--overfit_lr", type=float, default=5e-3,
+    ap.add_argument("--overfit_lr", type=float, default=1e-4,
                     help="lr протокола переобучения (не рабочего обучения). "
-                         "Эмпирика прогона: lr=2e-5 за ~140 шагов не запоминает "
-                         "200 строк (PR-AUC 0.63, verdict fail), lr=5e-3 "
-                         "запоминает (PR-AUC 0.999, verdict pass). Высоким lr "
-                         "проверяем способность+plumbing, не гиперпараметры.")
+                         "Стабильный диапазон 5e-5..1e-4 без регуляризации.")
     ap.add_argument("--pilot_steps", type=int, default=0,
                     help="калибровка скорости: остановить после N шагов")
     ap.add_argument("--max_steps", type=int, default=0)
@@ -317,17 +314,17 @@ def main() -> int:
             n=min(200, len(pos) + len(neg)), random_state=seed).reset_index(drop=True)
         val_df = train_df.copy()
         epochs = 20
-        # Протокол переобучения ≠ рабочее обучение: цель — доказать, что
-        # модель В ПРИНЦИПЕ запоминает 200 строк (ёмкость + plumbing).
-        # Эмпирика: 2e-5 за ~140 шагов не запоминает (fail — и это нормально),
-        # 5e-3 запоминает (PR-AUC 0.999). Высокий lr здесь не переносить в FD-24.
         if args.overfit_lr:
             lr = float(args.overfit_lr)
+        wd = 0.0
+        fp16 = False
+        accum = 1
+        cfg["dropout"] = 0.0
         print(f"OVERFIT-TEST: {len(train_df)} строк "
               f"(pos={int(train_df['label_stale'].sum())}, "
               f"neg={int((train_df['label_stale'] == 0).sum())}) x {epochs} эпох, "
-              f"lr={lr} "
-              f"(ожидание: loss -> 0, PR-AUC -> ~1)")
+              f"lr={lr}, wd={wd}, dropout=0, fp32, accum={accum} "
+              f"(ожидание: loss -> ~0.1-0.3, PR-AUC -> >=0.99)")
 
     tok = AutoTokenizer.from_pretrained(model_name, use_fast=True)
     print(f"Токенизатор {model_name}: cls={tok.cls_token} sep={tok.sep_token}")
