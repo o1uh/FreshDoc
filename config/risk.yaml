@@ -19,5 +19,6 @@ urgency:
   age_gain: 0.5
 
 # Operating drift threshold
-# Baseline value 0.5 per R12; to be replaced by calibrated threshold from FD-25 (Precision >= 0.80)
-threshold: 0.5
+# Working threshold from FD-25 E6 (precision>=0.80, val cal); baseline R12 was 0.5
+threshold: 0.8742609896291749
+# FD-25 2026-10-22: threshold <- E6 (precision>=0.80, val cal), T=2.3847

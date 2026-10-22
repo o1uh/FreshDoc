@@ -154,12 +154,27 @@ class TestUrgencyHeuristic:
 
 class TestConfigLoading:
     def test_load_default_config_file(self) -> None:
+        load_risk_config.cache_clear()
         cfg = load_risk_config()
         assert cfg.fan_in_cap == 20.0
         assert cfg.private_factor == 0.5
         assert cfg.age_cap_days == 180.0
         assert cfg.age_gain == 0.5
-        assert cfg.threshold == 0.5
+        # FD-25: рабочий порог из E6 (precision>=0.80, val cal), согласован
+        # с reports/calibration.json. До FD-25 baseline был 0.5 (R12).
+        import json as _json
+
+        calib_path = Path(__file__).resolve().parent.parent / "reports" / "calibration.json"
+        if calib_path.exists():
+            expected = float(_json.loads(calib_path.read_text(encoding="utf-8"))["working_threshold"])
+            # risk.yaml хранит полную точность float (repr, round-trip),
+            # чтобы граничный TP на val не выпадал из score >= threshold
+            assert cfg.threshold == pytest.approx(expected, abs=1e-12)
+        else:
+            # calibration.json отсутствует (изолированный прогон/чистое
+            # окружение): baseline 0.5 устарел после FD-25, проверяем только
+            # валидность порога как вероятности
+            assert 0.0 < cfg.threshold < 1.0
         assert cfg.get_type_weight("docstring") == 1.0
         assert cfg.get_type_weight("readme") == 0.8
         assert cfg.get_type_weight("tutorial") == 0.7
