@@ -61,24 +61,22 @@ def ensure_repo(name: str, url: str, depth: int = 350) -> Path:
 def plot_risk_timelines(
     timelines_m0: dict[str, list[dict]],
     timelines_m2: dict[str, list[dict]],
+    symbols: list[str],
     threshold_m0: float,
     threshold_m2: float,
     out_path: Path,
 ) -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    common_symbols = [s for s in timelines_m2.keys() if len(timelines_m2[s]) >= 2][:4]
-    if not common_symbols:
-        common_symbols = list(timelines_m2.keys())[:4]
-    if not common_symbols:
-        print("Warning: no timeline samples found for plotting.")
+    if not symbols:
+        print("Warning: no timeline symbols provided for plotting.")
         return
 
-    n_plots = len(common_symbols)
+    n_plots = len(symbols)
     fig, axes = plt.subplots(n_plots, 1, figsize=(11, 3.2 * n_plots), sharex=False)
     if n_plots == 1:
         axes = [axes]
 
-    for ax, sym in zip(axes, common_symbols):
+    for ax, sym in zip(axes, symbols):
         # M0 points
         events_m0 = timelines_m0.get(sym, [])
         if events_m0:
@@ -131,7 +129,7 @@ def plot_risk_timelines(
         )
         ax.set_ylabel("Risk R")
         ax.set_ylim(-0.05, 1.05)
-        ax.set_title(f"Section: {sym}", fontsize=11, fontweight="bold")
+        ax.set_title(f"Section: {sym} ({len(events_m2)} events)", fontsize=11, fontweight="bold")
         ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d"))
         ax.grid(True, linestyle=":", alpha=0.6)
         ax.legend(loc="upper left", fontsize=8)
@@ -139,7 +137,7 @@ def plot_risk_timelines(
     plt.tight_layout()
     plt.savefig(out_path, dpi=200)
     plt.close()
-    print(f"Risk timeline chart saved to {out_path}", flush=True)
+    print(f"Risk timeline chart saved to {out_path} ({n_plots} functions)", flush=True)
 
 
 def main() -> None:
@@ -168,18 +166,6 @@ def main() -> None:
     )
 
     all_metrics: dict[str, dict[str, ReplayMetrics]] = {}
-    combined_timelines_m0: dict[str, list[dict]] = {}
-    combined_timelines_m2: dict[str, list[dict]] = {}
-
-    # Target symbols to track for timeline plots
-    candidate_symbols = [
-        "RequestHandler.set_status",
-        "IOStream.read_until",
-        "AsyncHTTPClient.fetch",
-        "Application.add_handlers",
-        "TerminalInteractiveShell.init_prompt_toolkit",
-        "InteractiveShell.run_cell",
-    ]
 
     for proj_name, proj_url in PROJECT_URLS.items():
         repo_dir = ensure_repo(proj_name, proj_url, depth=args.max_commits + 50)
@@ -199,7 +185,6 @@ def main() -> None:
             cache=cache,
             db_path=REGISTRY_DB_PATH,
             risk_config=cfg_m0,
-            sample_symbols=candidate_symbols,
         )
         cache.save()
         print(
@@ -220,7 +205,6 @@ def main() -> None:
             cache=cache,
             db_path=REGISTRY_DB_PATH,
             risk_config=risk_cfg,
-            sample_symbols=candidate_symbols,
         )
         cache.save()
         print(
@@ -231,18 +215,35 @@ def main() -> None:
         )
 
         all_metrics[proj_name] = {"m0": metrics_m0, "m2": metrics_m2}
-        combined_timelines_m0.update(metrics_m0.timeline_samples)
-        combined_timelines_m2.update(metrics_m2.timeline_samples)
 
     # Save cache
     cache.save()
     print(f"\nReplay cache saved to {CACHE_PATH} (hits: {cache.hits}, misses: {cache.misses})")
 
+    # Select dynamic top symbols across projects by event count in M2
+    from collections import Counter
+
+    candidate_counts: Counter[str] = Counter()
+    for proj_name, m_dict in all_metrics.items():
+        for sym, h in m_dict["m2"].section_histories.items():
+            if len(h) >= 2:
+                candidate_counts[sym] += len(h)
+
+    top_symbols = [s for s, _ in candidate_counts.most_common(4)]
+    print(f"\nTop 4 dynamic functions for risk timeline plots: {top_symbols}")
+
+    combined_histories_m0: dict[str, list[dict]] = {}
+    combined_histories_m2: dict[str, list[dict]] = {}
+    for proj_name, m_dict in all_metrics.items():
+        combined_histories_m0.update(m_dict["m0"].section_histories)
+        combined_histories_m2.update(m_dict["m2"].section_histories)
+
     # Plot timelines
     timeline_png = FIGURES_DIR / "replay_risk_timeline.png"
     plot_risk_timelines(
-        combined_timelines_m0,
-        combined_timelines_m2,
+        combined_histories_m0,
+        combined_histories_m2,
+        symbols=top_symbols,
         threshold_m0=tau_m0,
         threshold_m2=tau_m2,
         out_path=timeline_png,
@@ -294,13 +295,16 @@ def generate_report(
         "",
         "## 3. Анализ шума и опережения",
         "",
-        "1. **Эффективность опережения:**",
-        "   - На проектах `tornado` и `ipython` модель M2 обеспечивает предупреждение об устаревании документации за дни и недели до того, как разработчики вносят исправления в docstring.",
-        "   - M0 детектирует только прямые смены сигнатур, поэтому пропускает существенную часть функциональных изменений тела (body drift), в то время как M2 фиксирует изменения логики при неизменной сигнатуре.",
+        "1. **Эмпирические результаты по опережению:**",
+        "   - На исследованном окне истории (300 коммитов первого родителя) обе модели дали равное число опережающих предупреждений: 2 опережения на `tornado` (доля 2.4%) и 1 опережение на `ipython` (доля 3.2%). Модель M2 не выявила дополнительных опережающих исправлений по сравнению с бейзлайном M0: все 3 зафиксированных случая сопровождались изменением сигнатуры.",
+        "   - Главное практическое преимущество M2 проявилось в **радикальной фильтрации ложных тревог** благодаря консервативному калиброванному порогу $\\tau = 0.8743$ (FD-25):",
+        "     * В проекте `tornado` число открытых висячих пометок старше 90 дней сократилось с 11 (44.0% шума у M0) до 6 (30.0% шума у M2) — устранено 45% ложных тревог.",
+        "     * В проекте `ipython` число висячих пометок старше 90 дней снизилось с 35 (89.7% шума у M0) до 26 (78.8% шума у M2) — устранено 26% ложных тревог.",
+        "     * Медиана времени опережения на `tornado` у M2 составила 266.4 дней против 526.5 дней у M0. Бейзлайн M0 срабатывал слишком рано на поверхностных изменениях сигнатуры, тогда как M2 отсекла преждевременные срабатывания, выдав предупреждение ближе к реальной правке docstring.",
         "",
         "2. **Честная оценка шума (висячие пометки >90 дней):**",
-        "   - Часть открытых пометок остаётся незакрытой на протяжении более 90 дней. Это вызвано тем, что в реальных open-source проектах устаревание второстепенных функций и внутренних утилит может игнорироваться мейнтейнерами месяцами или годами.",
-        "   - Доля таких пометок честно зафиксирована в таблице выше (колонка «Доля шума»).",
+        "   - Существенная часть функций остаётся помеченной более 90 дней (30% на tornado, 79% на ipython). В реальных open-source библиотеках устаревание второстепенных параметров и внутренних утилит может игнорироваться разработчиками месяцами или годами, пока не возникнет тикет или внешний pull request.",
+        "   - Это доказывает необходимость механизма ручного подтверждения (`POST /verify`) и дашборда приоритетов (FD-30), где функции ранжируются не только по риску, но и по влиянию (`impact`) и срочности (`urgency`).",
         "",
         "3. **Методологические допущения (по R12):**",
         "   - **Правка docstring без связанного изменения кода** в том же коммите трактуется как исправление накопившегося ранее дрейфа (подтверждение актуальности).",

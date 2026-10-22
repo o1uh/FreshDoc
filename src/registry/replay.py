@@ -18,8 +18,6 @@ import subprocess
 from typing import Any, Iterable, Protocol
 
 import numpy as np
-import torch
-from transformers import AutoConfig, AutoModel, AutoTokenizer
 
 from src.data.drift import derive_drift_type, extract_signature
 from src.data.normalizer import (
@@ -30,12 +28,6 @@ from src.data.normalizer import (
 )
 from src.mining.miner import iter_functions, show_blob
 from src.models.calibration import apply_temperature
-from src.models.m2_data import (
-    DOC_BUDGET_TOKENS,
-    DRIFT_CLASSES,
-    encode_pair,
-)
-from src.models.m2_model import DualHeadCodeClassifier
 from src.registry import storage
 from src.risk.calculator import (
     accumulate_next_risk,
@@ -158,20 +150,26 @@ class M2Scorer:
         threshold: float = 0.8742609896291749,
         device: str | None = None,
         max_len: int = 1024,
-        doc_budget: int = DOC_BUDGET_TOKENS,
+        doc_budget: int = 384,
     ) -> None:
+        # Lazy imports of heavy deep learning packages (FD-29 Defect 3)
+        import torch
+        from transformers import AutoConfig, AutoModel, AutoTokenizer
+        from safetensors.torch import load_file
+        from src.models.m2_data import DOC_BUDGET_TOKENS, DRIFT_CLASSES
+        from src.models.m2_model import DualHeadCodeClassifier
+
         self.ckpt_path = Path(checkpoint_dir)
         self.temperature = float(temperature)
         self.threshold = float(threshold)
         self.max_len = max_len
-        self.doc_budget = doc_budget
+        self.doc_budget = doc_budget or DOC_BUDGET_TOKENS
+        self.drift_classes = DRIFT_CLASSES
 
         if device is None:
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         else:
             self.device = torch.device(device)
-
-        from safetensors.torch import load_file
 
         self.tokenizer = AutoTokenizer.from_pretrained(str(self.ckpt_path))
         cfg = AutoConfig.from_pretrained(str(self.ckpt_path))
@@ -179,7 +177,7 @@ class M2Scorer:
         self.model = DualHeadCodeClassifier(
             backbone,
             hidden_size=backbone.config.hidden_size,
-            num_drift_classes=len(DRIFT_CLASSES),
+            num_drift_classes=len(self.drift_classes),
         )
         state = load_file(self.ckpt_path / "model.safetensors")
         self.model.load_state_dict(state, strict=True)
@@ -194,6 +192,9 @@ class M2Scorer:
         fn_old: ast.AST,
         fn_new: ast.AST,
     ) -> tuple[float, str]:
+        import torch
+        from src.models.m2_data import encode_pair
+
         enc = encode_pair(
             self.tokenizer,
             sig_old=sig_old,
@@ -212,7 +213,7 @@ class M2Scorer:
             raw_p = torch.sigmoid(z_stale).squeeze().item()
             cal_p = float(apply_temperature(np.array([raw_p]), T=self.temperature)[0])
             drift_id = int(torch.argmax(z_drift, dim=-1).item())
-            drift_name = DRIFT_CLASSES[drift_id] if cal_p > self.threshold else "none"
+            drift_name = self.drift_classes[drift_id] if cal_p > self.threshold else "none"
 
         return cal_p, drift_name
 
@@ -235,6 +236,7 @@ class SectionTrackingState:
     first_flagged_dt: datetime | None = None
     first_flagged_commit: str | None = None
     lead_times_days: list[float] = field(default_factory=list)
+    history: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass
@@ -252,6 +254,7 @@ class ReplayMetrics:
     open_flags_older_90d: int
     noise_fraction: float
     timeline_samples: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
+    section_histories: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
 
 
 def _git_cmd(repo_path: Path | str, *args: str) -> str:
@@ -432,6 +435,12 @@ def replay_project_history(
                         "computed_at": dt_str,
                     }
                     records.append(rec)
+                    st.history.append({
+                        "commit_sha": sha,
+                        "date": dt_str,
+                        "risk": 0.0,
+                        "event": event,
+                    })
 
                     if qualname in tracked_samples or short_name in tracked_samples:
                         sample_timelines.setdefault(qualname, []).append({
@@ -509,6 +518,12 @@ def replay_project_history(
                         "computed_at": dt_str,
                     }
                     records.append(rec)
+                    st.history.append({
+                        "commit_sha": sha,
+                        "date": dt_str,
+                        "risk": round(st.current_risk, 4),
+                        "event": event,
+                    })
 
                     if qualname in tracked_samples or short_name in tracked_samples:
                         sample_timelines.setdefault(qualname, []).append({
@@ -545,6 +560,8 @@ def replay_project_history(
             conn.commit()
         storage.insert_batch(db_path, records)
 
+    section_histories = {st.symbol: st.history for st in states.values() if st.history}
+
     metrics = ReplayMetrics(
         repo=repo_name,
         scorer=scorer_name,
@@ -559,6 +576,7 @@ def replay_project_history(
         open_flags_older_90d=open_flags_90d,
         noise_fraction=round(noise_frac, 4),
         timeline_samples=sample_timelines,
+        section_histories=section_histories,
     )
 
     return metrics, records
