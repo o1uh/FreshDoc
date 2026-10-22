@@ -1,0 +1,808 @@
+err_id,project,symbol,sig_old,diff_code,doc_old,split,sig_type,source,n_src_lines
+e033,AzurLaneAutoScript,EventStory.get_event_story_state,def get_event_story_state(self):,"--- a/code.py
++++ b/code.py
+@@ -9,4 +9,6 @@
+         return 'story'
+     if self.appear_then_click(BATTLE_MIDDLE, offset=(20, 200)):
+         return 'story'
++    if self.get_event_20250724_button():
++        return 'story_alchemist'
+     return 'unknown'","Returns:
+    str: 'finish', 'story', 'unknown'",gold,none,gold,14
+e007,StratosphereLinuxIPS,GoDirector.handle_gopy_data,"def handle_gopy_data(self, data: str):","--- a/code.py
++++ b/code.py
+@@ -10,6 +10,6 @@
+         else:
+             self.print('Invalid command: ' + message_type)
+     except json.decoder.JSONDecodeError:
+-        self.print(""Couldn't load message from pigeon - invalid json"")
++        self.print(f""Couldn't load message from pigeon - invalid Json from the pigeon: {data_dict}"")
+     except KeyError:
+         self.print(f""Json from the pigeon: {data_dict} doesn't contain expected values message_type or message_contents"")",Method that receives raw data sent into p2p_gopy redis channel,test_real,none,codocbench,16
+e188,rasa,get_auth_retry_wrapper,def get_auth_retry_wrapper(tracker_store: 'TrackerStore') -> 'TrackerStore':,"--- a/code.py
++++ b/code.py
+@@ -1,3 +1,3 @@
+ @hookspec(firstresult=True)
+-def get_auth_retry_wrapper(tracker_store: 'TrackerStore') -> 'TrackerStore':
++def get_auth_retry_wrapper(endpoint_config: Union['TrackerStore', 'EndpointConfig'], domain: 'Domain', event_broker: Optional['EventBroker']=None) -> 'TrackerStore':
+     pass",Hook specification for wrapping with AuthRetryTrackerStore.,gold,param_removed,gold,4
+e034,manim,SVGMobject.generate_points,def generate_points(self):,"--- a/code.py
++++ b/code.py
+@@ -1,7 +1,9 @@
+ def generate_points(self):
+     doc = minidom_parse(self.file_path)
+-    for svg in doc.getElementsByTagName('svg'):
+-        mobjects = self._get_mobjects_from(svg, self.generate_style())
++    for node in doc.childNodes:
++        if not isinstance(node, MinidomElement) or node.tagName != 'svg':
++            continue
++        mobjects = self._get_mobjects_from(node, self.generate_style())
+         if self.unpack_groups:
+             self.add(*mobjects)
+         else:","Called by the Mobject abstract base class. Responsible for generating
+the SVGMobject's points from XML tags, populating self.mobjects, and
+any submobjects within self.mobjects.",test_real,none,history_neg,12
+e040,manim,ManimColor.parse,"def parse(cls, color: ParsableManimColor | list[ParsableManimColor] | None, alpha: float=1.0) -> Self | list[Self]:","--- a/code.py
++++ b/code.py
+@@ -1,5 +1,12 @@
+ @classmethod
+-def parse(cls, color: ParsableManimColor | list[ParsableManimColor] | None, alpha: float=1.0) -> Self | list[Self]:
+-    if isinstance(color, (list, tuple)):
+-        return [cls(c, alpha) for c in color]
+-    return cls(color, alpha)
++def parse(cls, color: ParsableManimColor | Sequence[ParsableManimColor] | None, alpha: float=1.0) -> Self | list[Self]:
++
++    def is_sequence(colors) -> TypeGuard[Sequence[ParsableManimColor]]:
++        return isinstance(colors, (list, tuple))
++
++    def is_parsable(color) -> TypeGuard[ParsableManimColor]:
++        return not isinstance(color, (list, tuple))
++    if is_sequence(color):
++        return [cls._from_internal(ManimColor(c, alpha)._internal_value) for c in color]
++    elif is_parsable(color):
++        return cls._from_internal(ManimColor(color, alpha)._internal_value)","Handles the parsing of a list of colors or a single color.
+
+Parameters
+----------
+color
+    The color or list of colors to parse. Note that this function can not accept rgba tuples. It will assume that you mean list[ManimColor] and will return a list of ManimColors.
+alpha
+    The alpha value to use if a single color is passed. or if a list of colors is passed to set the value of all colors.
+
+Returns
+-------
+ManimColor
+    Either a list of colors or a singular color depending on the input",test_real,none,history_neg,18
+e047,TTS,TTSTokenizer.encode,"def encode(self, text: str) -> List[int]:","--- a/code.py
++++ b/code.py
+@@ -1,6 +1,11 @@
+ def encode(self, text: str) -> List[int]:
+     token_ids = []
+     for char in text:
+-        idx = self.characters.char_to_id(char)
+-        token_ids.append(idx)
++        try:
++            idx = self.characters.char_to_id(char)
++            token_ids.append(idx)
++        except KeyError:
++            if char not in self.not_found_characters:
++                self.not_found_characters.append(char)
++                print(f' [!] Character {repr(char)} not found in the vocabulary. Discarding it.')
+     return token_ids",Encodes a string of text as a sequence of IDs.,test_real,none,history_neg,7
+e051,manim,StreamLines.start_animation,"def start_animation(self, warm_up: bool=True, flow_speed: float=1, time_width: float=0.3, rate_func: Callable[[float], float]=linear, line_animation_class: type[ShowPassingFlash]=ShowPassingFlash, **kwargs) -> Self:","--- a/code.py
++++ b/code.py
+@@ -1,21 +1,25 @@
+-def start_animation(self, warm_up: bool=True, flow_speed: float=1, time_width: float=0.3, rate_func: Callable[[float], float]=linear, line_animation_class: type[ShowPassingFlash]=ShowPassingFlash, **kwargs) -> Self:
++def start_animation(self, warm_up: bool=True, flow_speed: float=1, time_width: float=0.3, rate_func: Callable[[float], float]=linear, line_animation_class: type[ShowPassingFlash]=ShowPassingFlash, **kwargs: Any) -> Self:
+     for line in self.stream_lines:
+         run_time = line.duration / flow_speed
+-        line.anim = line_animation_class(line, run_time=run_time, rate_func=rate_func, time_width=time_width, **kwargs)
+-        line.anim.begin()
++        anim = line_animation_class(line, run_time=run_time, rate_func=rate_func, time_width=time_width, **kwargs)
++        line.anim = anim
++        anim.begin()
+         line.time = random.random() * self.virtual_time
+         if warm_up:
+             line.time *= -1
+-        self.add(line.anim.mobject)
++        self.add(anim.mobject)
+ 
+-    def updater(mob, dt):
++    def updater(mob: Mobject, dt: float) -> object:
++        assert isinstance(mob, StreamLines)
+         for line in mob.stream_lines:
++            assert line.anim is not None
+             line.time += dt * flow_speed
+             if line.time >= self.virtual_time:
+                 line.time -= self.virtual_time
+             line.anim.interpolate(np.clip(line.time / line.anim.run_time, 0, 1))
++        return mob
+     self.add_updater(updater)
+-    self.flow_animation = updater
++    self.flow_animation: Callable[[Mobject, float], object] | None = updater
+     self.flow_speed = flow_speed
+     self.time_width = time_width
+     return self","Animates the stream lines using an updater.
+
+The stream lines will continuously flow
+
+Parameters
+----------
+warm_up
+    If `True` the animation is initialized line by line. Otherwise it starts with all lines shown.
+flow_speed
+    At `flow_speed=1` the distance the flow moves per second is equal to the magnitude of the vector field along its path. The speed value scales the speed of this flow.
+time_width
+    The proportion of the stream line shown while being animated
+rate_func
+    The rate function of each stream line flashing
+line_animation_class
+    The animation class being used
+
+Examples
+--------
+
+.. manim:: ContinuousMotion
+
+    class ContinuousMotion(Scene):
+        def construct(self):
+            func = lambda pos: np.sin(pos[0] / 2) * UR + np.cos(pos[1] / 2) * LEFT
+            stream_lines = StreamLines(func, stroke_width=3, max_anchors_per_line=30)
+            self.add(stream_lines)
+            stream_lines.start_animation(warm_up=False, flow_speed=1.5)
+            self.wait(stream_lines.virtual_time / stream_lines.flow_speed)",test_real,none,history_neg,50
+e061,manim,ThreeDScene.stop_ambient_camera_rotation,"def stop_ambient_camera_rotation(self, about='theta'):","--- a/code.py
++++ b/code.py
+@@ -8,5 +8,5 @@
+             self.remove(x)
+         else:
+             self.camera.clear_updaters()
+-    except:
++    except Exception:
+         raise ValueError('Invalid ambient rotation angle.')",This method stops all ambient camera rotation.,test_real,none,history_neg,13
+e068,TTS,korean_text_to_phonemes,"def korean_text_to_phonemes(text, character: str='hangeul') -> str:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,8 @@
+ def korean_text_to_phonemes(text, character: str='hangeul') -> str:
++    global g2p
++    if g2p is None:
++        from g2pkk import G2p
++        g2p = G2p()
+     if character == 'english':
+         from anyascii import anyascii
+         text = normalize(text)","The input and output values look the same, but they are different in Unicode.
+
+example :
+
+    input = '하늘' (Unicode : 하늘), (하 + 늘)
+    output = '하늘' (Unicode :하늘), (ᄒ + ᅡ + ᄂ + ᅳ + ᆯ)",test_real,none,history_neg,17
+e087,ipython,test_notebook_export_json_with_output,def test_notebook_export_json_with_output():,"--- a/code.py
++++ b/code.py
+@@ -6,25 +6,30 @@
+     _ip = get_ipython()
+     _ip.history_manager.reset()
+     _ip.colors = 'neutral'
+-    commands = [""display('test')"", '1+1', ""display('a'), display('b')"", '1/0', ""print('test')"", ""import sys\nprint('test', file=sys.stderr)""]
+-    clean_nb = nbformat.v4.new_notebook(cells=[nbformat.v4.new_code_cell(source=cmd) for cmd in commands])
+-    with TemporaryDirectory() as td:
+-        outfile = os.path.join(td, 'nb.ipynb')
+-        client = NotebookClient(clean_nb, timeout=600, kernel_name='python3', resources={'metadata': {'path': td}}, allow_errors=True)
+-        client.execute()
+-        nbformat.write(clean_nb, outfile)
+-        expected_nb = nbformat.read(outfile, as_version=4)
+-    for cmd in commands:
+-        _ip.run_cell(cmd, store_history=True, silent=False)
+-    with TemporaryDirectory() as td:
+-        outfile = os.path.join(td, 'nb.ipynb')
+-        _ip.run_cell(f'%notebook {outfile}', store_history=True)
+-        actual_nb = nbformat.read(outfile, as_version=4)
+-    assert len(actual_nb['cells']) == len(commands)
+-    assert len(expected_nb['cells']) == len(commands)
+-    for i, command in enumerate(commands):
+-        actual = actual_nb['cells'][i]
+-        expected = expected_nb['cells'][i]
+-        assert expected['source'] == command
+-        assert actual['source'] == expected['source']
+-        assert actual['outputs'] == expected['outputs'], f'Outputs do not match for cell {i + 1} with source {command!r}'
++    try:
++        commands = ['1/0', ""print('test')"", ""display('test')"", '1+1', ""display('a'), display('b')"", ""import sys\nprint('test', file=sys.stderr)""]
++        clean_nb = nbformat.v4.new_notebook(cells=[nbformat.v4.new_code_cell(source=cmd) for cmd in commands])
++        with TemporaryDirectory() as td:
++            outfile = os.path.join(td, 'nb.ipynb')
++            client = NotebookClient(clean_nb, timeout=600, kernel_name='python3', resources={'metadata': {'path': td}}, allow_errors=True)
++            client.execute()
++            nbformat.write(clean_nb, outfile)
++            expected_nb = nbformat.read(outfile, as_version=4)
++        for cmd in commands:
++            _ip.run_cell(cmd, store_history=True, silent=False)
++            print(f'\n{_ip.history_manager.outputs}\n')
++        with TemporaryDirectory() as td:
++            outfile = os.path.join(td, 'nb.ipynb')
++            _ip.run_cell(f'%notebook {outfile}', store_history=True)
++            sleep(2)
++            actual_nb = nbformat.read(outfile, as_version=4)
++        assert len(actual_nb['cells']) == len(commands)
++        assert len(expected_nb['cells']) == len(commands)
++        for i, command in enumerate(commands):
++            actual = actual_nb['cells'][i]
++            expected = expected_nb['cells'][i]
++            assert expected['source'] == command
++            assert actual['source'] == expected['source']
++            assert actual['outputs'] == expected['outputs'], f'Outputs do not match for cell {i + 1} with source {command!r}'
++    finally:
++        _ip.colors = 'nocolor'","Tests if notebook export correctly captures outputs, errors, display outputs, and stream outputs.",test_real,none,history_neg,31
+e100,manim,NumberLine.get_number_mobject,"def get_number_mobject(self, x: float, direction: Sequence[float] | None=None, buff: float | None=None, font_size: float | None=None, label_constructor: VMobject | None=None, **number_config) -> VMobject:","--- a/code.py
++++ b/code.py
+@@ -1,5 +1,5 @@
+-def get_number_mobject(self, x: float, direction: Sequence[float] | None=None, buff: float | None=None, font_size: float | None=None, label_constructor: VMobject | None=None, **number_config) -> VMobject:
+-    number_config = merge_dicts_recursively(self.decimal_number_config, number_config)
++def get_number_mobject(self, x: float, direction: Vector3D | None=None, buff: float | None=None, font_size: float | None=None, label_constructor: type[MathTex] | None=None, **number_config: dict[str, Any]) -> VMobject:
++    number_config_merged = merge_dicts_recursively(self.decimal_number_config, number_config)
+     if direction is None:
+         direction = self.label_direction
+     if buff is None:
+@@ -8,7 +8,7 @@
+         font_size = self.font_size
+     if label_constructor is None:
+         label_constructor = self.label_constructor
+-    num_mob = DecimalNumber(x, font_size=font_size, mob_class=label_constructor, **number_config)
++    num_mob = DecimalNumber(x, font_size=font_size, mob_class=label_constructor, **number_config_merged)
+     num_mob.next_to(self.number_to_point(x), direction=direction, buff=buff)
+     if x < 0 and self.label_direction[0] == 0:
+         num_mob.shift(num_mob[0].width * LEFT / 2)","Generates a positioned :class:`~.DecimalNumber` mobject
+generated according to ``label_constructor``.
+
+Parameters
+----------
+x
+    The x-value at which the mobject should be positioned.
+direction
+    Determines the direction at which the label is positioned next to the line.
+buff
+    The distance of the label from the line.
+font_size
+    The font size of the label mobject.
+label_constructor
+    The :class:`~.VMobject` class that will be used to construct the label.
+    Defaults to the ``label_constructor`` attribute of the number line
+    if not specified.
+
+Returns
+-------
+:class:`~.DecimalNumber`
+    The positioned mobject.",test_real,none,history_neg,37
+e103,manim,CoordinateSystem.get_line_from_axis_to_point,"def get_line_from_axis_to_point(self, index: int, point: Sequence[float], line_func: Line=DashedLine, line_config: dict | None=None, color: Color | None=None, stroke_width: float=2) -> Line:","--- a/code.py
++++ b/code.py
+@@ -1,8 +1,8 @@
+-def get_line_from_axis_to_point(self, index: int, point: Sequence[float], line_func: Line=DashedLine, line_config: dict | None=None, color: Color | None=None, stroke_width: float=2) -> Line:
++def get_line_from_axis_to_point(self, index: int, point: Sequence[float], line_func: Line=DashedLine, line_config: dict | None=None, color: ParsableManimColor | None=None, stroke_width: float=2) -> Line:
+     line_config = line_config if line_config is not None else {}
+     if color is None:
+         color = VMobject().color
+-    line_config['color'] = color
++    line_config['color'] = ManimColor.parse(color)
+     line_config['stroke_width'] = stroke_width
+     axis = self.get_axis(index)
+     line = line_func(axis.get_projection(point), point, **line_config)","Returns a straight line from a given axis to a point in the scene.
+
+Parameters
+----------
+index
+    Specifies the axis from which to draw the line. `0 = x_axis`, `1 = y_axis`
+point
+    The point to which the line will be drawn.
+line_func
+    The function of the :class:`~.Line` mobject used to construct the line.
+line_config
+    Optional arguments to passed to :attr:`line_func`.
+color
+    The color of the line.
+stroke_width
+    The stroke width of the line.
+
+Returns
+-------
+:class:`~.Line`
+    The line from an axis to a point.
+
+
+.. seealso::
+    :meth:`~.CoordinateSystem.get_vertical_line`
+    :meth:`~.CoordinateSystem.get_horizontal_line`",test_real,none,history_neg,35
+e126,manim,NumberLine.add_numbers,"def add_numbers(self, x_values: Iterable[float] | None=None, excluding: Iterable[float] | None=None, font_size: float | None=None, label_constructor: type[MathTex] | None=None, **kwargs: Any) -> Self:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def add_numbers(self, x_values: Iterable[float] | None=None, excluding: Iterable[float] | None=None, font_size: float | None=None, label_constructor: type[MathTex] | None=None, **kwargs: Any) -> Self:
++def add_numbers(self, x_values: Iterable[float] | None=None, excluding: Iterable[float] | None=None, font_size: float | None=None, label_constructor: type[SingleStringMathTex] | None=None, **kwargs: Any) -> Self:
+     if x_values is None:
+         x_values = self.get_tick_range()
+     if excluding is None:
+@@ -6,7 +6,7 @@
+     if font_size is None:
+         font_size = self.font_size
+     if label_constructor is None:
+-        label_constructor = self.label_constructor
++        label_constructor = cast(type[SingleStringMathTex], self.label_constructor)
+     numbers = VGroup()
+     for x in x_values:
+         if x in excluding:","Adds :class:`~.DecimalNumber` mobjects representing their position
+at each tick of the number line. The numbers can be accessed after creation
+via ``self.numbers``.
+
+Parameters
+----------
+x_values
+    An iterable of the values used to position and create the labels.
+    Defaults to the output produced by :meth:`~.NumberLine.get_tick_range`
+excluding
+    A list of values to exclude from :attr:`x_values`.
+font_size
+    The font size of the labels. Defaults to the ``font_size`` attribute
+    of the number line.
+label_constructor
+    The :class:`~.VMobject` class that will be used to construct the label.
+    Defaults to the ``label_constructor`` attribute of the number line
+    if not specified.",test_real,none,history_neg,35
+e131,ipython,ensure_dir_exists,"def ensure_dir_exists(path, mode=493):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def ensure_dir_exists(path, mode=493):
++def ensure_dir_exists(path: str, mode: int=493):
+     if not os.path.exists(path):
+         try:
+             os.makedirs(path, mode=mode)","ensure that a directory exists
+
+If it doesn't exist, try to create it and protect against a race condition
+if another process is doing the same.
+
+The default permissions are 755, which differ from os.makedirs default of 777.",test_real,none,history_neg,15
+e138,manim,Section.get_dict,"def get_dict(self, sections_dir: str) -> dict[str, Any]:","--- a/code.py
++++ b/code.py
+@@ -1,5 +1,5 @@
+-def get_dict(self, sections_dir: str) -> dict[str, Any]:
++def get_dict(self, sections_dir: Path) -> dict[str, Any]:
+     if self.video is None:
+         raise ValueError(f""Section '{self.name}' cannot be exported as dict, it does not have a video path assigned to it"")
+-    video_metadata = get_video_metadata(os.path.join(sections_dir, self.video))
++    video_metadata = get_video_metadata(sections_dir / self.video)
+     return dict({'name': self.name, 'type': self.type, 'video': self.video}, **video_metadata)","Get dictionary representation with metadata of output video.
+
+The output from this function is used from every section to build the sections index file.
+The output video must have been created in the ``sections_dir`` before executing this method.
+This is the main part of the Segmented Video API.",test_real,none,history_neg,10
+e151,manim,CoordinateSystem.get_graph_label,"def get_graph_label(self, graph: ParametricFunction, label: float | str | Mobject='f(x)', x_val: float | None=None, direction: Sequence[float]=RIGHT, buff: float=MED_SMALL_BUFF, color: ParsableManimColor | None=None, dot: bool=False, dot_config: dict[str, Any] | None=None) -> Mobject:","--- a/code.py
++++ b/code.py
+@@ -1,9 +1,9 @@
+-def get_graph_label(self, graph: ParametricFunction, label: float | str | Mobject='f(x)', x_val: float | None=None, direction: Sequence[float]=RIGHT, buff: float=MED_SMALL_BUFF, color: ParsableManimColor | None=None, dot: bool=False, dot_config: dict[str, Any] | None=None) -> Mobject:
++def get_graph_label(self, graph: ParametricFunction, label: float | str | VMobject='f(x)', x_val: float | None=None, direction: Sequence[float]=RIGHT, buff: float=MED_SMALL_BUFF, color: ParsableManimColor | None=None, dot: bool=False, dot_config: dict[str, Any] | None=None) -> Mobject:
+     if dot_config is None:
+         dot_config = {}
+     if color is None:
+         color = graph.get_color()
+-    label = self.x_axis._create_label_tex(label).set_color(color)
++    label_object: Mobject = self.x_axis._create_label_tex(label).set_color(color)
+     if x_val is None:
+         for x in np.linspace(self.x_range[1], self.x_range[0], 100):
+             point = self.input_to_graph_point(x, graph)
+@@ -11,10 +11,10 @@
+                 break
+     else:
+         point = self.input_to_graph_point(x_val, graph)
+-    label.next_to(point, direction, buff=buff)
+-    label.shift_onto_screen()
++    label_object.next_to(point, direction, buff=buff)
++    label_object.shift_onto_screen()
+     if dot:
+         dot = Dot(point=point, **dot_config)
+-        label.add(dot)
+-        label.dot = dot
+-    return label
++        label_object.add(dot)
++        label_object.dot = dot
++    return label_object","Creates a properly positioned label for the passed graph, with an optional dot.
+
+Parameters
+----------
+graph
+    The curve.
+label
+    The label for the function's curve. Defaults to :class:`~.MathTex` for ``str`` and ``float`` inputs.
+x_val
+    The x_value along the curve that positions the label.
+direction
+    The cartesian position, relative to the curve that the label will be at --> ``LEFT``, ``RIGHT``.
+buff
+    The distance between the curve and the label.
+color
+    The color of the label. Defaults to the color of the curve.
+dot
+    Whether to add a dot at the point on the graph.
+dot_config
+    Additional parameters to be passed to :class:`~.Dot`.
+
+Returns
+-------
+:class:`Mobject`
+    The positioned label and :class:`~.Dot`, if applicable.
+
+Examples
+--------
+.. manim:: GetGraphLabelExample
+    :save_last_frame:
+
+    class GetGraphLabelExample(Scene):
+        def construct(self):
+            ax = Axes()
+            sin = ax.plot(lambda x: np.sin(x), color=PURPLE_B)
+            label = ax.get_graph_label(
+                graph=sin,
+                label= MathTex(r""\frac{\pi}{2}""),
+                x_val=PI / 2,
+                dot=True,
+                direction=UR,
+            )
+
+            self.add(ax, sin, label)",test_real,none,history_neg,64
+e156,ipython,test_existing_path_FileLinks,def test_existing_path_FileLinks():,"--- a/code.py
++++ b/code.py
+@@ -1,11 +1,10 @@
+ def test_existing_path_FileLinks():
+     td = mkdtemp()
+-    tf1 = NamedTemporaryFile(dir=td)
+-    tf2 = NamedTemporaryFile(dir=td)
+-    fl = display.FileLinks(td)
+-    actual = fl._repr_html_()
+-    actual = actual.split('\n')
+-    actual.sort()
+-    expected = ['%s/<br>' % td, ""&nbsp;&nbsp;<a href='%s' target='_blank'>%s</a><br>"" % (tf2.name.replace('\\', '/'), split(tf2.name)[1]), ""&nbsp;&nbsp;<a href='%s' target='_blank'>%s</a><br>"" % (tf1.name.replace('\\', '/'), split(tf1.name)[1])]
+-    expected.sort()
+-    assert actual == expected
++    with NamedTemporaryFile(dir=td) as tf1, NamedTemporaryFile(dir=td) as tf2:
++        fl = display.FileLinks(td)
++        actual = fl._repr_html_()
++        actual = actual.split('\n')
++        actual.sort()
++        expected = ['%s/<br>' % td, ""&nbsp;&nbsp;<a href='%s' target='_blank'>%s</a><br>"" % (tf2.name.replace('\\', '/'), split(tf2.name)[1]), ""&nbsp;&nbsp;<a href='%s' target='_blank'>%s</a><br>"" % (tf1.name.replace('\\', '/'), split(tf1.name)[1])]
++        expected.sort()
++        assert actual == expected",FileLinks: Calling _repr_html_ functions as expected on existing dir,test_real,none,history_neg,12
+e161,manim,rotation_matrix,"def rotation_matrix(angle: float, axis: np.ndarray, homogeneous: bool=False) -> np.ndarray:","--- a/code.py
++++ b/code.py
+@@ -1,5 +1,5 @@
+-def rotation_matrix(angle: float, axis: np.ndarray, homogeneous: bool=False) -> np.ndarray:
+-    inhomogeneous_rotation_matrix = Rotation.from_rotvec(angle * normalize(np.array(axis))).as_matrix()
++def rotation_matrix(angle: float, axis: Vector3DLike, homogeneous: bool=False) -> np.ndarray:
++    inhomogeneous_rotation_matrix = Rotation.from_rotvec(angle * normalize(axis)).as_matrix()
+     if not homogeneous:
+         return inhomogeneous_rotation_matrix
+     else:",Rotation in R^3 about a specified axis of rotation.,test_real,none,history_neg,9
+e171,manim,Mobject.length_over_dim,"def length_over_dim(self, dim: int) -> float:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,6 @@
+ def length_over_dim(self, dim: int) -> float:
+-    max_coord: float = self.reduce_across_dimension(max, dim)
+-    min_coord: float = self.reduce_across_dimension(min, dim)
++    max_coord = self.reduce_across_dimension(max, dim)
++    min_coord = self.reduce_across_dimension(min, dim)
++    if max_coord is None or min_coord is None:
++        return 0
+     return max_coord - min_coord",Measure the length of an :class:`~.Mobject` in a certain direction.,test_real,none,history_neg,5
+e178,manim,Line3D.parallel_to,"def parallel_to(cls, line: Line3D, point: Vector3D=ORIGIN, length: float=5, **kwargs) -> Line3D:","--- a/code.py
++++ b/code.py
+@@ -1,5 +1,5 @@
+ @classmethod
+-def parallel_to(cls, line: Line3D, point: Vector3D=ORIGIN, length: float=5, **kwargs) -> Line3D:
+-    point = np.array(point)
++def parallel_to(cls, line: Line3D, point: Point3DLike=ORIGIN, length: float=5, **kwargs) -> Line3D:
++    np_point = np.asarray(point)
+     vect = normalize(line.vect)
+-    return cls(point + vect * length / 2, point - vect * length / 2, **kwargs)
++    return cls(np_point + vect * length / 2, np_point - vect * length / 2, **kwargs)","Returns a line parallel to another line going through
+a given point.
+
+Parameters
+----------
+line
+    The line to be parallel to.
+point
+    The point to pass through.
+length
+    Length of the parallel line.
+kwargs
+    Additional parameters to be passed to the class.
+
+Returns
+-------
+:class:`Line3D`
+    Line parallel to ``line``.
+
+Examples
+--------
+.. manim:: ParallelLineExample
+    :save_last_frame:
+
+    class ParallelLineExample(ThreeDScene):
+        def construct(self):
+            self.set_camera_orientation(PI / 3, -PI / 4)
+            ax = ThreeDAxes((-5, 5), (-5, 5), (-5, 5), 10, 10, 10)
+            line1 = Line3D(RIGHT * 2, UP + OUT, color=RED)
+            line2 = Line3D.parallel_to(line1, color=YELLOW)
+            self.add(ax, line1, line2)",test_real,none,history_neg,36
+e193,AzurLaneAutoScript,atomic_rmtree,def atomic_rmtree(folder: str):,"--- a/code.py
++++ b/code.py
+@@ -1,4 +1,7 @@
+ def atomic_rmtree(folder: str):
+     temp = to_tmp_file(folder)
+-    atomic_replace(folder, temp)
+-    folder_rmtree(folder)
++    try:
++        atomic_replace(folder, temp)
++    except FileNotFoundError:
++        return
++    folder_rmtree(temp)","Atomic folder rmtree
+Rename folder as temp folder and remove it,
+folder can be removed by atomic_failure_cleanup at next startup if remove gets interrupted",test_real,none,history_neg,7
+e203,manim,VMobject.set_sheen_direction,"def set_sheen_direction(self, direction: Vector3D, family: bool=True) -> Self:","--- a/code.py
++++ b/code.py
+@@ -1,8 +1,8 @@
+-def set_sheen_direction(self, direction: Vector3D, family: bool=True) -> Self:
+-    direction = np.array(direction)
++def set_sheen_direction(self, direction: Vector3DLike, family: bool=True) -> Self:
++    direction_copy = np.array(direction)
+     if family:
+         for submob in self.get_family():
+-            submob.sheen_direction = direction
++            submob.sheen_direction = direction_copy.copy()
+     else:
+-        self.sheen_direction: Vector3D = direction
++        self.sheen_direction = direction_copy
+     return self","Sets the direction of the applied sheen.
+
+Parameters
+----------
+direction
+    Direction from where the gradient is applied.
+
+Examples
+--------
+Normal usage::
+
+    Circle().set_sheen_direction(UP)
+
+See Also
+--------
+:meth:`~.VMobject.set_sheen`
+:meth:`~.VMobject.rotate_sheen_direction`",test_real,none,history_neg,25
+e208,manim,GenericGraph.change_layout,"def change_layout(self, layout: str | dict='spring', layout_scale: float=2, layout_config: dict | None=None, partitions: list[list[Hashable]] | None=None, root_vertex: Hashable | None=None) -> Graph:","--- a/code.py
++++ b/code.py
+@@ -1,5 +1,10 @@
+-def change_layout(self, layout: str | dict='spring', layout_scale: float=2, layout_config: dict | None=None, partitions: list[list[Hashable]] | None=None, root_vertex: Hashable | None=None) -> Graph:
+-    self._layout = _determine_graph_layout(self._graph, layout=layout, layout_scale=layout_scale, layout_config=layout_config, partitions=partitions, root_vertex=root_vertex)
++def change_layout(self, layout: LayoutName | dict[Hashable, Point3D] | LayoutFunction='spring', layout_scale: float | tuple[float, float, float]=2, layout_config: dict[str, Any] | None=None, partitions: list[list[Hashable]] | None=None, root_vertex: Hashable | None=None) -> Graph:
++    layout_config = {} if layout_config is None else layout_config
++    if partitions is not None and 'partitions' not in layout_config:
++        layout_config['partitions'] = partitions
++    if root_vertex is not None and 'root_vertex' not in layout_config:
++        layout_config['root_vertex'] = root_vertex
++    self._layout = _determine_graph_layout(self._graph, layout=layout, layout_scale=layout_scale, layout_config=layout_config)
+     for v in self.vertices:
+         self[v].move_to(self._layout[v])
+     return self","Change the layout of this graph.
+
+See the documentation of :class:`~.Graph` for details about the
+keyword arguments.
+
+Examples
+--------
+
+.. manim:: ChangeGraphLayout
+
+    class ChangeGraphLayout(Scene):
+        def construct(self):
+            G = Graph([1, 2, 3, 4, 5], [(1, 2), (2, 3), (3, 4), (4, 5)],
+                      layout={1: [-2, 0, 0], 2: [-1, 0, 0], 3: [0, 0, 0],
+                              4: [1, 0, 0], 5: [2, 0, 0]}
+                      )
+            self.play(Create(G))
+            self.play(G.animate.change_layout(""circular""))
+            self.wait()",test_real,none,history_neg,24
+e106,InstaPy,follow_user,"def follow_user(browser, track, login, user_name, button, blacklist, logger, logfolder):","--- a/code.py
++++ b/code.py
+@@ -5,47 +5,33 @@
+         if track == 'profile':
+             user_link = 'https://www.instagram.com/{}/'.format(user_name)
+             web_address_navigator(browser, user_link)
+-        try:
+-            sleep(2)
+-            follow_xpath = ""//button[text()='Follow' or text()='Follow Back']""
+-            follow_button = browser.find_element_by_xpath(follow_xpath)
+-            if follow_button.is_displayed():
+-                click_element(browser, follow_button)
+-            else:
+-                browser.execute_script(""arguments[0].style.visibility = 'visible'; arguments[0].style.height = '10px'; arguments[0].style.width = '10px'; arguments[0].style.opacity = 1"", follow_button)
+-                update_activity()
+-                click_element(browser, follow_button)
+-            post_follow_element = ""//button[text()='Following' or text()='Requested']""
+-            button_change = explicit_wait(browser, 'VOEL', [post_follow_element, 'XPath'], logger, 9, False)
+-            if not button_change:
+-                browser.execute_script('location.reload()')
+-                update_activity()
+-                sleep(2)
+-                following, follow_button = get_following_status(browser, track, user_name, logger)
+-                if following is None:
+-                    valid_page = is_page_available(browser, logger)
+-                    if valid_page:
+-                        sirens_wailing, emergency_state = emergency_exit(browser, user_name, logger)
+-                        if sirens_wailing == True:
+-                            logger.warning(""There is a serious issue: '{}'!\n"".format(emergency_state))
+-                            return (False, emergency_state)
+-                    if not valid_page or sirens_wailing == False:
+-                        logger.error('Unexpected failure happened after last follow!\n')
+-                        return (False, 'unexpected failure')
+-                if following == False:
+-                    logger.warning('Last follow is not verified!\t~smells of a temporary block\n')
+-                    sleep(600)
+-                    return (False, 'temporary block')
+-                elif following in [True, 'Requested']:
+-                    logger.info('Last follow is verified after reloading the page!\n')
+-        except NoSuchElementException:
+-            logger.info(""--> '{}' is already followed"".format(user_name))
++        following_status, follow_button = get_following_status(browser, track, login, user_name, None, logger, logfolder)
++        if following_status in ['Follow', 'Follow Back']:
++            click_visibly(browser, follow_button)
++            follow_state, msg = verify_action(browser, 'follow', track, login, user_name, None, logger, logfolder)
++            if follow_state != True:
++                return (False, msg)
++        elif following_status in ['Following', 'Requested']:
++            if following_status == 'Following':
++                logger.info(""--> Already following '{}'!\n"".format(user_name))
++            elif following_status == 'Requested':
++                logger.info(""--> Already requested '{}' to follow!\n"".format(user_name))
+             sleep(1)
+             return (False, 'already followed')
+-        except StaleElementReferenceException:
+-            logger.error('--> element that is found on a web page referenced while the DOM changes')
+-            sleep(1)
+-            return (False, 'stale element')
++        elif following_status in ['Unblock', 'UNAVAILABLE']:
++            if following_status == 'Unblock':
++                failure_msg = 'user is in block'
++            elif following_status == 'UNAVAILABLE':
++                failure_msg = 'user is inaccessible'
++            logger.warning(""--> Couldn't follow '{}'!\t~{}"".format(user_name, failure_msg))
++            return (False, following_status)
++        elif following_status is None:
++            sirens_wailing, emergency_state = emergency_exit(browser, login, logger)
++            if sirens_wailing == True:
++                return (False, emergency_state)
++            else:
++                logger.warning(""--> Couldn't unfollow '{}'!\t~unexpected failure"".format(user_name))
++                return (False, 'unexpected failure')
+     elif track == 'dialog':
+         click_element(browser, button)
+         sleep(3)","Follows the user from either its 'profile' page, a 'post' page or the users 'dialog' box",test_real,none,codocbench,64
+e112,paperless-ngx,FetchView.render_to_response,"def render_to_response(self, context, **response_kwargs):","--- a/code.py
++++ b/code.py
+@@ -1,5 +1,7 @@
+ def render_to_response(self, context, **response_kwargs):
+     content_types = {Document.TYPE_PDF: 'application/pdf', Document.TYPE_PNG: 'image/png', Document.TYPE_JPG: 'image/jpeg', Document.TYPE_GIF: 'image/gif', Document.TYPE_TIF: 'image/tiff'}
++    if self.kwargs['kind'] == 'thumb':
++        return HttpResponse(GnuPG.decrypted(self.object.thumb_file), content_type=content_types[Document.TYPE_JPG])
+     response = HttpResponse(GnuPG.decrypted(self.object.source_file), content_type=content_types[self.object.file_type])
+     response['Content-Disposition'] = 'attachment; filename=""{}""'.format(self.object.file_name)
+     return response",Override the default to return the unencrypted PDF as raw data.,test_real,none,codocbench,6
+e116,StratosphereLinuxIPS,test_getProfileIdFromIP,def test_getProfileIdFromIP():,"--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+ def test_getProfileIdFromIP():
+     os.system('./slips.py -c slips.conf -cc')
+-    db.addProfile('profile_192.168.1.1', '00:00', '1')
++    db.add_profile('profile_192.168.1.1', '00:00', '1')
+     assert db.get_profileid_from_ip(test_ip) is not False",unit test for addProfile and getProfileIdFromIP,test_real,none,codocbench,5
+e123,StratosphereLinuxIPS,Main.shutdown_gracefully,def shutdown_gracefully(self):,"--- a/code.py
++++ b/code.py
+@@ -1,4 +1,5 @@
+ def shutdown_gracefully(self):
++    function_start_time = datetime.now()
+     try:
+         if not self.args.stopdaemon:
+             print('\n' + '-' * 27)
+@@ -46,6 +47,8 @@
+                             warning_printed = True
+                         if not self.args.port:
+                             max_loops += 1
++                            if self.kill_all_modules(function_start_time):
++                                break
+             except KeyboardInterrupt:
+                 pass
+         PIDs = self.PIDs.copy()",Wait for all modules to confirm that they're done processing and then shutdown,test_real,none,codocbench,74
+e133,pyro,ParamStoreDict.set_state,"def set_state(self, state):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def set_state(self, state):
++def set_state(self, state: dict):
+     assert isinstance(state, dict), 'malformed ParamStore state'
+     assert set(state.keys()) == set(['params', 'constraints']), 'malformed ParamStore keys {}'.format(state.keys())
+     for param_name, param in state['params'].items():",Set the ParamStore state using state from a previous get_state() call,test_real,none,codocbench,11
+e142,python-telegram-bot,Chat.add_chat_ids,"def add_chat_ids(self, chat_id: SLT[int]) -> None:","--- a/code.py
++++ b/code.py
+@@ -1,2 +1,2 @@
+-def add_chat_ids(self, chat_id: SLT[int]) -> None:
++def add_chat_ids(self, chat_id: SCT[int]) -> None:
+     return super()._add_chat_ids(chat_id)","Add one or more chats to the allowed chat ids.
+
+        Args:
+            chat_id(:obj:`int` | Tuple[:obj:`int`] | List[:obj:`int`]): Which chat ID(s) to allow
+                through.",test_real,none,codocbench,7
+e150,sentry,DIFCache.get_symcaches,"def get_symcaches(self, project, debug_ids, on_dif_referenced=None, with_conversion_errors=False):","--- a/code.py
++++ b/code.py
+@@ -1,6 +1,6 @@
+ def get_symcaches(self, project, debug_ids, on_dif_referenced=None, with_conversion_errors=False):
+-    cachefiles, conversion_errors = self._get_symcaches_impl(project, debug_ids, on_dif_referenced)
+-    symcaches = self._load_cachefiles_via_fs(project, cachefiles)
++    cachefiles, conversion_errors = self._get_caches_impl(project, debug_ids, ProjectSymCacheFile, on_dif_referenced)
++    symcaches = self._load_cachefiles_via_fs(project, cachefiles, SymCache)
+     if with_conversion_errors:
+         return (symcaches, dict(((k, v) for k, v in conversion_errors.items())))
+     return symcaches",Given some debug ids returns the symcaches loaded for these debug ids.,test_real,none,codocbench,7
+e163,AzurLaneAutoScript,Item.name,"def name(self, value):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,6 @@
+ def name(self, value):
+     if '_' in value:
+-        value = value.split('_')[0]
++        pre, suffix = value.rsplit('_', 1)
++        if suffix.isdigit():
++            value = pre
+     self._name = value","Args:
+            value (str): Item name, Camel-Case, such as 'PlateGeneralT3'. Suffix in name will be ignore.
+                For example, 'Javelin' and 'Javelin_2' are different templates, but have same output name 'Javelin'.",test_real,none,codocbench,7
+e176,rasa,FormAction.extract_requested_slot,"def extract_requested_slot(self, tracker: 'DialogueStateTracker', domain: Domain) -> Dict[Text, Any]:","--- a/code.py
++++ b/code.py
+@@ -1,5 +1,4 @@
+-def extract_requested_slot(self, tracker: 'DialogueStateTracker', domain: Domain) -> Dict[Text, Any]:
+-    slot_to_fill = self.get_slot_to_fill(tracker)
++def extract_requested_slot(self, tracker: 'DialogueStateTracker', domain: Domain, slot_to_fill: Text) -> Dict[Text, Any]:
+     logger.debug(f""Trying to extract requested slot '{slot_to_fill}' ..."")
+     requested_slot_mappings = self.get_mappings_for_slot(slot_to_fill, domain)
+     for requested_slot_mapping in requested_slot_mappings:",Extracts the value of requested slot from a user input else return `None`.,test_real,param_added,codocbench,24
+e187,matplotlib,Affine2DBase.to_values,def to_values(self):,"--- a/code.py
++++ b/code.py
+@@ -1,3 +1,3 @@
+ def to_values(self):
+     mtx = self.get_matrix()
+-    return tuple(mtx[:2].swapaxes(0, 1).flatten())
++    return tuple(mtx[:2].swapaxes(0, 1).flat)","Return the values of the matrix as a sequence (a,b,c,d,e,f)",test_real,none,codocbench,4
+e199,pytorch_geometric,SAGEConv.forward,"def forward(self, x, edge_index, edge_weight=None, size=None, res_n_id=None):","--- a/code.py
++++ b/code.py
+@@ -1,11 +1,4 @@
+ def forward(self, x, edge_index, edge_weight=None, size=None, res_n_id=None):
+-    if size is None and torch.is_tensor(x):
++    if not self.concat and torch.is_tensor(x):
+         edge_index, edge_weight = add_remaining_self_loops(edge_index, edge_weight, 1, x.size(0))
+-    if self.concatenate:
+-        msg = 'res_n_id should be filled and node features present'
+-        assert res_n_id is not None and x[0] is not None, msg
+-    elif torch.is_tensor(x):
+-        x = torch.matmul(x, self.weight)
+-    else:
+-        x = (None if x[0] is None else torch.matmul(x[0], self.weight), None if x[1] is None else torch.matmul(x[1], self.weight))
+     return self.propagate(edge_index, size=size, x=x, edge_weight=edge_weight, res_n_id=res_n_id)","Args:
+            res_n_id (Tensor, optional): Resulting node indicies as in
+            :obj:`DataFlow`, which is generated by :obj:`NeighborSampler`.
+            Are used to select current node features in :obj:`x`, asuming self
+            loops are present. Required if :obj:`concatenate` is :obj:`True`.
+            (default: :obj:`None`)",test_real,none,codocbench,17
+e209,pandas,Block.delete,"def delete(self, loc) -> None:","--- a/code.py
++++ b/code.py
+@@ -1,7 +1,4 @@
+-def delete(self, loc) -> None:
+-    self.values = np.delete(self.values, loc, 0)
+-    self.mgr_locs = self._mgr_locs.delete(loc)
+-    try:
+-        self._cache.clear()
+-    except AttributeError:
+-        pass
++def delete(self, loc) -> Block:
++    values = np.delete(self.values, loc, 0)
++    mgr_locs = self._mgr_locs.delete(loc)
++    return type(self)(values, placement=mgr_locs, ndim=self.ndim)",Delete given loc(-s) from block in-place.,test_real,return_changed,codocbench,8

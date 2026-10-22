@@ -1,0 +1,502 @@
+err_id,project,symbol,sig_old,diff_code,doc_old,split,sig_type,source,n_src_lines
+e001,TTS,Vits.load_checkpoint,"def load_checkpoint(self, config, checkpoint_path, eval=False):","--- a/code.py
++++ b/code.py
+@@ -1,7 +1,13 @@
+ def load_checkpoint(self, config, checkpoint_path, eval=False):
+     state = torch.load(checkpoint_path, map_location=torch.device('cpu'))
+     state['model'] = {k: v for k, v in state['model'].items() if 'speaker_encoder' not in k}
+-    self.load_state_dict(state['model'])
++    if state['model']['emb_g.weight'].shape != self.emb_g.weight.shape:
++        print(' > Loading checkpoint with additional speakers.')
++        emb_g = state['model']['emb_g.weight']
++        new_row = torch.zeros(1, emb_g.shape[1])
++        emb_g = torch.cat([emb_g, new_row], axis=0)
++        state['model']['emb_g.weight'] = emb_g
++    self.load_state_dict(state['model'], strict=False)
+     if eval:
+         self.eval()
+         assert not self.training",Load the model checkpoint and setup for training or inference,test_real,none,history_neg,8
+e013,AzurLaneAutoScript,RewardDorm.dorm_view_reset,"def dorm_view_reset(self, skip_first_screenshot=True):","--- a/code.py
++++ b/code.py
+@@ -1,10 +1,6 @@
+-def dorm_view_reset(self, skip_first_screenshot=True):
++def dorm_view_reset(self):
+     logger.info('Dorm view reset')
+-    while 1:
+-        if skip_first_screenshot:
+-            skip_first_screenshot = False
+-        else:
+-            self.device.screenshot()
++    for _ in self.loop():
+         if self.appear(DORM_MANAGE_CHECK, offset=(20, 20)):
+             break
+         if self.appear_then_click(DORM_MANAGE, offset=(20, 20), interval=3):
+@@ -13,12 +9,7 @@
+             continue
+         if self.appear_then_click(DORM_FURNITURE_CONFIRM, offset=(30, 30), interval=3):
+             continue
+-    skip_first_screenshot = True
+-    while 1:
+-        if skip_first_screenshot:
+-            skip_first_screenshot = False
+-        else:
+-            self.device.screenshot()
++    for _ in self.loop():
+         if self.appear(DORM_MANAGE, offset=(20, 20)):
+             break
+         if self.appear(DORM_MANAGE_CHECK, offset=(20, 20), interval=3):","Use Dorm manage and Back to reset dorm view.
+
+Pages:
+    in: page_dorm
+    out: page_dorm",gold,param_removed,gold,31
+e022,manim,SceneFileWriter.clean_cache,def clean_cache(self) -> None:,"--- a/code.py
++++ b/code.py
+@@ -1,8 +1,14 @@
+ def clean_cache(self) -> None:
+-    cached_partial_movies = [self.partial_movie_directory / file_name for file_name in self.partial_movie_directory.iterdir() if file_name != 'partial_movie_file_list.txt']
++    cached_partial_movies = self._cached_partial_movie_files()
+     if len(cached_partial_movies) > config['max_files_cached']:
+         number_files_to_delete = len(cached_partial_movies) - config['max_files_cached']
+-        oldest_files_to_delete = sorted(cached_partial_movies, key=lambda path: path.stat().st_atime)[:number_files_to_delete]
++
++        def access_time(path: Path) -> float:
++            try:
++                return path.stat().st_atime
++            except FileNotFoundError:
++                return float('-inf')
++        oldest_files_to_delete = sorted(cached_partial_movies, key=access_time)[:number_files_to_delete]
+         for file_to_delete in oldest_files_to_delete:
+-            file_to_delete.unlink()
++            file_to_delete.unlink(missing_ok=True)
+         logger.info(f""The partial movie directory is full (> {config['max_files_cached']} files). Therefore, manim has removed the {number_files_to_delete} oldest file(s). You can change this behaviour by changing max_files_cached in config."")",Will clean the cache by removing the oldest partial_movie_files.,test_real,none,history_neg,9
+e010,pytorch,GetGPUMemoryUsageStats,def GetGPUMemoryUsageStats():,"--- a/code.py
++++ b/code.py
+@@ -1,5 +1,5 @@
+ def GetGPUMemoryUsageStats():
+     from caffe2.python import workspace, core
+-    workspace.RunOperatorOnce(core.CreateOperator('GetGPUMemoryUsage', [], ['____mem____'], device_option=core.DeviceOption(caffe2_pb2.CUDA, 0)))
++    workspace.RunOperatorOnce(core.CreateOperator('GetGPUMemoryUsage', [], ['____mem____'], device_option=core.DeviceOption(workspace.GpuDeviceType, 0)))
+     b = workspace.FetchBlob('____mem____')
+     return {'total_by_gpu': b[0, :], 'max_by_gpu': b[1, :], 'total': np.sum(b[0, :]), 'max_total': np.sum(b[1, :])}","Get GPU memory usage stats from CUDAContext. This requires flag
+       --caffe2_gpu_memory_tracking to be enabled",test_real,none,codocbench,7
+e012,AzurLaneAutoScript,FleetSelector.get,def get(self):,"--- a/code.py
++++ b/code.py
+@@ -2,5 +2,5 @@
+     for index, button in enumerate([FLEET_1, FLEET_2, FLEET_3, FLEET_4]):
+         if self.main.appear(button, offset=(20, 20)):
+             return index + 1
+-    logger.warning('Unknown current fleet, assuming it is fleet 1')
+-    return 1
++    logger.info('Unknown OpSi fleet')
++    return 0","Returns:
+            int: Index of current fleet, 1 to 4.",test_real,none,codocbench,8
+e023,rasa,InMemoryTrackerStore.save,"def save(self, tracker: DialogueStateTracker) -> None:","--- a/code.py
++++ b/code.py
+@@ -1,5 +1,4 @@
+ def save(self, tracker: DialogueStateTracker) -> None:
+-    if self.event_broker:
+-        self.stream_events(tracker)
++    self.stream_events(tracker)
+     serialised = InMemoryTrackerStore.serialise_tracker(tracker)
+     self.store[tracker.sender_id] = serialised",Updates and saves the current conversation state,test_real,none,codocbench,6
+e026,transformers,check_all_auto_mappings_importable,def check_all_auto_mappings_importable():,"--- a/code.py
++++ b/code.py
+@@ -8,7 +8,7 @@
+             continue
+         mapping_names = [x for x in dir(module) if x.endswith('_MAPPING_NAMES')]
+         mappings_to_check.update({name: getattr(module, name) for name in mapping_names})
+-    for name, _ in mappings_to_check.items():
++    for name in mappings_to_check:
+         name = name.replace('_MAPPING_NAMES', '_MAPPING')
+         if not hasattr(transformers, name):
+             failures.append(f'`{name}`')",Check all auto mappings could be imported.,test_real,none,codocbench,17
+e031,d2l-en,box_iou,"def box_iou(boxes1, boxes2):","--- a/code.py
++++ b/code.py
+@@ -1,10 +1,10 @@
+ def box_iou(boxes1, boxes2):
+     box_area = lambda boxes: (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])
+-    area1 = box_area(boxes1)
+-    area2 = box_area(boxes2)
+-    lt = np.maximum(boxes1[:, None, :2], boxes2[:, :2])
+-    rb = np.minimum(boxes1[:, None, 2:], boxes2[:, 2:])
+-    wh = (rb - lt).clip(min=0)
+-    inter = wh[:, :, 0] * wh[:, :, 1]
+-    unioun = area1[:, None] + area2 - inter
+-    return inter / unioun
++    areas1 = box_area(boxes1)
++    areas2 = box_area(boxes2)
++    inter_upperlefts = np.maximum(boxes1[:, None, :2], boxes2[:, :2])
++    inter_lowerrights = np.minimum(boxes1[:, None, 2:], boxes2[:, 2:])
++    inters = (inter_lowerrights - inter_upperlefts).clip(min=0)
++    inter_areas = inters[:, :, 0] * inters[:, :, 1]
++    union_areas = areas1[:, None] + areas2 - inter_areas
++    return inter_areas / union_areas","Compute IOU between two sets of boxes of shape (N,4) and (M,4).",test_real,none,codocbench,11
+e039,locust,write_stat_csvs,"def write_stat_csvs(base_filepath, stats_history_enabled=False):","--- a/code.py
++++ b/code.py
+@@ -3,3 +3,5 @@
+         f.write(requests_csv())
+     with open(base_filepath + '_stats_history.csv', 'a') as f:
+         f.write(stats_history_csv(stats_history_enabled) + '\n')
++    with open(base_filepath + '_failures.csv', 'w') as f:
++        f.write(failures_csv())",Writes the requests and distribution csvs.,test_real,none,codocbench,6
+e046,transformers,glue_eval_data_collator,"def glue_eval_data_collator(dataset: Dataset, batch_size: int):","--- a/code.py
++++ b/code.py
+@@ -1,6 +1,8 @@
+ def glue_eval_data_collator(dataset: Dataset, batch_size: int):
+-    for i in range(len(dataset) // batch_size):
+-        batch = dataset[i * batch_size:(i + 1) * batch_size]
++    batch_idx = np.arange(len(dataset))
++    steps_per_epoch = math.ceil(len(dataset) / batch_size)
++    batch_idx = np.array_split(batch_idx, steps_per_epoch)
++    for idx in batch_idx:
++        batch = dataset[idx]
+         batch = {k: np.array(v) for k, v in batch.items()}
+-        batch = shard(batch)
+         yield batch","Returns batches of size `batch_size` from `eval dataset`, sharded over all local devices.",test_real,none,codocbench,7
+e050,zulip,GetPublicStreamsTest.test_public_streams,def test_public_streams(self):,"--- a/code.py
++++ b/code.py
+@@ -1,7 +1,7 @@
+ def test_public_streams(self):
+     email = 'hamlet@zulip.com'
+     self.login(email)
+-    result = self.client.post('/json/get_public_streams')
++    result = self.client.get('/json/streams?include_subscribed=false')
+     self.assert_json_success(result)
+     json = ujson.loads(result.content)
+     self.assertIn('streams', json)",Ensure that get_public_streams successfully returns a list of streams,test_real,none,codocbench,9
+e053,matplotlib,test_big_decorators_horizontal,def test_big_decorators_horizontal():,"--- a/code.py
++++ b/code.py
+@@ -2,5 +2,3 @@
+     fig, axs = plt.subplots(1, 2, figsize=(3, 2))
+     axs[0].set_xlabel('a' * 30)
+     axs[1].set_xlabel('b' * 30)
+-    with pytest.warns(UserWarning):
+-        fig.tight_layout()",Test that warning emitted when xlabel too big.,test_real,none,codocbench,7
+e057,frappe,export_to_files,"def export_to_files(record_list=None, record_module=None, verbose=0, create_init=None):","--- a/code.py
++++ b/code.py
+@@ -3,4 +3,5 @@
+         return
+     if record_list:
+         for record in record_list:
+-            write_document_file(frappe.get_doc(record[0], record[1]), record_module, create_init=create_init)
++            folder_name = record[2] if len(record) == 3 else None
++            write_document_file(frappe.get_doc(record[0], record[1]), record_module, create_init=create_init, folder_name=folder_name)","Export record_list to files. record_list is a list of lists ([doctype],[docname] )  ,",test_real,none,codocbench,7
+e062,taipy,hold_control,"def hold_control(state: State, callback: t.Optional[t.Union[str, t.Callable]]=None, message: t.Optional[str]='Work in Progress...'):","--- a/code.py
++++ b/code.py
+@@ -2,4 +2,4 @@
+     if state and isinstance(state._gui, Gui):
+         state._gui._hold_actions(callback, message)
+     else:
+-        warnings.warn(""'hold_actions' function should be called in the context of a callback"")
++        warnings.warn(""'hold_actions()' must be called in the context of a callback"")","Hold the UI actions (ie prevent user interactions).
+
+    Args:
+        state: the current user state as received in any callback.
+        callback: The function to be called on _cancel_. If empty or None, no cancel action is provided to the user.
+        message: The message to show.",test_real,none,codocbench,11
+e064,posthog,raise_if_user_provided_url_unsafe,def raise_if_user_provided_url_unsafe(url: str):,"--- a/code.py
++++ b/code.py
+@@ -2,18 +2,12 @@
+     parsed_url: urllib.parse.ParseResult = urllib.parse.urlparse(url)
+     if not parsed_url.hostname:
+         raise ValueError('No hostname')
+-    if parsed_url.scheme == 'http':
+-        port = 80
+-    elif parsed_url.scheme == 'https':
+-        port = 443
+-    else:
++    if parsed_url.scheme not in ('http', 'https'):
+         raise ValueError('Scheme must be either HTTP or HTTPS')
+-    if parsed_url.port is not None and parsed_url.port != port:
+-        raise ValueError('Port does not match scheme')
+     try:
+-        addrinfo = socket.getaddrinfo(parsed_url.hostname, port)
++        addrinfo = socket.getaddrinfo(parsed_url.hostname, None)
+     except socket.gaierror:
+         raise ValueError('Invalid hostname')
+     for _, _, _, _, sockaddr in addrinfo:
+         if ip_address(sockaddr[0]).is_private:
+-            raise ValueError('Invalid hostname')
++            raise ValueError('Internal hostname')","Raise if the provided URL seems unsafe, otherwise do nothing.",test_real,none,codocbench,20
+e067,matplotlib,ToolCursorPosition.send_message,"def send_message(self, event):","--- a/code.py
++++ b/code.py
+@@ -1,5 +1,5 @@
+ def send_message(self, event):
+-    if self.navigation.messagelock.locked():
++    if self.toolmanager.messagelock.locked():
+         return
+     message = ' '
+     if event.inaxes and event.inaxes.get_navigate():
+@@ -9,4 +9,4 @@
+             pass
+         else:
+             message = s
+-    self.navigation.message_event(message, self)
++    self.toolmanager.message_event(message, self)",Call `matplotlib.backend_bases.NavigationBase.message_event`,test_real,none,codocbench,13
+e070,frappe,Oauth.connect,"def connect(self, _retry: int=0) -> None:","--- a/code.py
++++ b/code.py
+@@ -9,9 +9,7 @@
+         else:
+             self._connect_smtp()
+     except Exception as e:
+-        access_token = self._refresh_access_token()
+-        if not access_token or _retry > 0:
+-            frappe.log_error('OAuth Error - Authentication Failed', str(e), 'Email Account', self.email_account)
++        if _retry > 0:
++            frappe.log_error('SMTP Connection Error - Authentication Failed', str(e), 'Email Account', self.email_account)
+             raise
+-        self._access_token = access_token
+         self.connect(_retry + 1)",Connection method with retry on exception for Oauth,test_real,none,codocbench,18
+e072,ColossalAI,MicroBatchManager.cur_state,def cur_state(self):,"--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+ def cur_state(self):
+-    if self.cur_descrption is None:
++    if self.cur_description is None:
+         return Status.PREFILL
+-    return self.cur_descrption.state
++    return self.cur_description.state","Return the state of current micro batch, when current descrption is None, the state is PREFILL",test_real,none,codocbench,5
+e075,pytorch_geometric,Batch.index_select,"def index_select(self, idx: IndexType) -> List[Data]:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def index_select(self, idx: IndexType) -> List[Data]:
++def index_select(self, idx: IndexType) -> Union[List[Data], List[HeteroData]]:
+     if isinstance(idx, slice):
+         idx = list(range(self.num_graphs)[idx])
+     elif isinstance(idx, Tensor) and idx.dtype == torch.long:
+@@ -13,4 +13,4 @@
+         pass
+     else:
+         raise IndexError(f""Only slices (':'), list, tuples, torch.tensor and np.ndarray of dtype long or bool are valid indices (got '{type(idx).__name__}')"")
+-    return [self.get_example(i) for i in idx]
++    return [self.get(i) for i in idx]","r""""""Returns a list of :class:`torch_geometric.data.Data` objects
+        from specified indices :obj:`idx`.
+        Indices can be slices, lists, tuples, and a :obj:`torch.Tensor` or
+        :obj:`np.ndarray` of type long or bool.
+        The batch object must have been created via :meth:`from_data_list` in
+        order to be able to reconstruct the initial objects.",test_real,return_changed,codocbench,22
+e080,matplotlib,GridSpec.update,"def update(self, **kwargs):","--- a/code.py
++++ b/code.py
+@@ -3,7 +3,7 @@
+         if k in self._AllowedKeys:
+             setattr(self, k, v)
+         else:
+-            raise AttributeError('%s is unknown keyword' % (k,))
++            raise AttributeError(f'{k} is an unknown keyword')
+     for figmanager in _pylab_helpers.Gcf.figs.values():
+         for ax in figmanager.canvas.figure.axes:
+             if not isinstance(ax, mpl.axes.SubplotBase):","Update the current values.  If any kwarg is None, default to
+        the current value, if set, otherwise to rc.",test_real,none,codocbench,24
+e082,StratosphereLinuxIPS,Output.has_pbar,def has_pbar(self):,"--- a/code.py
++++ b/code.py
+@@ -1,5 +1,5 @@
+ def has_pbar(self):
+-    if not self.pbar_supported or (hasattr(self, 'done_reading_flows') and self.done_reading_flows):
++    if self.is_pbar_done() or self.progress_bar is None:
+         return False
+-    elif hasattr(self, 'progress_bar') and self.pbar_supported:
++    else:
+         return True",returns false when pbar wasnt initialised or is done 100%,test_real,none,codocbench,6
+e084,paperless-ngx,BarcodeReader.convert_from_tiff_to_pdf,def convert_from_tiff_to_pdf(self):,"--- a/code.py
++++ b/code.py
+@@ -1,4 +1,5 @@
+ def convert_from_tiff_to_pdf(self):
+-    if self.mime != 'image/tiff':
++    if self.mime != 'image/tiff' or self._tiff_conversion_done:
+         return
++    self._tiff_conversion_done = True
+     self.pdf_file = convert_from_tiff_to_pdf(self.file, Path(self.temp_dir.name))","May convert a TIFF image into a PDF, if the input is a TIFF",test_real,none,codocbench,5
+e090,erpnext,TestDepreciationBasics.test_number_of_depreciations,def test_number_of_depreciations(self):,"--- a/code.py
++++ b/code.py
+@@ -1,3 +1,5 @@
+ def test_number_of_depreciations(self):
+     asset = create_asset(item_code='Macbook Pro', calculate_depreciation=1, available_for_use_date='2019-12-31', total_number_of_depreciations=3, expected_value_after_useful_life=10000, depreciation_start_date='2020-07-01', opening_accumulated_depreciation=10000, number_of_depreciations_booked=5, do_not_save=1)
+     self.assertRaises(frappe.ValidationError, asset.save)
++    asset_2 = create_asset(item_code='Macbook Pro', calculate_depreciation=1, available_for_use_date='2019-12-31', total_number_of_depreciations=5, expected_value_after_useful_life=10000, depreciation_start_date='2020-07-01', opening_accumulated_depreciation=10000, number_of_depreciations_booked=5, do_not_save=1)
++    self.assertRaises(frappe.ValidationError, asset_2.save)",Tests if an error is raised when number_of_depreciations_booked > total_number_of_depreciations.,test_real,none,codocbench,4
+e166,akshare,futures_foreign_commodity_realtime,def futures_foreign_commodity_realtime(subscribe_list: list) -> pd.DataFrame:,"--- a/code.py
++++ b/code.py
+@@ -1,14 +1,15 @@
+ def futures_foreign_commodity_realtime(subscribe_list: list) -> pd.DataFrame:
+-    payload = '&list=' + ','.join(['hf_' + item for item in subscribe_list])
+-    prefix = f'rn={round(time.time() * 1000)}'
+-    url = 'http://hq.sinajs.cn/' + prefix + payload
++    payload = '?list=' + ','.join(['hf_' + item for item in subscribe_list])
++    url = 'http://hq.sinajs.cn/' + payload
+     r = requests.get(url)
+     data_text = r.text
+     data_df = pd.DataFrame([item.strip().split('=')[1].split(',') for item in data_text.split(';') if item.strip() != ''])
+     data_df.iloc[:, 0] = data_df.iloc[:, 0].str.replace('""', '')
+     data_df.iloc[:, -1] = data_df.iloc[:, -1].str.replace('""', '')
+     data_df.columns = ['current_price', '-', 'bid', 'ask', 'high', 'low', 'time', 'last_settle_price', 'open', 'hold', '-', '-', 'date', 'symbol', 'current_price_rmb']
+-    data_df['symbol'] = ['NYBOT-棉花', 'LME镍3个月', 'LME铅3个月', 'LME锡3个月', 'LME锌3个月', 'LME铝3个月', 'LME铜3个月', 'CBOT-黄豆', 'CBOT-小麦', 'CBOT-玉米', 'CBOT-黄豆油', 'CBOT-黄豆粉', '日本橡胶', 'COMEX铜', 'NYMEX天然气', 'NYMEX原油', 'COMEX白银', 'COMEX黄金', 'CME-瘦肉猪', '布伦特原油', '伦敦金', '伦敦银', '伦敦铂金', '伦敦钯金', '马棕油', '欧洲碳排放']
++    temp_symbol_code_df = futures_hq_subscribe_exchange_symbol()
++    temp_symbol_code_dict = dict(zip(temp_symbol_code_df['code'], temp_symbol_code_df['symbol']))
++    data_df['symbol'] = [temp_symbol_code_dict[subscribe] for subscribe in subscribe_list]
+     data_df = data_df[['symbol', 'current_price', 'current_price_rmb', 'bid', 'ask', 'high', 'low', 'time', 'last_settle_price', 'open', 'hold', 'date']]
+     data_df.columns = ['名称', '最新价', '人民币报价', '买价', '卖价', '最高价', '最低价', '行情时间', '昨日结算价', '开盘价', '持仓量', '日期']
+     data_df.dropna(how='all', inplace=True)","新浪-外盘期货-行情数据
+    https://finance.sina.com.cn/money/future/hf.html
+    :param subscribe_list: 通过调用 ak.hq_subscribe_exchange_symbol 函数来获取
+    :type subscribe_list: list
+    :return: 行情数据
+    :rtype: pandas.DataFrame",gold,none,gold,49
+e175,TTS,ESpeak.version,def version(self):,"--- a/code.py
++++ b/code.py
+@@ -1,6 +1,6 @@
+-def version(self):
++def version(self) -> str:
+     args = ['--version']
+-    for line in self._espeak_exe(args, sync=True):
++    for line in _espeak_exe(_DEF_ESPEAK_LIB, args, sync=True):
+         version = line.decode('utf8').strip().split()[2]
+         logging.debug('line: %s' % repr(line))
+         return version","Get the version of the used backend.
+
+Returns:
+    str: Version of the used backend.",gold,return_changed,gold,10
+e186,AzurLaneAutoScript,get_bbox_reversed,"def get_bbox_reversed(image, threshold=0):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def get_bbox_reversed(image, threshold=0):
++def get_bbox_reversed(image, threshold=255):
+     if image_channel(image) == 3:
+         image = np.min(image, axis=2)
+     x = np.where(np.min(image, axis=0) < threshold)[0]","Similar to `get_bbox` but for black contents on white background.
+
+Args:
+    image (np.ndarray): Screenshot.
+    threshold (int): Color >= threshold will be considered white
+
+Returns:
+    tuple: (upper_left_x, upper_left_y, bottom_right_x, bottom_right_y)",gold,default_changed,gold,14
+e196,InstaPy,verify_liking,"def verify_liking(browser, max, min, logger):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def verify_liking(browser, max, min, logger):
++def verify_liking(browser, maximum, minimum, logger):
+     try:
+         likes_count = browser.execute_script('return window._sharedData.entry_data.PostPage[0].graphql.shortcode_media.edge_media_preview_like.count')
+     except WebDriverException:
+@@ -17,10 +17,10 @@
+             except NoSuchElementException:
+                 logger.info(""Failed to check likes' count\n"")
+                 return True
+-    if max is not None and likes_count > max:
++    if maximum is not None and likes_count > maximum:
+         logger.info('Not liked this post! ~more likes exist off maximum limit at {}'.format(likes_count))
+         return False
+-    elif min is not None and likes_count < min:
++    elif min is not None and likes_count < minimum:
+         logger.info('Not liked this post! ~less likes exist off minumum limit at {}'.format(likes_count))
+         return False
+     return True","Get the amount of existing existing likes and compare it against max
+    & min values defined by user",gold,param_renamed,gold,28
+e130,textual,Tree.scroll_to_node,"def scroll_to_node(self, node: TreeNode) -> None:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def scroll_to_node(self, node: TreeNode) -> None:
++def scroll_to_node(self, node: TreeNode[TreeDataType]) -> None:
+     line = node._line
+     if line != -1:
+         self.scroll_to_line(line)","Scroll to the given node.
+
+        Args:
+            node (TreeNode): Node to scroll in to view.",test_real,none,codocbench,8
+e140,zulip,fix_realm_authentication_bitfield,"def fix_realm_authentication_bitfield(data: TableData, table: TableName, field_name: Field) -> None:","--- a/code.py
++++ b/code.py
+@@ -1,5 +1,7 @@
+ def fix_realm_authentication_bitfield(data: TableData, table: TableName, field_name: Field) -> None:
+     for item in data[table]:
+-        values_as_bitstring = ''.join(('1' if field[1] else '0' for field in item[field_name]))
++        charlist = ['1' if field[1] else '0' for field in item[field_name]]
++        charlist.reverse()
++        values_as_bitstring = ''.join(charlist)
+         values_as_int = int(values_as_bitstring, 2)
+         item[field_name] = values_as_int",Used to fixup the authentication_methods bitfield to be a string,test_real,none,codocbench,6
+e148,manim,SceneFileWriter.clean_cache,def clean_cache(self):,"--- a/code.py
++++ b/code.py
+@@ -5,4 +5,4 @@
+         oldest_files_to_delete = sorted(cached_partial_movies, key=os.path.getatime)[:number_files_to_delete]
+         for file_to_delete in oldest_files_to_delete:
+             os.remove(file_to_delete)
+-        logger.info(f""The partial movie directory is full (> {config['max_files_cached']} files). Therefore, manim has removed {number_files_to_delete} file(s) used by it the longest ago."" + 'You can change this behaviour by changing max_files_cached in config.')
++        logger.info(f""The partial movie directory is full (> {config['max_files_cached']} files). Therefore, manim has removed the {number_files_to_delete} oldest file(s)."", 'You can change this behaviour by changing max_files_cached in config.')",Will clean the cache by removing the partial_movie_files used by manim the longest ago.,test_real,none,codocbench,9
+e162,transformers,is_tensor,def is_tensor(x):,"--- a/code.py
++++ b/code.py
+@@ -7,4 +7,9 @@
+         import tensorflow as tf
+         if isinstance(x, tf.Tensor):
+             return True
++    if is_flax_available():
++        import jaxlib.xla_extension as jax_xla
++        from jax.interpreters.partial_eval import DynamicJaxprTracer
++        if isinstance(x, (jax_xla.DeviceArray, DynamicJaxprTracer)):
++            return True
+     return isinstance(x, np.ndarray)","Tests if ``x`` is a :obj:`torch.Tensor`, :obj:`tf.Tensor` or :obj:`np.ndarray`.",test_real,none,codocbench,11
+e173,StratosphereLinuxIPS,Main.close_open_redis_servers,def close_open_redis_servers(self):,"--- a/code.py
++++ b/code.py
+@@ -10,8 +10,9 @@
+         try:
+             pid = open_servers[int(server_to_close)][1]
+             port = open_servers[int(server_to_close)][0]
+-            if self.kill_redis_server(pid):
+-                print(f'Killed redis server at port {port}.')
++            if self.flush_redis_server(pid) and self.kill_redis_server(pid):
++                self.remove_server_from_log(port)
++                print(f'Killed redis server on port {port}.')
+             else:
+                 print(f""Redis server running on port {port} is either already killed or you don't have enough permission to kill it."")
+         except (KeyError, ValueError):",Function to close unused open redis-servers based on what the user choose,test_real,none,codocbench,20
+e185,AzurLaneAutoScript,MapEventHandler.os_auto_search_quit,"def os_auto_search_quit(self, drop=None, skip_first_screenshot=True):","--- a/code.py
++++ b/code.py
+@@ -1,15 +1,19 @@
+ def os_auto_search_quit(self, drop=None, skip_first_screenshot=True):
+     confirm_timer = Timer(1.2, count=3).start()
++    cleared = False
+     while 1:
+         if skip_first_screenshot:
+             skip_first_screenshot = False
+         else:
+             self.device.screenshot()
+         if self.appear(AUTO_SEARCH_REWARD, offset=(20, 20), interval=2):
++            if self.ensure_no_info_bar():
++                cleared = True
+             if drop:
+                 drop.handle_add(main=self, before=4)
+             self.device.click(AUTO_SEARCH_REWARD)
+-            self.interval_reset(AUTO_SEARCH_REWARD)
++            self.clicked = True
++            self.interval_reset([AUTO_SEARCH_REWARD, AUTO_SEARCH_OS_MAP_OPTION_ON, AUTO_SEARCH_OS_MAP_OPTION_OFF])
+             confirm_timer.reset()
+             continue
+         if self.handle_map_event():
+@@ -23,3 +27,4 @@
+                 break
+         else:
+             confirm_timer.reset()
++    return cleared","Args:
+            drop (DropImage):
+            skip_first_screenshot (bool):",test_real,none,codocbench,28
+e198,AzurLaneAutoScript,CampaignMap.load_map_data,"def load_map_data(self, use_loop=False):","--- a/code.py
++++ b/code.py
+@@ -1,7 +1,7 @@
+ def load_map_data(self, use_loop=False):
+-    if not len(self.map_data_loop):
+-        self._load_map_data(self.map_data)
+-    elif use_loop:
++    has_loop = len(self.map_data_loop)
++    logger.info(f'Load map_data, has_loop={has_loop}, use_loop={use_loop}')
++    if has_loop and use_loop:
+         self._load_map_data(self.map_data_loop)
+     else:
+         self._load_map_data(self.map_data)","Args:
+            use_loop (bool): If at clearing mode.",test_real,none,codocbench,9
+e207,django-rest-framework,TestContentParsing.test_overloaded_behaviour_allows_content_tunnelling,def test_overloaded_behaviour_allows_content_tunnelling(self):,"--- a/code.py
++++ b/code.py
+@@ -5,4 +5,4 @@
+     form_data = {api_settings.FORM_CONTENT_OVERRIDE: content, api_settings.FORM_CONTENTTYPE_OVERRIDE: content_type}
+     request = Request(factory.post('/', form_data))
+     request.parsers = (JSONParser(),)
+-    self.assertEqual(request.DATA, json_data)
++    self.assertEqual(request.data, json_data)",Ensure request.DATA returns content for overloaded POST request.,test_real,none,codocbench,9

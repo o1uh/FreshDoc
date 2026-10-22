@@ -1,0 +1,1249 @@
+FD-26: слепая R9-разметка ошибок M2. Ты — изолированный разметчик.
+Доступа к репозиторию, датасету, меткам, другим батчам и интернету нет.
+Единственный вход — кейсы ниже. Решай только по diff+docstring.
+
+Вопрос на кейс: «нужно ли обновить документацию из-за этого изменения?»
+Шкала:
+- A. Нужно обновить — хотя бы одно утверждение docstring стало НЕВЕРНЫМ
+  (имя параметра, дефолт, форма результата, исключение, поведение).
+- B. Желательно обновить — неверного нет, но добавилось важное, чего нет в docstring.
+- C. Актуально — всё остаётся верным и полным.
+- D. Не могу решить — нужен контекст вне diff/docstring (укажи какой в why). D < 10%.
+ЖЁСТКОЕ ПРАВИЛО: нет ложного утверждения в docstring — НЕ A.
+Пример: дефолт изменился, но docstring дефолт не называл → C, не A.
+Как размечать: выпиши проверяемые утверждения docstring; найди каждому фрагмент диффа;
+есть ложное → A; неверного нет, но важное новое → B; иначе → C.
+Сомнение A/B → B; B/C → C (поясни в why).
+
+Верни ОДИН CSV-блок (без пояснений вне блока), заголовок строго:
+err_id,label,stale_statement,why
+- label в A/B/C/D; строк столько же, в том же порядке, что кейсы;
+- stale_statement — точная подстрока DOC_OLD, ставшая ложной (только для A, иначе пусто);
+  цитируй посимвольно;
+- why — одна фраза (для D — какого контекста не хватило).
+Код вне диффа не додумывать.
+
+КЕЙСЫ:
+=== CASE err_id=e002 ===
+PROJECT: espnet | SYMBOL: DPCLSolver.forward
+--- SIG_OLD ---
+def forward(self, ref, inf, others={}):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,4 +1,6 @@
+-def forward(self, ref, inf, others={}):
++def forward(self, ref, inf, others=None):
++    if others is None:
++        others = {}
+     assert 'tf_embedding' in others
+     loss = self.criterion(ref, others['tf_embedding']).mean()
+     stats = dict()
+--- DOC_OLD ---
+A naive DPCL solver
+
+Args:
+    ref (List[torch.Tensor]): [(batch, ...), ...] x n_spk
+    inf (List[torch.Tensor]): [(batch, ...), ...]
+    others (List): other data included in this solver
+        e.g. "tf_embedding" learned embedding of all T-F bins (B, T * F, D)
+
+Returns:
+    loss: (torch.Tensor): minimum loss with the best permutation
+    stats: (dict), for collecting training status
+    others: reserved
+=== END CASE ===
+
+=== CASE err_id=e004 ===
+PROJECT: ipython | SYMBOL: CapturingTee.write
+--- SIG_OLD ---
+def write(self, data):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,6 +1,18 @@
+ def write(self, data):
+     self.ostream.write(data)
++    if any([self.shell.display_pub.is_publishing, self.shell.displayhook.is_active, self.shell.showing_traceback]):
++        return
+     if not data:
+         return
+-    self.capture_dict.setdefault(self.execution_count, {}).setdefault('stream', '')
+-    self.capture_dict[self.execution_count]['stream'] += data
++    execution_count = self.shell.execution_count
++    output_stream = None
++    outputs_by_counter = self.shell.history_manager.outputs
++    output_type = 'out_stream' if self.channel == 'stdout' else 'err_stream'
++    if execution_count in outputs_by_counter:
++        outputs = outputs_by_counter[execution_count]
++        if outputs[-1].output_type == output_type:
++            output_stream = outputs[-1]
++    if output_stream is None:
++        output_stream = HistoryOutput(output_type=output_type, bundle={'stream': ''})
++        outputs_by_counter[execution_count].append(output_stream)
++    output_stream.bundle['stream'] += data
+--- DOC_OLD ---
+Write data to both the original stdout and the capture dictionary.
+=== END CASE ===
+
+=== CASE err_id=e015 ===
+PROJECT: csvkit | SYMBOL: CSVStat.print_csv
+--- SIG_OLD ---
+def print_csv(self, table, column_ids, stats):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,18 +1,8 @@
+ def print_csv(self, table, column_ids, stats):
+-    writer = agate.csv.writer(self.output_file)
+-    header = ['column_id', 'column_name'] + list(OPERATIONS.keys())
+-    writer.writerow(header)
+-    for column_id in column_ids:
+-        column_name = table.column_names[column_id]
+-        column_stats = stats[column_id]
+-        output_row = [column_id + 1, column_name]
+-        for op_name, _op_data in OPERATIONS.items():
+-            if column_stats[op_name] is None:
+-                output_row.append(None)
+-                continue
+-            if op_name == 'freq':
+-                value = ', '.join([str(row['value']) for row in column_stats['freq']])
+-            else:
+-                value = column_stats[op_name]
+-            output_row.append(value)
+-        writer.writerow(output_row)
++    header = ['column_id', 'column_name'] + list(OPERATIONS)
++    writer = agate.csv.DictWriter(self.output_file, fieldnames=header)
++    writer.writeheader()
++    for row in self._rows(table, column_ids, stats):
++        if 'freq' in row:
++            row['freq'] = ', '.join([str(row['value']) for row in row['freq']])
++        writer.writerow(row)
+--- DOC_OLD ---
+Print data for all statistics as a csv table.
+=== END CASE ===
+
+=== CASE err_id=e030 ===
+PROJECT: manim | SYMBOL: LogBase.inverse_function
+--- SIG_OLD ---
+def inverse_function(self, value: float) -> float:
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,5 +1,11 @@
+ def inverse_function(self, value: float) -> float:
+-    if value <= 0:
++    if isinstance(value, np.ndarray):
++        condition = value.any() <= 0
++        func = lambda value, base: np.log(value) / np.log(base)
++    else:
++        condition = value <= 0
++        func = math.log
++    if condition:
+         raise ValueError('log(0) is undefined. Make sure the value is in the domain of the function')
+-    value = math.log(value, self.base)
++    value = func(value, self.base)
+     return value
+--- DOC_OLD ---
+Inverse of ``function``. The value must be greater than 0
+=== END CASE ===
+
+=== CASE err_id=e038 ===
+PROJECT: ipython | SYMBOL: Completer.global_matches
+--- SIG_OLD ---
+def global_matches(self, text):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,15 +1,2 @@
+-def global_matches(self, text):
+-    matches = []
+-    match_append = matches.append
+-    n = len(text)
+-    for lst in [keyword.kwlist, builtin_mod.__dict__.keys(), list(self.namespace.keys()), list(self.global_namespace.keys())]:
+-        for word in lst:
+-            if word[:n] == text and word != '__builtins__':
+-                match_append(word)
+-    snake_case_re = re.compile('[^_]+(_[^_]+)+?\\Z')
+-    for lst in [list(self.namespace.keys()), list(self.global_namespace.keys())]:
+-        shortened = {'_'.join([sub[0] for sub in word.split('_')]): word for word in lst if snake_case_re.match(word)}
+-        for word in shortened.keys():
+-            if word[:n] == text and word != '__builtins__':
+-                match_append(shortened[word])
+-    return matches
++def global_matches(self, text: str):
++    return self._global_matches(text)
+--- DOC_OLD ---
+Compute matches when text is a simple name.
+
+Return a list of all keywords, built-in functions and names currently
+defined in self.namespace or self.global_namespace that match.
+=== END CASE ===
+
+=== CASE err_id=e044 ===
+PROJECT: manim | SYMBOL: Line3D.perpendicular_to
+--- SIG_OLD ---
+def perpendicular_to(cls, line: Line3D, point: Vector3D=ORIGIN, length: float=5, **kwargs) -> Line3D:
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,9 +1,9 @@
+ @classmethod
+-def perpendicular_to(cls, line: Line3D, point: Vector3D=ORIGIN, length: float=5, **kwargs) -> Line3D:
+-    point = np.array(point)
+-    norm = np.cross(line.vect, point - line.start)
++def perpendicular_to(cls, line: Line3D, point: Vector3DLike=ORIGIN, length: float=5, **kwargs) -> Line3D:
++    np_point = np.asarray(point)
++    norm = np.cross(line.vect, np_point - line.start)
+     if all(np.linalg.norm(norm) == np.zeros(3)):
+         raise ValueError('Could not find the perpendicular.')
+     start, end = perpendicular_bisector([line.start, line.end], norm)
+     vect = normalize(end - start)
+-    return cls(point + vect * length / 2, point - vect * length / 2, **kwargs)
++    return cls(np_point + vect * length / 2, np_point - vect * length / 2, **kwargs)
+--- DOC_OLD ---
+Returns a line perpendicular to another line going through
+a given point.
+
+Parameters
+----------
+line
+    The line to be perpendicular to.
+point
+    The point to pass through.
+length
+    Length of the perpendicular line.
+kwargs
+    Additional parameters to be passed to the class.
+
+Returns
+-------
+:class:`Line3D`
+    Line perpendicular to ``line``.
+
+Examples
+--------
+.. manim:: PerpLineExample
+    :save_last_frame:
+
+    class PerpLineExample(ThreeDScene):
+        def construct(self):
+            self.set_camera_orientation(PI / 3, -PI / 4)
+            ax = ThreeDAxes((-5, 5), (-5, 5), (-5, 5), 10, 10, 10)
+            line1 = Line3D(RIGHT * 2, UP + OUT, color=RED)
+            line2 = Line3D.perpendicular_to(line1, color=BLUE)
+            self.add(ax, line1, line2)
+=== END CASE ===
+
+=== CASE err_id=e049 ===
+PROJECT: espnet | SYMBOL: bert_score
+--- SIG_OLD ---
+def bert_score(total_response_arr: List[str], bert_model_name: str='bert-base-uncased') -> str:
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -3,16 +3,17 @@
+     def cosine_similarity_context_response(context, response, model, tokenizer):
+         context_inputs = tokenizer(context, return_tensors='pt', truncation=True)
+         response_inputs = tokenizer(response, return_tensors='pt', truncation=True)
++        device = next(model.parameters()).device
+         for k in context_inputs:
+-            context_inputs[k] = context_inputs[k].cuda()
++            context_inputs[k] = context_inputs[k].to(device)
+         for k in response_inputs:
+-            response_inputs[k] = response_inputs[k].cuda()
++            response_inputs[k] = response_inputs[k].to(device)
+         with torch.no_grad():
+             context_embedding = model(**context_inputs).last_hidden_state.mean(dim=1)
+             response_embedding = model(**response_inputs).last_hidden_state.mean(dim=1)
+         similarity = cosine_similarity(context_embedding.cpu().numpy(), response_embedding.cpu().numpy())
+         return similarity[0][0]
+-    bert_model = AutoModel.from_pretrained(bert_model_name).cuda()
++    bert_model = AutoModel.from_pretrained(bert_model_name).to(_device())
+     bert_tokenizer = AutoTokenizer.from_pretrained(bert_model_name)
+     similarity = cosine_similarity_context_response(' '.join(total_response_arr[:-1]), total_response_arr[-1], bert_model, bert_tokenizer)
+     return f'Cosine Similarity: {similarity * 100:.2f}' + '\n'
+--- DOC_OLD ---
+Compute a cosine similarity score between the concatenated
+    context (all but the last element)
+    and the final response (last element) using a BERT-based model.
+    This serves as a simplified
+    measure of how closely the response aligns with the preceding context semantically.
+
+    Args:
+        total_response_arr (List[str]):
+            A list of strings. The last element represents the response,
+            while all other elements
+            are treated as the context.
+        bert_model_name (str, optional):
+            The name or path of the BERT model to use (from the Hugging Face Model Hub).
+            Defaults to "bert-base-uncased".
+
+    Returns:
+        str:
+            A string containing the cosine similarity
+            (as a percentage) followed by a newline.
+            For example:
+                "Cosine Similarity: 85.67
+"
+
+    Example:
+        >>> total_responses = [
+        ...     "User: Hi, how are you?",
+        ...     "Assistant: I'm good! How can I help you today?",
+        ...     "User: Can you tell me a joke?",
+        ...     "Assistant: Sure! Here's one: Why did the chicken join a band?"
+        ... ]
+        >>> result = bert_score(total_responses, bert_model_name="bert-base-uncased")
+        >>> print(result)
+        "Cosine Similarity: 75.89
+"
+=== END CASE ===
+
+=== CASE err_id=e056 ===
+PROJECT: manim | SYMBOL: find_intersection
+--- SIG_OLD ---
+def find_intersection(p0s: Point3DLike_Array, v0s: Vector3D_Array, p1s: Point3DLike_Array, v1s: Vector3D_Array, threshold: float=1e-05) -> list[Point3D]:
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,6 +1,6 @@
+-def find_intersection(p0s: Point3DLike_Array, v0s: Vector3D_Array, p1s: Point3DLike_Array, v1s: Vector3D_Array, threshold: float=1e-05) -> list[Point3D]:
++def find_intersection(p0s: Point3DLike_Array, v0s: Vector3DLike_Array, p1s: Point3DLike_Array, v1s: Vector3DLike_Array, threshold: float=1e-05) -> list[Point3D]:
+     result = []
+-    for p0, v0, p1, v1 in zip(*[p0s, v0s, p1s, v1s]):
++    for p0, v0, p1, v1 in zip(p0s, v0s, p1s, v1s):
+         normal = cross(v1, cross(v0, v1))
+         denom = max(np.dot(v0, normal), threshold)
+         result += [p0 + np.dot(p1 - p0, normal) / denom * v0]
+--- DOC_OLD ---
+Return the intersection of a line passing through p0 in direction v0
+with one passing through p1 in direction v1 (or array of intersections
+from arrays of such points/directions).
+For 3d values, it returns the point on the ray p0 + v0 * t closest to the
+ray p1 + v1 * t
+=== END CASE ===
+
+=== CASE err_id=e065 ===
+PROJECT: manim | SYMBOL: get_unit_normal
+--- SIG_OLD ---
+def get_unit_normal(v1: Vector3D, v2: Vector3D, tol: float=1e-06) -> Vector3D:
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,13 +1,15 @@
+-def get_unit_normal(v1: Vector3D, v2: Vector3D, tol: float=1e-06) -> Vector3D:
+-    div1, div2 = (max(np.abs(v1)), max(np.abs(v2)))
++def get_unit_normal(v1: Vector3DLike, v2: Vector3DLike, tol: float=1e-06) -> Vector3D:
++    np_v1 = np.asarray(v1)
++    np_v2 = np.asarray(v2)
++    div1, div2 = (max(np.abs(np_v1)), max(np.abs(np_v2)))
+     if div1 == 0.0:
+         if div2 == 0.0:
+             return DOWN
+-        u = v2 / div2
++        u = np_v2 / div2
+     elif div2 == 0.0:
+-        u = v1 / div1
++        u = np_v1 / div1
+     else:
+-        u1, u2 = (v1 / div1, v2 / div2)
++        u1, u2 = (np_v1 / div1, np_v2 / div2)
+         cp = cross(u1, u2)
+         cp_norm = np.sqrt(norm_squared(cp))
+         if cp_norm > tol:
+--- DOC_OLD ---
+Gets the unit normal of the vectors.
+
+Parameters
+----------
+v1
+    The first vector.
+v2
+    The second vector
+tol
+    [description], by default 1e-6
+
+Returns
+-------
+np.ndarray
+    The normal of the two vectors.
+=== END CASE ===
+
+=== CASE err_id=e076 ===
+PROJECT: manim | SYMBOL: VMobject.generate_rgbas_array
+--- SIG_OLD ---
+def generate_rgbas_array(self, color, opacity):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,7 +1,7 @@
+-def generate_rgbas_array(self, color, opacity):
+-    colors = [c if c is not None else BLACK for c in tuplify(color)]
+-    opacities = [o if o is not None else 0 for o in tuplify(opacity)]
+-    rgbas = np.array([color_to_rgba(c, o) for c, o in zip(*make_even(colors, opacities))])
++def generate_rgbas_array(self, color: ManimColor | list[ManimColor], opacity):
++    colors: list[ManimColor] = [ManimColor(c) if c is not None else BLACK for c in tuplify(color)]
++    opacities: list[float] = [o if o is not None else 0 for o in tuplify(opacity)]
++    rgbas = np.array([c.to_rgba_with_alpha(o) for c, o in zip(*make_even(colors, opacities))])
+     sheen_factor = self.get_sheen_factor()
+     if sheen_factor != 0 and len(rgbas) == 1:
+         light_rgbas = np.array(rgbas)
+--- DOC_OLD ---
+First arg can be either a color, or a tuple/list of colors.
+Likewise, opacity can either be a float, or a tuple of floats.
+If self.sheen_factor is not zero, and only
+one color was passed in, a second slightly light color
+will automatically be added for the gradient
+=== END CASE ===
+
+=== CASE err_id=e092 ===
+PROJECT: AzurLaneAutoScript | SYMBOL: InfoHandler.story_skip
+--- SIG_OLD ---
+def story_skip(self, drop=None):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -39,8 +39,10 @@
+             if drop:
+                 drop.handle_add(self, before=2)
+             if self.config.STORY_ALLOW_SKIP:
++                logger.info(f'{STORY_SKIP_3} -> {STORY_SKIP}')
+                 self.device.click(STORY_SKIP)
+             else:
++                logger.info(f'{STORY_SKIP_3} -> {OS_CLICK_SAFE_AREA}')
+                 self.device.click(OS_CLICK_SAFE_AREA)
+             self._story_confirm.reset()
+             self.story_popup_timeout.reset()
+--- DOC_OLD ---
+2023.09.14 Story options changed with big white options in the middle,
+    Check STORY_SKIP_3 but click the original STORY_SKIP.
+=== END CASE ===
+
+=== CASE err_id=e102 ===
+PROJECT: manim | SYMBOL: NumberLine.get_number_mobject
+--- SIG_OLD ---
+def get_number_mobject(self, x: float, direction: Vector3D | None=None, buff: float | None=None, font_size: float | None=None, label_constructor: type[MathTex] | None=None, **number_config: dict[str, Any]) -> VMobject:
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def get_number_mobject(self, x: float, direction: Vector3D | None=None, buff: float | None=None, font_size: float | None=None, label_constructor: type[MathTex] | None=None, **number_config: dict[str, Any]) -> VMobject:
++def get_number_mobject(self, x: float, direction: Vector3D | None=None, buff: float | None=None, font_size: float | None=None, label_constructor: type[SingleStringMathTex] | None=None, **number_config: dict[str, Any]) -> VMobject:
+     number_config_merged = merge_dicts_recursively(self.decimal_number_config, number_config)
+     if direction is None:
+         direction = self.label_direction
+@@ -7,7 +7,7 @@
+     if font_size is None:
+         font_size = self.font_size
+     if label_constructor is None:
+-        label_constructor = self.label_constructor
++        label_constructor = cast(type[SingleStringMathTex], self.label_constructor)
+     num_mob = DecimalNumber(x, font_size=font_size, mob_class=label_constructor, **number_config_merged)
+     num_mob.next_to(self.number_to_point(x), direction=direction, buff=buff)
+     if x < 0 and self.label_direction[0] == 0:
+--- DOC_OLD ---
+Generates a positioned :class:`~.DecimalNumber` mobject
+generated according to ``label_constructor``.
+
+Parameters
+----------
+x
+    The x-value at which the mobject should be positioned.
+direction
+    Determines the direction at which the label is positioned next to the line.
+buff
+    The distance of the label from the line.
+font_size
+    The font size of the label mobject.
+label_constructor
+    The :class:`~.VMobject` class that will be used to construct the label.
+    Defaults to the ``label_constructor`` attribute of the number line
+    if not specified.
+
+Returns
+-------
+:class:`~.DecimalNumber`
+    The positioned mobject.
+=== END CASE ===
+
+=== CASE err_id=e118 ===
+PROJECT: AzurLaneAutoScript | SYMBOL: ActionPointHandler.action_point_quit
+--- SIG_OLD ---
+def action_point_quit(self, skip_first_screenshot=True):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,2 +1,12 @@
+ def action_point_quit(self, skip_first_screenshot=True):
+-    self.ui_click(ACTION_POINT_CANCEL, check_button=OS_CHECK, skip_first_screenshot=skip_first_screenshot)
++    while 1:
++        if skip_first_screenshot:
++            skip_first_screenshot = False
++        else:
++            self.device.screenshot()
++        if self.appear(OS_CHECK, offset=(20, 20)):
++            break
++        if self.appear_then_click(ACTION_POINT_CANCEL, offset=(20, 20), interval=3):
++            continue
++        if self.handle_map_event():
++            continue
+--- DOC_OLD ---
+Pages:
+    in: ACTION_POINT_USE
+    out: page_os
+=== END CASE ===
+
+=== CASE err_id=e128 ===
+PROJECT: manim | SYMBOL: NumberLine.add_labels
+--- SIG_OLD ---
+def add_labels(self, dict_values: dict[float, str | float | VMobject], direction: Point3DLike | None=None, buff: float | None=None, font_size: float | None=None, label_constructor: type[MathTex] | None=None) -> Self:
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def add_labels(self, dict_values: dict[float, str | float | VMobject], direction: Point3DLike | None=None, buff: float | None=None, font_size: float | None=None, label_constructor: type[MathTex] | None=None) -> Self:
++def add_labels(self, dict_values: dict[float, str | float | VMobject], direction: Point3DLike | None=None, buff: float | None=None, font_size: float | None=None, label_constructor: type[ManimTextLabel] | None=None) -> Self:
+     direction = self.label_direction if direction is None else direction
+     buff = self.line_to_number_buff if buff is None else buff
+     font_size = self.font_size if font_size is None else font_size
+@@ -6,13 +6,17 @@
+         label_constructor = self.label_constructor
+     labels = VGroup()
+     for x, label in dict_values.items():
+-        if isinstance(label, str) and label_constructor is MathTex:
+-            label = Tex(label)
++        if isinstance(label, str):
++            if label_constructor is MathTex:
++                label = Tex(label)
++            elif label_constructor is TypstMath:
++                label = Typst(label)
++            else:
++                label = self._create_label_tex(label, label_constructor)
+         else:
+             label = self._create_label_tex(label, label_constructor)
+         if hasattr(label, 'font_size'):
+-            assert isinstance(label, (MathTex, Tex, Text, Integer)), label
+-            label.font_size = font_size
++            cast(Any, label).font_size = font_size
+         else:
+             raise AttributeError(f'{label} is not compatible with add_labels.')
+         label.next_to(self.number_to_point(x), direction=direction, buff=buff)
+--- DOC_OLD ---
+Adds specifically positioned labels to the :class:`~.NumberLine` using a ``dict``.
+The labels can be accessed after creation via ``self.labels``.
+
+Parameters
+----------
+dict_values
+    A dictionary consisting of the position along the number line and the mobject to be added:
+    ``{1: Tex("Monday"), 3: Tex("Tuesday")}``. :attr:`label_constructor` will be used
+    to construct the labels if the value is not a mobject (``str`` or ``float``).
+direction
+    Determines the direction at which the label is positioned next to the line.
+buff
+    The distance of the label from the line.
+font_size
+    The font size of the mobject to be positioned.
+label_constructor
+    The :class:`~.VMobject` class that will be used to construct the label.
+    Defaults to the ``label_constructor`` attribute of the number line
+    if not specified.
+
+Raises
+------
+AttributeError
+    If the label does not have a ``font_size`` attribute, an ``AttributeError`` is raised.
+=== END CASE ===
+
+=== CASE err_id=e135 ===
+PROJECT: manim | SYMBOL: Scene.compile_animations
+--- SIG_OLD ---
+def compile_animations(self, *args: Animation, **kwargs):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,6 +1,7 @@
+-def compile_animations(self, *args: Animation, **kwargs):
++def compile_animations(self, *args: Animation | Iterable[Animation] | types.GeneratorType[Animation], **kwargs):
+     animations = []
+-    for arg in args:
++    arg_anims = flatten_iterable_parameters(args)
++    for arg in arg_anims:
+         try:
+             animations.append(prepare_animation(arg))
+         except TypeError:
+--- DOC_OLD ---
+Creates _MethodAnimations from any _AnimationBuilders and updates animation
+kwargs with kwargs passed to play().
+
+Parameters
+----------
+*args
+    Animations to be played.
+**kwargs
+    Configuration for the call to play().
+
+Returns
+-------
+Tuple[:class:`Animation`]
+    Animations to be played.
+=== END CASE ===
+
+=== CASE err_id=e146 ===
+PROJECT: ipython | SYMBOL: test_notebook_export_json_with_output
+--- SIG_OLD ---
+def test_notebook_export_json_with_output():
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,40 +1,31 @@
+ def test_notebook_export_json_with_output():
+     pytest.importorskip('nbformat')
+     import nbformat
++    from nbclient import NotebookClient
+     _ip = get_ipython()
+     _ip.history_manager.reset()
+-    cmds = ["display('test')", '1+1', '1/0', "print('test')", '1']
+-    for i, cmd in enumerate(cmds, start=1):
+-        _ip.history_manager.store_inputs(i, cmd)
+-        try:
+-            exec(cmd)
+-        except Exception as exc:
+-            _ip.history_manager.exceptions[i] = _ip._format_exception_for_storage(exc)
+-        if cmd.startswith('display('):
+-            _ip.history_manager.output_mime_bundles[i] = {'text/plain': 'test'}
+-        if cmd == '1+1':
+-            _ip.history_manager.output_mime_bundles[i] = {'text/plain': '2'}
+-        if cmd.startswith('print(') and cmd.endswith(')'):
+-            captured_output = cmd[len("print('"):-2] + '\n'
+-            _ip.history_manager.output_mime_bundles[i] = {'stream': captured_output}
++    commands = ['1+1', "display('test')", "display('a') and display('b')", '1/0', "print('test')", "import sys\nprint('test', file=sys.stderr)"]
++    clean_nb = nbformat.v4.new_notebook(cells=[nbformat.v4.new_code_cell(source=cmd) for cmd in commands])
+     with TemporaryDirectory() as td:
+         outfile = os.path.join(td, 'nb.ipynb')
+-        _ip.run_line_magic('notebook', outfile)
+-        nb = nbformat.read(outfile, as_version=4)
+-    two_found, errors, display_output, stream_output = (False, False, False, False)
+-    for cell in nb['cells']:
+-        for output in cell.get('outputs', []):
+-            if output['output_type'] == 'error':
+-                assert _ip.history_manager.exceptions[3]['ename'] in output['ename']
+-                errors = True
+-            elif output['output_type'] in ('execute_result', 'display_data'):
+-                if output['data'].get('text/plain') == '2':
+-                    two_found = True
+-                elif output['data'].get('text/plain') == 'test':
+-                    display_output = True
+-            elif output['output_type'] == 'stream' and output.get('text') == 'test\n':
+-                stream_output = True
+-    assert two_found, "Expected output '2' missing"
+-    assert errors, 'Expected error output missing'
+-    assert display_output, 'Expected display output missing'
+-    assert stream_output, 'Expected print output missing'
++        client = NotebookClient(clean_nb, timeout=600, kernel_name='python3', resources={'metadata': {'path': td}}, allow_errors=True)
++        client.execute()
++        nbformat.write(clean_nb, outfile)
++        expected_nb = nbformat.read(outfile, as_version=4)
++    for cmd in commands:
++        _ip.run_cell(cmd, store_history=True)
++    with TemporaryDirectory() as td:
++        outfile = os.path.join(td, 'nb.ipynb')
++        _ip.run_cell(f'%notebook {outfile}', store_history=True)
++        actual_nb = nbformat.read(outfile, as_version=4)
++    assert len(actual_nb['cells']) == len(commands)
++    assert len(expected_nb['cells']) == len(commands)
++    for i, command in enumerate(commands):
++        actual = actual_nb['cells'][i]
++        expected = expected_nb['cells'][i]
++        assert expected['source'] == command
++        assert actual['source'] == expected['source']
++        if command == '1/0':
++            actual['outputs'][0].pop('traceback')
++            expected['outputs'][0].pop('traceback')
++        assert actual['outputs'] == expected['outputs'], f'Outputs do not match for cell {i + 1} with source {command!r}'
+--- DOC_OLD ---
+Tests if notebook export correctly captures outputs, errors, display outputs, and stream outputs.
+=== END CASE ===
+
+=== CASE err_id=e152 ===
+PROJECT: ipython | SYMBOL: test_recursive_FileLinks
+--- SIG_OLD ---
+def test_recursive_FileLinks():
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,13 +1,12 @@
+ def test_recursive_FileLinks():
+     td = mkdtemp()
+-    tf = NamedTemporaryFile(dir=td)
+     subtd = mkdtemp(dir=td)
+-    subtf = NamedTemporaryFile(dir=subtd)
+-    fl = display.FileLinks(td)
+-    actual = str(fl)
+-    actual = actual.split('\n')
+-    assert len(actual) == 4, actual
+-    fl = display.FileLinks(td, recursive=False)
+-    actual = str(fl)
+-    actual = actual.split('\n')
+-    assert len(actual) == 2, actual
++    with NamedTemporaryFile(dir=td) as tf, NamedTemporaryFile(dir=subtd) as subtf:
++        fl = display.FileLinks(td)
++        actual = str(fl)
++        actual = actual.split('\n')
++        assert len(actual) == 4, actual
++        fl = display.FileLinks(td, recursive=False)
++        actual = str(fl)
++        actual = actual.split('\n')
++        assert len(actual) == 2, actual
+--- DOC_OLD ---
+FileLinks: Does not recurse when recursive=False
+=== END CASE ===
+
+=== CASE err_id=e160 ===
+PROJECT: manim | SYMBOL: Mobject.add_updater
+--- SIG_OLD ---
+def add_updater(self, update_function: Updater, index: Optional[int]=None, call_updater: bool=False):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def add_updater(self, update_function: Updater, index: Optional[int]=None, call_updater: bool=False):
++def add_updater(self, update_function: Updater, index: int | None=None, call_updater: bool=False):
+     if index is None:
+         self.updaters.append(update_function)
+     else:
+--- DOC_OLD ---
+Add an update function to this mobject.
+
+Update functions, or updaters in short, are functions that are applied to the
+Mobject in every frame.
+
+Parameters
+----------
+update_function
+    The update function to be added.
+    Whenever :meth:`update` is called, this update function gets called using
+    ``self`` as the first parameter.
+    The updater can have a second parameter ``dt``. If it uses this parameter,
+    it gets called using a second value ``dt``, usually representing the time
+    in seconds since the last call of :meth:`update`.
+index
+    The index at which the new updater should be added in ``self.updaters``.
+    In case ``index`` is ``None`` the updater will be added at the end.
+call_updater
+    Whether or not to call the updater initially. If ``True``, the updater will
+    be called using ``dt=0``.
+
+Returns
+-------
+:class:`Mobject`
+    ``self``
+
+Examples
+--------
+.. manim:: NextToUpdater
+
+    class NextToUpdater(Scene):
+        def construct(self):
+            def dot_position(mobject):
+                mobject.set_value(dot.get_center()[0])
+                mobject.next_to(dot)
+
+            dot = Dot(RIGHT*3)
+            label = DecimalNumber()
+            label.add_updater(dot_position)
+            self.add(dot, label)
+
+            self.play(Rotating(dot, about_point=ORIGIN, angle=TAU, run_time=TAU, rate_func=linear))
+
+.. manim:: DtUpdater
+
+    class DtUpdater(Scene):
+        def construct(self):
+            line = Square()
+
+            #Let the line rotate 90° per second
+            line.add_updater(lambda mobject, dt: mobject.rotate(dt*90*DEGREES))
+            self.add(line)
+            self.wait(2)
+
+See also
+--------
+:meth:`get_updaters`
+:meth:`remove_updater`
+:class:`~.UpdateFromFunc`
+=== END CASE ===
+
+=== CASE err_id=e165 ===
+PROJECT: manim | SYMBOL: CoordinateSystem.get_graph_label
+--- SIG_OLD ---
+def get_graph_label(self, graph: ParametricFunction, label: float | str | Mobject='f(x)', x_val: float | None=None, direction: Sequence[float]=RIGHT, buff: float=MED_SMALL_BUFF, color: Color | None=None, dot: bool=False, dot_config: dict | None=None) -> Mobject:
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,7 +1,8 @@
+-def get_graph_label(self, graph: ParametricFunction, label: float | str | Mobject='f(x)', x_val: float | None=None, direction: Sequence[float]=RIGHT, buff: float=MED_SMALL_BUFF, color: Color | None=None, dot: bool=False, dot_config: dict | None=None) -> Mobject:
++def get_graph_label(self, graph: ParametricFunction, label: float | str | Mobject='f(x)', x_val: float | None=None, direction: Sequence[float]=RIGHT, buff: float=MED_SMALL_BUFF, color: ParsableManimColor | None=None, dot: bool=False, dot_config: dict | None=None) -> Mobject:
+     if dot_config is None:
+         dot_config = {}
+-    color = color or graph.get_color()
++    if color is None:
++        color = graph.get_color()
+     label = self.x_axis._create_label_tex(label).set_color(color)
+     if x_val is None:
+         for x in np.linspace(self.x_range[1], self.x_range[0], 100):
+--- DOC_OLD ---
+Creates a properly positioned label for the passed graph, with an optional dot.
+
+Parameters
+----------
+graph
+    The curve.
+label
+    The label for the function's curve. Defaults to :class:`~.MathTex` for ``str`` and ``float`` inputs.
+x_val
+    The x_value along the curve that positions the label.
+direction
+    The cartesian position, relative to the curve that the label will be at --> ``LEFT``, ``RIGHT``.
+buff
+    The distance between the curve and the label.
+color
+    The color of the label. Defaults to the color of the curve.
+dot
+    Whether to add a dot at the point on the graph.
+dot_config
+    Additional parameters to be passed to :class:`~.Dot`.
+
+Returns
+-------
+:class:`Mobject`
+    The positioned label and :class:`~.Dot`, if applicable.
+
+Examples
+--------
+.. manim:: GetGraphLabelExample
+    :save_last_frame:
+
+    class GetGraphLabelExample(Scene):
+        def construct(self):
+            ax = Axes()
+            sin = ax.plot(lambda x: np.sin(x), color=PURPLE_B)
+            label = ax.get_graph_label(
+                graph=sin,
+                label= MathTex(r"\frac{\pi}{2}"),
+                x_val=PI / 2,
+                dot=True,
+                direction=UR,
+            )
+
+            self.add(ax, sin, label)
+=== END CASE ===
+
+=== CASE err_id=e174 ===
+PROJECT: ipython | SYMBOL: get_home_dir
+--- SIG_OLD ---
+def get_home_dir(require_writable=False) -> str:
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def get_home_dir(require_writable=False) -> str:
++def get_home_dir(require_writable: bool=False) -> str:
+     homedir = os.path.expanduser('~')
+     homedir = os.path.realpath(homedir)
+     if not _writable_dir(homedir) and os.name == 'nt':
+--- DOC_OLD ---
+Return the 'home' directory, as a unicode string.
+
+Uses os.path.expanduser('~'), and checks for writability.
+
+See stdlib docs for how this is determined.
+For Python <3.8, $HOME is first priority on *ALL* platforms.
+For Python >=3.8 on Windows, %HOME% is no longer considered.
+
+Parameters
+----------
+require_writable : bool [default: False]
+    if True:
+        guarantees the return value is a writable directory, otherwise
+        raises HomeDirError
+    if False:
+        The path is resolved, but it is not guaranteed to exist or be writable.
+=== END CASE ===
+
+=== CASE err_id=e184 ===
+PROJECT: AzurLaneAutoScript | SYMBOL: WorkerPool.release_full_lock
+--- SIG_OLD ---
+def release_full_lock(self):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,3 +1,6 @@
+ def release_full_lock(self):
+     if self.notify_worker.acquire(blocking=False):
+-        self.notify_pool.release()
++        try:
++            self.notify_pool.release()
++        except RuntimeError:
++            pass
+--- DOC_OLD ---
+Call this method if worker finished any job, or exited, or get killed.
+
+When pool full,
+Pool tells all workers: any worker finishes his job notify me.
+`self.notify_worker.release()`
+Then the pool blocks himself.
+`self.notify_pool.acquire()`
+The fastest worker, and also the only worker, receives the message,
+`if self.notify_worker.acquire(blocking=False):`
+Worker tells the pool, new pool slot is ready, you are ready to go.
+`self.notify_pool.release()`
+=== END CASE ===
+
+=== CASE err_id=e195 ===
+PROJECT: AzurLaneAutoScript | SYMBOL: PrivateQuarters.run
+--- SIG_OLD ---
+def run(self):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,5 +1,9 @@
+ def run(self):
+-    self.ui_goto(page_private_quarters, get_ship=False)
+-    self.handle_info_bar()
+-    self.pq_run(buy_roses=self.config.PrivateQuarters_BuyRoses, target_interact=self.config.PrivateQuarters_TargetInteract, target_ship=self.config.PrivateQuarters_TargetShip)
++    if server.server == 'en':
++        self.ui_goto(page_private_quarters, get_ship=False)
++        self.handle_info_bar()
++        self.pq_run(buy_roses=self.config.PrivateQuarters_BuyRoses, target_interact=self.config.PrivateQuarters_TargetInteract, target_ship=self.config.PrivateQuarters_TargetShip)
++    else:
++        logger.info(f'Private Quarters task not presently supported for {server.server} server.')
++        logger.info('If want to address, review necessary assets, replace, update above condition, and test')
+     self.config.task_delay(server_update=True)
+--- DOC_OLD ---
+Pages:
+    in: Any page
+    out: page_main, may have info_bar
+=== END CASE ===
+
+=== CASE err_id=e206 ===
+PROJECT: manim | SYMBOL: TipableVMobject.create_tip
+--- SIG_OLD ---
+def create_tip(self, tip_shape=None, tip_length=None, tip_width=None, at_start=False):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def create_tip(self, tip_shape=None, tip_length=None, tip_width=None, at_start=False):
++def create_tip(self, tip_shape: type[tips.ArrowTip] | None=None, tip_length: float=None, tip_width: float=None, at_start: bool=False):
+     tip = self.get_unpositioned_tip(tip_shape, tip_length, tip_width)
+     self.position_tip(tip, at_start)
+     return tip
+--- DOC_OLD ---
+Stylises the tip, positions it spatially, and returns
+the newly instantiated tip to the caller.
+=== END CASE ===
+
+=== CASE err_id=e154 ===
+PROJECT: espnet | SYMBOL: ctc_only_search
+--- SIG_OLD ---
+def ctc_only_search(search_class, n_frames):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def ctc_only_search(search_class, n_frames):
++def ctc_only_search(search_class, n_frames, scorer_name='ctc'):
+     vocab_size, eos = (8, 7)
+     labels = [3, 5, 2]
+     posteriors = torch.full((n_frames, vocab_size), 0.0001, dtype=torch.float64)
+@@ -8,6 +8,6 @@
+         posteriors[frame, label] = 1.0
+     x = torch.log(posteriors / posteriors.sum(-1, keepdim=True))
+     log_likelihood = -torch.nn.functional.ctc_loss(x.unsqueeze(1), torch.tensor([labels]), torch.tensor([n_frames]), torch.tensor([len(labels)]), reduction='sum')
+-    search = search_class(scorers={'ctc': CTCPrefixScorer(ctc=FramePosteriors(), eos=eos)}, weights={'ctc': 1.0}, beam_size=4, vocab_size=vocab_size, sos=eos, eos=eos)
++    search = search_class(scorers={scorer_name: CTCPrefixScorer(ctc=FramePosteriors(), eos=eos)}, weights={scorer_name: 1.0}, beam_size=4, vocab_size=vocab_size, sos=eos, eos=eos)
+     search.eval()
+     return (search, x, labels, float(log_likelihood))
+--- DOC_OLD ---
+Build a search scored by CTC alone, over speech that starts at once.
+
+Labels 3, 5 and 2 are spoken at frames 0, 4 and 8, the rest is blank.
+Returns the search, the posteriors to decode, the labels, and their CTC
+log likelihood as `torch.nn.functional.ctc_loss` computes it.
+=== END CASE ===
+
+=== CASE err_id=e170 ===
+PROJECT: gpt4free | SYMBOL: get_orientation
+--- SIG_OLD ---
+def get_orientation(image: Image.Image) -> int:
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def get_orientation(image: Image.Image) -> int:
++def get_orientation(image: Image) -> int:
+     exif_data = image.getexif() if hasattr(image, 'getexif') else image._getexif()
+     if exif_data is not None:
+         orientation = exif_data.get(274)
+--- DOC_OLD ---
+Gets the orientation of the given image.
+
+    Args:
+        image (Image.Image): The image.
+
+    Returns:
+        int: The orientation value.
+=== END CASE ===
+
+=== CASE err_id=e181 ===
+PROJECT: espnet | SYMBOL: ConformerConvolution.forward
+--- SIG_OLD ---
+def forward(self, x: torch.Tensor, cache: Optional[torch.Tensor]=None, mask: Optional[torch.Tensor]=None) -> Tuple[torch.Tensor, torch.Tensor]:
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def forward(self, x: torch.Tensor, cache: Optional[torch.Tensor]=None, mask: Optional[torch.Tensor]=None) -> Tuple[torch.Tensor, torch.Tensor]:
++def forward(self, x: torch.Tensor, mask: Optional[torch.Tensor]=None, cache: Optional[torch.Tensor]=None) -> Tuple[torch.Tensor, torch.Tensor]:
+     x = self.pointwise_conv1(x.transpose(1, 2))
+     x = torch.nn.functional.glu(x, dim=1)
+     if mask is not None:
+--- DOC_OLD ---
+Compute convolution module.
+
+        Args:
+            x: ConformerConvolution input sequences. (B, T, D_hidden)
+            cache: ConformerConvolution input cache. (1, conv_kernel, D_hidden)
+
+        Returns:
+            x: ConformerConvolution output sequences. (B, T, D_hidden)
+            cache: ConformerConvolution output cache. (1, conv_kernel, D_hidden)
+=== END CASE ===
+
+=== CASE err_id=e190 ===
+PROJECT: WechatSogou | SYMBOL: WechatSogouRequest.gen_hot_url
+--- SIG_OLD ---
+def gen_hot_url(hot_index, page=1):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,6 +1,5 @@
+ def gen_hot_url(hot_index, page=1):
+     assert hasattr(WechatSogouConst.hot_index, hot_index)
+     assert isinstance(page, int) and page > 0
+-    hot_index = getattr(WechatSogouConst.hot_index, hot_index)
+     index_urls = {WechatSogouConst.hot_index.hot: 0, WechatSogouConst.hot_index.recommendation: 1, WechatSogouConst.hot_index.duanzi: 2, WechatSogouConst.hot_index.health: 3, WechatSogouConst.hot_index.sifanghua: 4, WechatSogouConst.hot_index.gossip: 5, WechatSogouConst.hot_index.life: 6, WechatSogouConst.hot_index.finance: 7, WechatSogouConst.hot_index.car: 8, WechatSogouConst.hot_index.technology: 9, WechatSogouConst.hot_index.fashion: 10, WechatSogouConst.hot_index.mummy: 11, WechatSogouConst.hot_index.dianzan: 12, WechatSogouConst.hot_index.travel: 13, WechatSogouConst.hot_index.job: 14, WechatSogouConst.hot_index.food: 15, WechatSogouConst.hot_index.history: 16, WechatSogouConst.hot_index.study: 17, WechatSogouConst.hot_index.constellation: 18, WechatSogouConst.hot_index.sport: 19}
+     return 'http://weixin.sogou.com/wapindex/wap/0612/wap_{}/{}.html'.format(index_urls[hot_index], page - 1)
+--- DOC_OLD ---
+拼接 首页热门文章 URL
+
+        Parameters
+        ----------
+        hot_index : str or unicode
+            首页热门文章的分类（常量）：WechatSogouConst.hot_index.xxx
+        page : int
+            页数
+
+        Returns
+        -------
+        str
+            热门文章分类的url
+=== END CASE ===
+
+=== CASE err_id=e125 ===
+PROJECT: transformers | SYMBOL: window_reverse
+--- SIG_OLD ---
+def window_reverse(windows, window_size, height, width):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,5 +1,5 @@
+ def window_reverse(windows, window_size, height, width):
+-    batch_size = int(windows.shape[0] / (height * width / window_size / window_size))
+-    hidden_states = windows.view(batch_size, height // window_size, width // window_size, window_size, window_size, -1)
+-    hidden_states = hidden_states.permute(0, 1, 3, 2, 4, 5).contiguous().view(batch_size, height, width, -1)
+-    return hidden_states
++    num_channels = windows.shape[-1]
++    windows = windows.view(-1, height // window_size, width // window_size, window_size, window_size, num_channels)
++    windows = windows.permute(0, 1, 3, 2, 4, 5).contiguous().view(-1, height, width, num_channels)
++    return windows
+--- DOC_OLD ---
+Args:
+        windows (`torch.FloatTensor` of shape `(num_windows * batch_size, window_size, window_size, num_channels)`):
+            Input windows
+        window_size (`int`):
+            Window size
+        height (`int`):
+            Height of the resized audio
+        width (`int`):
+            Width of the resized audio
+=== END CASE ===
+
+=== CASE err_id=e137 ===
+PROJECT: rasa | SYMBOL: bert_embeddings_post_processor
+--- SIG_OLD ---
+def bert_embeddings_post_processor(sequence_embeddings: np.array) -> Tuple[np.array, np.array]:
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def bert_embeddings_post_processor(sequence_embeddings: np.array) -> Tuple[np.array, np.array]:
++def bert_embeddings_post_processor(sequence_embeddings: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+     sentence_embedding = sequence_embeddings[0]
+     post_processed_embedding = sequence_embeddings[1:-1]
+     return (sentence_embedding, post_processed_embedding)
+--- DOC_OLD ---
+Post process embeddings from BERT by removing CLS and SEP embeddings and returning CLS
+
+    token embedding as sentence representation
+=== END CASE ===
+
+=== CASE err_id=e145 ===
+PROJECT: manim | SYMBOL: ThreeDScene.add_fixed_in_frame_mobjects
+--- SIG_OLD ---
+def add_fixed_in_frame_mobjects(self, *mobjects):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def add_fixed_in_frame_mobjects(self, *mobjects):
++def add_fixed_in_frame_mobjects(self, *mobjects: Mobject):
+     if config.renderer != 'opengl':
+         self.add(*mobjects)
+         self.camera: ThreeDCamera
+--- DOC_OLD ---
+This method is used to prevent the rotation and movement
+        of mobjects as the camera moves around. The mobject is
+        essentially overlaid, and is not impacted by the camera's
+        movement in any way.
+
+        Parameters
+        ----------
+        *mobjects : Mobjects
+            The Mobjects whose orientation must be fixed.
+=== END CASE ===
+
+=== CASE err_id=e158 ===
+PROJECT: pytorch | SYMBOL: get_labels
+--- SIG_OLD ---
+def get_labels(pr_number: int) -> Set[str]:
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,10 +1,3 @@
+ def get_labels(pr_number: int) -> Set[str]:
+-    pytorch_repo = os.environ.get('GITHUB_REPOSITORY', 'pytorch/pytorch')
+-    pytorch_github_api = f'https://api.github.com/repos/{pytorch_repo}'
+-    github_token = os.environ['GITHUB_TOKEN']
+-    headers = {'Accept': 'application/vnd.github.v3+json', 'Authorization': f'token {github_token}'}
+-    json_response = download_json(url=f'{pytorch_github_api}/issues/{pr_number}/labels', headers=headers)
+-    if not json_response:
+-        warnings.warn(f'Failed to get the labels for #{pr_number}')
+-        return set()
+-    return {label.get('name') for label in json_response if label.get('name')}
++    pr_info = get_pr_info(pr_number)
++    return {label.get('name') for label in pr_info.get('labels', []) if label.get('name')}
+--- DOC_OLD ---
+Dynamical get the latest list of labels from the pull request
+=== END CASE ===
+
+=== CASE err_id=e168 ===
+PROJECT: locust | SYMBOL: requests_csv
+--- SIG_OLD ---
+def requests_csv():
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,6 +1,10 @@
+ def requests_csv():
+     from . import runners
+-    rows = [','.join(['"Type"', '"Name"', '"# requests"', '"# failures"', '"Median response time"', '"Average response time"', '"Min response time"', '"Max response time"', '"Average Content Size"', '"Requests/s"', '"Requests Failed/s'])]
++    rows = [','.join(['"Type"', '"Name"', '"# requests"', '"# failures"', '"Median response time"', '"Average response time"', '"Min response time"', '"Max response time"', '"Average Content Size"', '"Requests/s"', '"Requests Failed/s"', '"50%"', '"66%"', '"75%"', '"80%"', '"90%"', '"95%"', '"98%"', '"99%"', '"99.9%"', '"99.99%"', '"99.999"', '"100%"'])]
+     for s in chain(sort_stats(runners.locust_runner.request_stats), [runners.locust_runner.stats.total]):
+-        rows.append('"%s","%s",%i,%i,%i,%i,%i,%i,%i,%.2f,%.2f' % (s.method, s.name, s.num_requests, s.num_failures, s.median_response_time, s.avg_response_time, s.min_response_time or 0, s.max_response_time, s.avg_content_length, s.total_rps, s.total_fail_per_sec))
++        if s.num_requests:
++            percentile_str = ','.join([str(int(s.get_current_response_time_percentile(x) or 0)) for x in PERCENTILES_TO_REPORT])
++        else:
++            percentile_str = ','.join(['"N/A"'] * len(PERCENTILES_TO_REPORT))
++        rows.append('"%s","%s",%i,%i,%i,%i,%i,%i,%i,%.2f,%.2f,%s' % (s.method, s.name, s.num_requests, s.num_failures, s.median_response_time, s.avg_response_time, s.min_response_time or 0, s.max_response_time, s.avg_content_length, s.total_rps, s.total_fail_per_sec, percentile_str))
+     return '\n'.join(rows)
+--- DOC_OLD ---
+Returns the contents of the 'requests' tab as CSV.
+=== END CASE ===
+
+=== CASE err_id=e182 ===
+PROJECT: StratosphereLinuxIPS | SYMBOL: test_timewindows
+--- SIG_OLD ---
+def test_timewindows(database):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,6 +1,7 @@
+ def test_timewindows(database):
+-    os.system('./slips.py -c slips.conf -cc')
+-    profileid = 'profile_8.8.8.8'
++    profileid = 'profile_192.168.1.1'
+     database.addProfile(profileid, '00:00', '1')
+     database.addNewTW(profileid, 0.0)
++    database.addNewTW(profileid, 5.0)
+     assert database.getFirstTWforProfile(profileid) == [('timewindow1', 0.0)]
++    assert database.getLastTWforProfile(profileid) == [('timewindow2', 5.0)]
+--- DOC_OLD ---
+unit tests for addNewTW and getFirstTWforProfile
+=== END CASE ===
+
+=== CASE err_id=e194 ===
+PROJECT: pytorch | SYMBOL: filter
+--- SIG_OLD ---
+def filter(test_matrix: Dict[str, List[Any]], labels: Set[str]) -> Dict[str, List[Any]]:
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -6,10 +6,14 @@
+             continue
+         label = f'{PREFIX}{config_name.strip()}'
+         if label in labels:
+-            print(f'Select {config_name} because label {label} is presented in the pull request by the time the test starts')
++            msg = f'Select {config_name} because label {label} is present in the pull request by the time the test starts'
++            info(msg)
+             filtered_test_matrix['include'].append(entry)
+-    valid_test_config_labels = labels.intersection(VALID_TEST_CONFIG_LABELS)
+-    if not filtered_test_matrix['include'] and (not valid_test_config_labels):
++    test_config_labels = filter_labels(labels, re.compile(f'{PREFIX}.+'))
++    if not filtered_test_matrix['include'] and (not test_config_labels):
++        info('Found no test-config label on the PR, so all test configs are included')
+         return test_matrix
+     else:
++        msg = f'Found {test_config_labels} on the PR so only these test configs are run'
++        info(msg)
+         return filtered_test_matrix
+--- DOC_OLD ---
+Select the list of test config to run from the test matrix. The logic works
+    as follows:
+
+    If the PR has one or more labels as specified in the VALID_TEST_CONFIG_LABELS set, only
+    these test configs will be selected.  This also works with ciflow labels, for example,
+    if a PR has both ciflow/trunk and test-config/functorch, only trunk functorch builds
+    and tests will be run
+
+    If the PR has none of the test-config label, all tests are run as usual.
+=== END CASE ===
+
+=== CASE err_id=e204 ===
+PROJECT: erpnext | SYMBOL: add_permissions
+--- SIG_OLD ---
+def add_permissions():
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -5,3 +5,5 @@
+             add_permission(doctype, role, 0)
+             update_permission_property(doctype, role, 0, 'write', 1)
+             update_permission_property(doctype, role, 0, 'create', 1)
++    if not frappe.db.get_value('Custom Role', dict(report='VAT Audit Report')):
++        frappe.get_doc(dict(doctype='Custom Role', report='VAT Audit Report', roles=[dict(role='Accounts User'), dict(role='Accounts Manager'), dict(role='Auditor')])).insert()
+--- DOC_OLD ---
+Add Permissions for South Africa VAT Settings and South Africa VAT Account
+=== END CASE ===

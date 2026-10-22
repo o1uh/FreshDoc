@@ -1,0 +1,1156 @@
+FD-26: слепая R9-разметка ошибок M2. Ты — изолированный разметчик.
+Доступа к репозиторию, датасету, меткам, другим батчам и интернету нет.
+Единственный вход — кейсы ниже. Решай только по diff+docstring.
+
+Вопрос на кейс: «нужно ли обновить документацию из-за этого изменения?»
+Шкала:
+- A. Нужно обновить — хотя бы одно утверждение docstring стало НЕВЕРНЫМ
+  (имя параметра, дефолт, форма результата, исключение, поведение).
+- B. Желательно обновить — неверного нет, но добавилось важное, чего нет в docstring.
+- C. Актуально — всё остаётся верным и полным.
+- D. Не могу решить — нужен контекст вне diff/docstring (укажи какой в why). D < 10%.
+ЖЁСТКОЕ ПРАВИЛО: нет ложного утверждения в docstring — НЕ A.
+Пример: дефолт изменился, но docstring дефолт не называл → C, не A.
+Как размечать: выпиши проверяемые утверждения docstring; найди каждому фрагмент диффа;
+есть ложное → A; неверного нет, но важное новое → B; иначе → C.
+Сомнение A/B → B; B/C → C (поясни в why).
+
+Верни ОДИН CSV-блок (без пояснений вне блока), заголовок строго:
+err_id,label,stale_statement,why
+- label в A/B/C/D; строк столько же, в том же порядке, что кейсы;
+- stale_statement — точная подстрока DOC_OLD, ставшая ложной (только для A, иначе пусто);
+  цитируй посимвольно;
+- why — одна фраза (для D — какого контекста не хватило).
+Код вне диффа не додумывать.
+
+КЕЙСЫ:
+=== CASE err_id=e003 ===
+PROJECT: ipython | SYMBOL: arg_split
+--- SIG_OLD ---
+def arg_split(s, posix=False, strict=True):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def arg_split(s, posix=False, strict=True):
++def arg_split(commandline: str, posix: bool=False, strict: bool=True) -> list[str]:
+     lex = shlex.shlex(s, posix=posix)
+     lex.whitespace_split = True
+     lex.commenters = ''
+--- DOC_OLD ---
+Split a command line's arguments in a shell-like manner.
+
+This is a modified version of the standard library's shlex.split()
+function, but with a default of posix=False for splitting, so that quotes
+in inputs are respected.
+
+if strict=False, then any errors shlex.split would raise will result in the
+unparsed remainder being the last element of the list, rather than raising.
+This is because we sometimes use arg_split to parse things other than
+command-line args.
+=== END CASE ===
+
+=== CASE err_id=e014 ===
+PROJECT: ipython | SYMBOL: test_existing_path_FileLinks_alt_formatter
+--- SIG_OLD ---
+def test_existing_path_FileLinks_alt_formatter():
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,14 +1,13 @@
+ def test_existing_path_FileLinks_alt_formatter():
+     td = mkdtemp()
+-    tf1 = NamedTemporaryFile(dir=td)
+-    tf2 = NamedTemporaryFile(dir=td)
++    with NamedTemporaryFile(dir=td) as tf1, NamedTemporaryFile(dir=td) as tf2:
+ 
+-    def fake_formatter(dirname, fnames, included_suffixes):
+-        return ['hello', 'world']
+-    fl = display.FileLinks(td, notebook_display_formatter=fake_formatter)
+-    actual = fl._repr_html_()
+-    actual = actual.split('\n')
+-    actual.sort()
+-    expected = ['hello', 'world']
+-    expected.sort()
+-    assert actual == expected
++        def fake_formatter(dirname, fnames, included_suffixes):
++            return ['hello', 'world']
++        fl = display.FileLinks(td, notebook_display_formatter=fake_formatter)
++        actual = fl._repr_html_()
++        actual = actual.split('\n')
++        actual.sort()
++        expected = ['hello', 'world']
++        expected.sort()
++        assert actual == expected
+--- DOC_OLD ---
+FileLinks: Calling _repr_html_ functions as expected w/ an alt formatter
+=== END CASE ===
+
+=== CASE err_id=e016 ===
+PROJECT: DeepFaceLive | SYMBOL: Faceset.add_UImage
+--- SIG_OLD ---
+def add_UImage(self, uimage_or_list: UImage, format: str='webp', quality: int=100):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -5,11 +5,8 @@
+         raise ValueError('quality must be in range [0..100]')
+     if not isinstance(uimage_or_list, Iterable):
+         uimage_or_list = [uimage_or_list]
+-    cur = self._cur
+-    cur.execute('BEGIN IMMEDIATE')
++    uimage_datas = []
+     for uimage in uimage_or_list:
+-        img = uimage.get_image()
+-        uuid = uimage.get_uuid()
+         if format == 'webp':
+             imencode_args = [int(cv2.IMWRITE_WEBP_QUALITY), quality]
+         elif format == 'jpg':
+@@ -18,11 +15,16 @@
+             imencode_args = [int(cv2.IMWRITE_JPEG2000_COMPRESSION_X1000), quality * 10]
+         else:
+             imencode_args = []
+-        ret, data_bytes = cv2.imencode(f'.{format}', img, imencode_args)
++        ret, data_bytes = cv2.imencode(f'.{format}', uimage.get_image(), imencode_args)
+         if not ret:
+             raise Exception(f'Unable to encode image format {format}')
++        uimage_datas.append(data_bytes.data)
++    cur = self._cur
++    cur.execute('BEGIN IMMEDIATE')
++    for uimage, data in zip(uimage_or_list, uimage_datas):
++        uuid = uimage.get_uuid()
+         if cur.execute('SELECT COUNT(*) from UImage where uuid=?', [uuid]).fetchone()[0] != 0:
+-            cur.execute('UPDATE UImage SET name=?, format=?, data=? WHERE uuid=?', [uimage.get_name(), format, data_bytes.data, uuid])
++            cur.execute('UPDATE UImage SET name=?, format=?, data=? WHERE uuid=?', [uimage.get_name(), format, data, uuid])
+         else:
+-            cur.execute('INSERT INTO UImage VALUES (?, ?, ?, ?)', [uuid, uimage.get_name(), format, data_bytes.data])
++            cur.execute('INSERT INTO UImage VALUES (?, ?, ?, ?)', [uuid, uimage.get_name(), format, data])
+     cur.execute('COMMIT')
+--- DOC_OLD ---
+add or update UImage in DB
+
+         uimage       UImage object
+
+         format('png')  webp    ( does not support lossless on 100 quality ! )
+                        png     ( lossless )
+                        jpg
+                        jp2 ( jpeg2000 )
+
+         quality(100)   0-100 for formats jpg,jp2,webp
+=== END CASE ===
+
+=== CASE err_id=e018 ===
+PROJECT: akshare | SYMBOL: macro_uk_bank_rate
+--- SIG_OLD ---
+def macro_uk_bank_rate():
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,11 +1,3 @@
+-def macro_uk_bank_rate():
+-    url = 'http://datainterface.eastmoney.com/EM_DataCenter/JS.aspx'
+-    params = {'type': 'GJZB', 'sty': 'HKZB', 'js': '({data:[(x)],pages:(pc)})', 'p': '1', 'ps': '2000', 'mkt': '4', 'stat': '3', 'pageNo': '1', 'pageNum': '1', '_': '1625474966006'}
+-    r = requests.get(url, params=params)
+-    data_text = r.text
+-    data_json = demjson.decode(data_text[1:-1])
+-    temp_df = pd.DataFrame([item.split(',') for item in data_json['data']])
+-    temp_df.columns = ['时间', '前值', '现值', '发布日期']
+-    temp_df['前值'] = pd.to_numeric(temp_df['前值'])
+-    temp_df['现值'] = pd.to_numeric(temp_df['现值'])
++def macro_uk_bank_rate() -> pd.DataFrame:
++    temp_df = macro_uk_core(symbol='EMG00342253')
+     return temp_df
+--- DOC_OLD ---
+东方财富-经济数据-英国-央行公布利率决议
+    http://data.eastmoney.com/cjsj/foreign_4_3.html
+    :return: 央行公布利率决议
+    :rtype: pandas.DataFrame
+=== END CASE ===
+
+=== CASE err_id=e020 ===
+PROJECT: TTS | SYMBOL: VitsGeneratorLoss.forward
+--- SIG_OLD ---
+def forward(self, waveform, waveform_hat, z_p, logs_q, m_p, logs_p, z_len, scores_disc_fake, feats_disc_fake, feats_disc_real, loss_duration, fine_tuning_mode=False, use_speaker_encoder_as_loss=False, gt_spk_emb=None, syn_spk_emb=None):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def forward(self, waveform, waveform_hat, z_p, logs_q, m_p, logs_p, z_len, scores_disc_fake, feats_disc_fake, feats_disc_real, loss_duration, fine_tuning_mode=False, use_speaker_encoder_as_loss=False, gt_spk_emb=None, syn_spk_emb=None):
++def forward(self, waveform, waveform_hat, z_p, logs_q, m_p, logs_p, z_len, scores_disc_fake, feats_disc_fake, feats_disc_real, loss_duration, fine_tuning_mode=0, use_speaker_encoder_as_loss=False, gt_spk_emb=None, syn_spk_emb=None):
+     loss = 0.0
+     return_dict = {}
+     z_mask = sequence_mask(z_len).float()
+--- DOC_OLD ---
+Shapes:
+    - waveform : :math:`[B, 1, T]`
+    - waveform_hat: :math:`[B, 1, T]`
+    - z_p: :math:`[B, C, T]`
+    - logs_q: :math:`[B, C, T]`
+    - m_p: :math:`[B, C, T]`
+    - logs_p: :math:`[B, C, T]`
+    - z_len: :math:`[B]`
+    - scores_disc_fake[i]: :math:`[B, C]`
+    - feats_disc_fake[i][j]: :math:`[B, C, T', P]`
+    - feats_disc_real[i][j]: :math:`[B, C, T', P]`
+=== END CASE ===
+
+=== CASE err_id=e029 ===
+PROJECT: AzurLaneAutoScript | SYMBOL: MissionHandler.os_mission_enter
+--- SIG_OLD ---
+def os_mission_enter(self, skip_first_screenshot=True):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,11 +1,7 @@
+-def os_mission_enter(self, skip_first_screenshot=True):
++def os_mission_enter(self):
+     logger.info('OS mission enter')
+     confirm_timer = Timer(2, count=6).start()
+-    while 1:
+-        if skip_first_screenshot:
+-            skip_first_screenshot = False
+-        else:
+-            self.device.screenshot()
++    for _ in self.loop():
+         if self.is_in_os_mission() and (not self.appear(MISSION_FINISH, offset=(20, 20))) and (not self.match_template_color(MISSION_CHECKOUT, offset=(20, 20))):
+             if confirm_timer.reached():
+                 logger.info('No OS mission found.')
+--- DOC_OLD ---
+Enter mission list and claim mission reward.
+
+Pages:
+    in: MISSION_ENTER
+    out: MISSION_CHECK
+=== END CASE ===
+
+=== CASE err_id=e036 ===
+PROJECT: frappe | SYMBOL: EmailAccount.get_inbound_mails
+--- SIG_OLD ---
+def get_inbound_mails(self, test_mails=None):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -9,12 +9,10 @@
+         messages = email_server.get_messages() or {}
+     except Exception:
+         raise
+-        print('In exception...')
+         frappe.log_error(title=_('Error while connecting to email account {0}').format(self.name))
+         return []
+     mails = []
+     for index, message in enumerate(messages.get('latest_messages', [])):
+-        print('RAW MESSAGE TYPE: ', type(message))
+         uid = messages['uid_list'][index]
+         seen_status = 1 if messages['seen_status'][uid] == 'SEEN' else 0
+         mails.append(InboundMail(message, self, uid, seen_status))
+--- DOC_OLD ---
+retrive and return inbound mails.
+
+		TODO: Handle for tests
+=== END CASE ===
+
+=== CASE err_id=e041 ===
+PROJECT: flask | SYMBOL: htmlsafe_dumps
+--- SIG_OLD ---
+def htmlsafe_dumps(obj, **kwargs):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,2 +1,2 @@
+ def htmlsafe_dumps(obj, **kwargs):
+-    return dumps(obj, **kwargs).translate(_htmlsafe_map)
++    return _jinja_htmlsafe_dumps(obj, dumps=dumps, **kwargs)
+--- DOC_OLD ---
+Serialize an object to a string of JSON, replacing HTML-unsafe
+    characters with Unicode escapes. Otherwise behaves the same as
+    :func:`dumps`.
+
+    This is available in templates as the ``|tojson`` filter, which will
+    also mark the result with ``|safe``.
+
+    The returned string is safe to render in HTML documents and
+    ``<script>`` tags. The exception is in HTML attributes that are
+    double quoted; either use single quotes or the ``|forceescape``
+    filter.
+
+    .. versionchanged:: 0.10
+        Single quotes are escaped, making this safe to use in HTML,
+        ``<script>`` tags, and single-quoted attributes without further
+        escaping.
+=== END CASE ===
+
+=== CASE err_id=e045 ===
+PROJECT: celery | SYMBOL: BaseAsyncResult.status
+--- SIG_OLD ---
+def status(self):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,2 +1,2 @@
+ def status(self):
+-    return self.backend.get_status(self.task_id)
++    return self.state
+--- DOC_OLD ---
+The current status of the task.
+
+        Can be one of the following:
+
+            *PENDING*
+
+                The task is waiting for execution.
+
+            *STARTED*
+
+                The task has been started.
+
+            *RETRY*
+
+                The task is to be retried, possibly because of failure.
+
+            *FAILURE*
+
+                The task raised an exception, or has been retried more times
+                than its limit. The :attr:`result` attribute contains the
+                exception raised.
+
+            *SUCCESS*
+
+                The task executed successfully. The :attr:`result` attribute
+                contains the resulting value.
+=== END CASE ===
+
+=== CASE err_id=e058 ===
+PROJECT: QUANTAXIS | SYMBOL: QA_fetch_ctp_tick
+--- SIG_OLD ---
+def QA_fetch_ctp_tick(code, format='pd', collections=DATABASE.ctp_tick):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,6 +1,6 @@
+ def QA_fetch_ctp_tick(code, format='pd', collections=DATABASE.ctp_tick):
+     code = QA_util_code_tolist(code, auto_fill=False)
+-    cursor = collections.find({'InstrumentID': {'$in': code}, 'time_stamp': {'$gte': QA_util_time_stamp(start), '$lte': QA_util_time_stamp(end)}, 'type': frequence}, batch_size=10000)
++    cursor = collections.find({'InstrumentID': {'$in': code}, 'time_stamp': {'$gte': QA_util_time_stamp(start), '$lte': QA_util_time_stamp(end)}, 'type': frequence}, {'_id': 0}, batch_size=10000)
+     hq = pd.DataFrame([data for data in cursor]).replace(1.7976931348623157e+308, np.nan).replace('', np.nan).dropna(axis=1)
+     p1 = hq.loc[:, ['ActionDay', 'AskPrice1', 'AskVolume1', 'AveragePrice', 'BidPrice1', 'BidVolume1', 'HighestPrice', 'InstrumentID', 'LastPrice', 'OpenInterest', 'TradingDay', 'UpdateMillisec', 'UpdateTime', 'Volume']]
+     p1 = p1.assign(datetime=p1.ActionDay.apply(QA.QAUtil.QADate.QA_util_date_int2str) + ' ' + p1.UpdateTime + (p1.UpdateMillisec / 1000000).apply(lambda x: str('%.6f' % x)[1:]), code=p1.InstrumentID)
+--- DOC_OLD ---
+仅供存储的ctp tick使用
+    
+    Arguments:
+        code {[type]} -- [description]
+    
+    Keyword Arguments:
+        format {str} -- [description] (default: {'pd'})
+        collections {[type]} -- [description] (default: {DATABASE.ctp_tick})
+    
+    Returns:
+        [type] -- [description]
+=== END CASE ===
+
+=== CASE err_id=e074 ===
+PROJECT: diffusers | SYMBOL: StableDiffusionXLControlNetPipeline.get_guidance_scale_embedding
+--- SIG_OLD ---
+def get_guidance_scale_embedding(self, w, embedding_dim=512, dtype=torch.float32):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def get_guidance_scale_embedding(self, w, embedding_dim=512, dtype=torch.float32):
++def get_guidance_scale_embedding(self, w: torch.Tensor, embedding_dim: int=512, dtype: torch.dtype=torch.float32) -> torch.FloatTensor:
+     assert len(w.shape) == 1
+     w = w * 1000.0
+     half_dim = embedding_dim // 2
+--- DOC_OLD ---
+See https://github.com/google-research/vdm/blob/dc27b98a554f65cdc654b800da5aa1846545d41b/model_vdm.py#L298
+
+        Args:
+            timesteps (`torch.Tensor`):
+                generate embedding vectors at these timesteps
+            embedding_dim (`int`, *optional*, defaults to 512):
+                dimension of the embeddings to generate
+            dtype:
+                data type of the generated embeddings
+
+        Returns:
+            `torch.FloatTensor`: Embedding vectors with shape `(len(timesteps), embedding_dim)`
+=== END CASE ===
+
+=== CASE err_id=e079 ===
+PROJECT: manim | SYMBOL: straight_path
+--- SIG_OLD ---
+def straight_path(*args) -> PATH_FUNC_TYPE:
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,5 +1,2 @@
+-@deprecated_params(params='start_points, end_points, alpha', since='v0.14', until='v0.15', message='Straight path is now returning interpolating function to make it consistent with other path functions. Use straight_path()(a,b,c) instead of straight_path(a,b,c).')
+-def straight_path(*args) -> PATH_FUNC_TYPE:
+-    if len(args) > 0:
+-        return interpolate(*args)
++def straight_path():
+     return interpolate
+--- DOC_OLD ---
+Simplest path function. Each point in a set goes in a straight path toward its destination.
+
+Examples
+--------
+
+.. manim :: StraightPathExample
+
+    class StraightPathExample(Scene):
+        def construct(self):
+            colors = [RED, GREEN, BLUE]
+
+            starting_points = VGroup(
+                *[
+                    Dot(LEFT + pos, color=color)
+                    for pos, color in zip([UP, DOWN, LEFT], colors)
+                ]
+            )
+
+            finish_points = VGroup(
+                *[
+                    Dot(RIGHT + pos, color=color)
+                    for pos, color in zip([ORIGIN, UP, DOWN], colors)
+                ]
+            )
+
+            self.add(starting_points)
+            self.add(finish_points)
+            for dot in starting_points:
+                self.add(TracedPath(dot.get_center, stroke_color=dot.get_color()))
+
+            self.wait()
+            self.play(
+                Transform(
+                    starting_points,
+                    finish_points,
+                    path_func=utils.paths.straight_path(),
+                    run_time=2,
+                )
+            )
+            self.wait()
+=== END CASE ===
+
+=== CASE err_id=e088 ===
+PROJECT: rasa | SYMBOL: read_yaml
+--- SIG_OLD ---
+def read_yaml(content: Text, reader_type: Union[Text, List[Text]]='rt') -> Any:
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def read_yaml(content: Text, reader_type: Union[Text, List[Text]]='rt') -> Any:
++def read_yaml(content: Text, reader_type: Union[Text, List[Text]]='safe') -> Any:
+     if _is_ascii(content):
+         content = content.encode('utf-8').decode('raw_unicode_escape').encode('utf-16', 'surrogatepass').decode('utf-16')
+     yaml_parser = yaml.YAML(typ=reader_type)
+--- DOC_OLD ---
+Parses yaml from a text.
+
+Args:
+    content: A text containing yaml content.
+    reader_type: Reader type to use. By default "safe" will be used.
+
+Raises:
+    ruamel.yaml.parser.ParserError: If there was an error when parsing the YAML.
+=== END CASE ===
+
+=== CASE err_id=e095 ===
+PROJECT: AzurLaneAutoScript | SYMBOL: Camera.in_sight
+--- SIG_OLD ---
+def in_sight(self, location, sight=(-3, -1, 3, 2)):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,6 +1,8 @@
+-def in_sight(self, location, sight=(-3, -1, 3, 2)):
++def in_sight(self, location, sight=None):
+     location = location_ensure(location)
+     logger.info('In sight: %s' % location2node(location))
++    if sight is None:
++        sight = self.map.camera_sight
+     diff = np.array(location) - self.camera
+     if diff[1] > sight[3]:
+         y = diff[1] - sight[3]
+--- DOC_OLD ---
+Make sure location in camera sight
+
+        Args:
+            location:
+            sight:
+=== END CASE ===
+
+=== CASE err_id=e097 ===
+PROJECT: erpnext | SYMBOL: reconcile_against_document
+--- SIG_OLD ---
+def reconcile_against_document(args):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,16 +1,25 @@
+ def reconcile_against_document(args):
+-    for d in args:
+-        check_if_advance_entry_modified(d)
+-        validate_allocated_amount(d)
+-        doc = frappe.get_doc(d.voucher_type, d.voucher_no)
++    reconciled_entries = {}
++    for row in args:
++        if not reconciled_entries.get((row.voucher_type, row.voucher_no)):
++            reconciled_entries[row.voucher_type, row.voucher_no] = []
++        reconciled_entries[row.voucher_type, row.voucher_no].append(row)
++    for key, entries in reconciled_entries.items():
++        voucher_type = key[0]
++        voucher_no = key[1]
++        doc = frappe.get_doc(voucher_type, voucher_no)
+         frappe.flags.ignore_party_validation = True
+         doc.make_gl_entries(cancel=1, adv_adj=1)
+-        if d.voucher_type == 'Journal Entry':
+-            update_reference_in_journal_entry(d, doc)
+-        else:
+-            update_reference_in_payment_entry(d, doc)
+-        doc = frappe.get_doc(d.voucher_type, d.voucher_no)
++        for entry in entries:
++            check_if_advance_entry_modified(entry)
++            validate_allocated_amount(entry)
++            if voucher_type == 'Journal Entry':
++                update_reference_in_journal_entry(entry, doc, do_not_save=True)
++            else:
++                update_reference_in_payment_entry(entry, doc, do_not_save=True)
++        doc.save(ignore_permissions=True)
++        doc = frappe.get_doc(entry.voucher_type, entry.voucher_no)
+         doc.make_gl_entries(cancel=0, adv_adj=1)
+         frappe.flags.ignore_party_validation = False
+-        if d.voucher_type in ('Payment Entry', 'Journal Entry'):
++        if entry.voucher_type in ('Payment Entry', 'Journal Entry'):
+             doc.update_expense_claim()
+--- DOC_OLD ---
+Cancel JV, Update aginst document, split if required and resubmit jv
+=== END CASE ===
+
+=== CASE err_id=e101 ===
+PROJECT: TTS | SYMBOL: mailabs
+--- SIG_OLD ---
+def mailabs(root_path, meta_files=None, ununsed_speakers=None):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def mailabs(root_path, meta_files=None, ununsed_speakers=None):
++def mailabs(root_path, meta_files=None, ignored_speakers=None):
+     speaker_regex = re.compile('by_book/(male|female)/(?P<speaker_name>[^/]+)/')
+     if not meta_files:
+         csv_files = glob(root_path + '/**/metadata.csv', recursive=True)
+@@ -15,8 +15,8 @@
+         if speaker_name_match is None:
+             continue
+         speaker_name = speaker_name_match.group('speaker_name')
+-        if isinstance(ununsed_speakers, list):
+-            if speaker_name in ununsed_speakers:
++        if isinstance(ignored_speakers, list):
++            if speaker_name in ignored_speakers:
+                 continue
+         print(' | > {}'.format(csv_file))
+         with open(txt_file, 'r', encoding='utf-8') as ttf:
+--- DOC_OLD ---
+Normalizes M-AI-Labs meta data files to TTS format
+
+Args:
+    root_path (str): root folder of the MAILAB language folder.
+    meta_files (str):  list of meta files to be used in the training. If None, finds all the csv files
+        recursively. Defaults to None
+=== END CASE ===
+
+=== CASE err_id=e105 ===
+PROJECT: locust | SYMBOL: FastResponse.text
+--- SIG_OLD ---
+def text(self):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -6,4 +6,4 @@
+             self.encoding = 'utf-8'
+         else:
+             self.encoding = self.headers.get('content-type', '').partition('charset=')[2] or 'utf-8'
+-    return unicode(self.content, self.encoding, errors='replace')
++    return str(self.content, self.encoding, errors='replace')
+--- DOC_OLD ---
+Returns the text content of the response as a decoded string
+        (unicode on python2)
+=== END CASE ===
+
+=== CASE err_id=e110 ===
+PROJECT: TTS | SYMBOL: Xtts.full_inference
+--- SIG_OLD ---
+def full_inference(self, text, ref_audio_path, language, temperature=0.65, length_penalty=1, repetition_penalty=2.0, top_k=50, top_p=0.85, do_sample=True, gpt_cond_len=6, max_ref_len=10, sound_norm_refs=False, decoder_iterations=100, cond_free=True, cond_free_k=2, diffusion_temperature=1.0, decoder_sampler='ddim', decoder='hifigan', **hf_generate_kwargs):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+ @torch.inference_mode()
+-def full_inference(self, text, ref_audio_path, language, temperature=0.65, length_penalty=1, repetition_penalty=2.0, top_k=50, top_p=0.85, do_sample=True, gpt_cond_len=6, max_ref_len=10, sound_norm_refs=False, decoder_iterations=100, cond_free=True, cond_free_k=2, diffusion_temperature=1.0, decoder_sampler='ddim', decoder='hifigan', **hf_generate_kwargs):
++def full_inference(self, text, ref_audio_path, language, temperature=0.65, length_penalty=1, repetition_penalty=2.0, top_k=50, top_p=0.85, do_sample=True, gpt_cond_len=6, max_ref_len=10, sound_norm_refs=False, **hf_generate_kwargs):
+     gpt_cond_latent, speaker_embedding = self.get_conditioning_latents(audio_path=ref_audio_path, gpt_cond_len=gpt_cond_len, max_ref_length=max_ref_len, sound_norm_refs=sound_norm_refs)
+     return self.inference(text, language, gpt_cond_latent, speaker_embedding, temperature=temperature, length_penalty=length_penalty, repetition_penalty=repetition_penalty, top_k=top_k, top_p=top_p, do_sample=do_sample, **hf_generate_kwargs)
+--- DOC_OLD ---
+This function produces an audio clip of the given text being spoken with the given reference voice.
+
+Args:
+    text: (str) Text to be spoken.
+
+    ref_audio_path: (str) Path to a reference audio file to be used for cloning. This audio file should be >3
+        seconds long.
+
+    language: (str) Language of the voice to be generated.
+
+    temperature: (float) The softmax temperature of the autoregressive model. Defaults to 0.65.
+
+    length_penalty: (float) A length penalty applied to the autoregressive decoder. Higher settings causes the
+        model to produce more terse outputs. Defaults to 1.0.
+
+    repetition_penalty: (float) A penalty that prevents the autoregressive decoder from repeating itself during
+        decoding. Can be used to reduce the incidence of long silences or "uhhhhhhs", etc. Defaults to 2.0.
+
+    top_k: (int) K value used in top-k sampling. [0,inf]. Lower values mean the decoder produces more "likely"
+        (aka boring) outputs. Defaults to 50.
+
+    top_p: (float) P value used in nucleus sampling. (0,1]. Lower values mean the decoder produces more "likely"
+        (aka boring) outputs. Defaults to 0.8.
+
+    gpt_cond_len: (int) Length of the audio used for cloning. If audio is shorter, then audio length is used
+        else the first `gpt_cond_len` secs is used. Defaults to 6 seconds.
+
+    hf_generate_kwargs: (**kwargs) The huggingface Transformers generate API is used for the autoregressive
+        transformer. Extra keyword args fed to this function get forwarded directly to that API. Documentation
+        here: https://huggingface.co/docs/transformers/internal/generation_utils
+
+Returns:
+    Generated audio clip(s) as a torch tensor. Shape 1,S if k=1 else, (k,1,S) where S is the sample length.
+    Sample rate is 24kHz.
+=== END CASE ===
+
+=== CASE err_id=e113 ===
+PROJECT: loguru | SYMBOL: Logger.patch
+--- SIG_OLD ---
+def patch(self, patcher):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,3 +1,3 @@
+ def patch(self, patcher):
+-    *options, _, extra = self._options
+-    return Logger(self._core, *options, patcher, extra)
++    *options, patchers, extra = self._options
++    return Logger(self._core, *options, patchers + [patcher], extra)
+--- DOC_OLD ---
+Attach a function to modify the record dict created by each logging call.
+
+        The ``patcher`` may be used to update the record on-the-fly before it's propagated to the
+        handlers. This allows the "extra" dict to be populated with dynamic values and also permits
+        advanced modifications of the record emitted while logging a message. The function is called
+        once before sending the log message to the different handlers.
+
+        It is recommended to apply modification on the ``record["extra"]`` dict rather than on the
+        ``record`` dict itself, as some values are used internally by `Loguru`, and modify them may
+        produce unexpected results.
+
+        Parameters
+        ----------
+        patcher: |callable|_
+            The function to which the record dict will be passed as the sole argument. This function
+            is in charge of updating the record in-place, the function does not need to return any
+            value, the modified record object will be re-used.
+
+        Returns
+        -------
+        :class:`~Logger`
+            A logger wrapping the core logger, but which records are passed through the ``patcher``
+            function before being sent to the added handlers.
+
+        Examples
+        --------
+        >>> logger.add(sys.stderr, format="{extra[utc]} {message}")
+        >>> logger = logger.patch(lambda record: record["extra"].update(utc=datetime.utcnow())
+        >>> logger.info("That's way, you can log messages with time displayed in UTC")
+
+        >>> def wrapper(func):
+        ...     @functools.wraps(func)
+        ...     def wrapped(*args, **kwargs):
+        ...         logger.patch(lambda r: r.update(function=func.__name__)).info("Wrapped!")
+        ...         return func(*args, **kwargs)
+        ...     return wrapped
+
+        >>> def recv_record_from_network(pipe):
+        ...     record = pickle.loads(pipe.read())
+        ...     level, message = record["level"], record["message"]
+        ...     logger.patch(lambda r: r.update(record)).log(level, message)
+=== END CASE ===
+
+=== CASE err_id=e120 ===
+PROJECT: TTS | SYMBOL: check_config_and_model_args
+--- SIG_OLD ---
+def check_config_and_model_args(config, arg_name, value):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -4,4 +4,4 @@
+             return config.model_args[arg_name] == value
+     if hasattr(config, arg_name):
+         return config[arg_name] == value
+-    raise ValueError(f' [!] {arg_name} is not found in config or config.model_args')
++    return False
+--- DOC_OLD ---
+Check the give argument in `config.model_args` if exist or in `config` for
+    the given value.
+
+    It is to patch up the compatibility between models with and without `model_args`.
+
+    TODO: Remove this in the future with a unified approach.
+=== END CASE ===
+
+=== CASE err_id=e127 ===
+PROJECT: ipython | SYMBOL: catch_corrupt_db
+--- SIG_OLD ---
+def catch_corrupt_db(f, self, *a, **kw):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,31 +1,35 @@
+-@decorator
+-def catch_corrupt_db(f, self, *a, **kw):
+-    try:
+-        return f(self, *a, **kw)
+-    except (DatabaseError, OperationalError) as e:
+-        self._corrupt_db_counter += 1
+-        self.log.error('Failed to open SQLite history %s (%s).', self.hist_file, e)
+-        if self.hist_file != ':memory:':
+-            if self._corrupt_db_counter > self._corrupt_db_limit:
+-                self.hist_file = ':memory:'
+-                self.log.error('Failed to load history too many times, history will not be saved.')
+-            elif self.hist_file.is_file():
+-                base = str(self.hist_file.parent / self.hist_file.stem)
+-                ext = self.hist_file.suffix
+-                size = self.hist_file.stat().st_size
+-                if size >= _SAVE_DB_SIZE:
+-                    now = datetime.datetime.now(datetime.UTC).isoformat().replace(':', '.')
+-                    newpath = base + '-corrupt-' + now + ext
+-                    for i in range(100):
+-                        if not Path(newpath).exists():
+-                            break
+-                        else:
+-                            newpath = base + '-corrupt-' + now + '-%i' % i + ext
+-                else:
+-                    newpath = base + '-corrupt' + ext
+-                self.hist_file.rename(newpath)
+-                self.log.error('History file was moved to %s and a new file created.', newpath)
+-            self.init_db()
+-            return []
+-        else:
+-            raise
++def catch_corrupt_db(f: t.Callable[_P, _R]) -> t.Callable[_P, _R]:
++
++    @functools.wraps(f)
++    def wrapper(*a: _P.args, **kw: _P.kwargs) -> _R:
++        self = cast('HistoryAccessor', a[0])
++        try:
++            return f(*a, **kw)
++        except (DatabaseError, OperationalError) as e:
++            self._corrupt_db_counter += 1
++            self.log.error('Failed to open SQLite history %s (%s).', self.hist_file, e)
++            if self.hist_file != ':memory:':
++                if self._corrupt_db_counter > self._corrupt_db_limit:
++                    self.hist_file = ':memory:'
++                    self.log.error('Failed to load history too many times, history will not be saved.')
++                elif self.hist_file.is_file():
++                    base = str(self.hist_file.parent / self.hist_file.stem)
++                    ext = self.hist_file.suffix
++                    size = self.hist_file.stat().st_size
++                    if size >= _SAVE_DB_SIZE:
++                        now = datetime.datetime.now(datetime.UTC).isoformat().replace(':', '.')
++                        newpath = base + '-corrupt-' + now + ext
++                        for i in range(100):
++                            if not Path(newpath).exists():
++                                break
++                            else:
++                                newpath = base + '-corrupt-' + now + '-%i' % i + ext
++                    else:
++                        newpath = base + '-corrupt' + ext
++                    self.hist_file.rename(newpath)
++                    self.log.error('History file was moved to %s and a new file created.', newpath)
++                self.init_db()
++                return cast(_R, [])
++            else:
++                raise
++    return wrapper
+--- DOC_OLD ---
+A decorator which wraps HistoryAccessor method calls to catch errors from
+a corrupt SQLite database, move the old database out of the way, and create
+a new one.
+
+We avoid clobbering larger databases because this may be triggered due to filesystem issues,
+not just a corrupt file.
+=== END CASE ===
+
+=== CASE err_id=e141 ===
+PROJECT: manim | SYMBOL: LinearTransformationScene.add_title
+--- SIG_OLD ---
+def add_title(self, title, scale_factor=1.5, animate=False):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,6 +1,6 @@
+ def add_title(self, title, scale_factor=1.5, animate=False):
+     if not isinstance(title, Mobject):
+-        title = TextMobject(title).scale(scale_factor)
++        title = Tex(title).scale(scale_factor)
+     title.to_edge(UP)
+     title.add_background_rectangle()
+     if animate:
+--- DOC_OLD ---
+Adds a title, after scaling it, adding a background rectangle,
+        moving it to the top and adding it to foreground_mobjects adding
+        it as a local variable of self. Returns the Scene.
+
+        Parameters
+        ----------
+        title : str,TexMobject,TextMobject
+            What the title should be.
+
+        scale_factor : int, float, optional
+            How much the title should be scaled by.
+
+        animate : bool
+            Whether or not to animate the addition.
+
+        Returns
+        -------
+        LinearTransformationScene
+            The scene with the title added to it.
+=== END CASE ===
+
+=== CASE err_id=e153 ===
+PROJECT: gpt_academic | SYMBOL: predict
+--- SIG_OLD ---
+def predict(inputs, llm_kwargs, *args, **kwargs):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def predict(inputs, llm_kwargs, *args, **kwargs):
++def predict(inputs: str, llm_kwargs: dict, *args, **kwargs):
+     inputs = apply_gpt_academic_string_mask(inputs, mode='show_llm')
+     method = model_info[llm_kwargs['llm_model']]['fn_with_ui']
+     yield from method(inputs, llm_kwargs, *args, **kwargs)
+--- DOC_OLD ---
+发送至LLM，流式获取输出。
+    用于基础的对话功能。
+    inputs 是本次问询的输入
+    top_p, temperature是LLM的内部调优参数
+    history 是之前的对话列表（注意无论是inputs还是history，内容太长了都会触发token数量溢出的错误）
+    chatbot 为WebUI中显示的对话列表，修改它，然后yeild出去，可以直接修改对话界面内容
+    additional_fn代表点击的哪个按钮，按钮见functional.py
+=== END CASE ===
+
+=== CASE err_id=e169 ===
+PROJECT: matplotlib | SYMBOL: ColorbarBase.set_label
+--- SIG_OLD ---
+def set_label(self, label, *, loc=None, **kwargs):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -17,6 +17,8 @@
+     elif loc in ['left', 'bottom']:
+         kwargs[_pos_xy] = 0.0
+         kwargs['horizontalalignment'] = 'left'
+-    self._label = label
+-    self._labelkw = kwargs
+-    self._set_label()
++    if self.orientation == 'vertical':
++        self.ax.set_ylabel(label, **kwargs)
++    else:
++        self.ax.set_xlabel(label, **kwargs)
++    self.stale = True
+--- DOC_OLD ---
+Add a label to the long axis of the colorbar.
+
+        Parameters
+        ----------
+        label : str
+            The label text.
+        loc : str, optional
+            The location of the label.
+
+            - For horizontal orientation one of {'left', 'center', 'right'}
+            - For vertical orientation one of {'bottom', 'center', 'top'}
+
+            Defaults to :rc:`xaxis.labellocation` or :rc:`yaxis.labellocation`
+            depending on the orientation.
+        **kwargs
+            Keyword arguments are passed to `~.Axes.set_xlabel` /
+            `~.Axes.set_ylabel`.
+            Supported keywords are *labelpad* and `.Text` properties.
+=== END CASE ===
+
+=== CASE err_id=e180 ===
+PROJECT: AzurLaneAutoScript | SYMBOL: MedalShop2.shop_items
+--- SIG_OLD ---
+def shop_items(self):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,2 +1,2 @@
+-def shop_items(self):
++def shop_items(self) -> ShopItemGrid:
+     return self.shop_medal_items
+--- DOC_OLD ---
+Shared alias name for all shops,
+so to use  @Config must define
+a unique alias as cover
+
+Returns:
+    ShopItemGrid:
+=== END CASE ===
+
+=== CASE err_id=e189 ===
+PROJECT: manim | SYMBOL: test_deprecate_func_param_redirect_lambda
+--- SIG_OLD ---
+def test_deprecate_func_param_redirect_lambda(warn_caplog_manim):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,7 +1,7 @@
+-def test_deprecate_func_param_redirect_lambda(warn_caplog_manim):
++def test_deprecate_func_param_redirect_lambda(manim_caplog):
+     t = Top()
+     obj = t.qux(runtime_in_ms=500)
+-    assert len(warn_caplog_manim.record_tuples) == 1
+-    msg = _get_caplog_record_msg(warn_caplog_manim)
++    assert len(manim_caplog.record_tuples) == 1
++    msg = _get_caplog_record_msg(manim_caplog)
+     assert msg == 'The parameter runtime_in_ms of method Top.qux has been deprecated and may be removed in a later version.'
+     assert obj == {'run_time': 0.5}
+--- DOC_OLD ---
+Test the deprecation of a method parameter and redirecting it to a new one using lambda function.
+=== END CASE ===
+
+=== CASE err_id=e202 ===
+PROJECT: TTS | SYMBOL: Xtts.get_gpt_cond_latents
+--- SIG_OLD ---
+def get_gpt_cond_latents(self, audio, sr, length: int=3):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,6 +1,15 @@
+ def get_gpt_cond_latents(self, audio, sr, length: int=3):
+-    audio_22k = torchaudio.functional.resample(audio, sr, 22050)
+-    audio_22k = audio_22k[:, :22050 * length]
+-    mel = wav_to_mel_cloning(audio_22k, mel_norms=self.mel_stats.cpu())
++    if sr != 22050:
++        audio = torchaudio.functional.resample(audio, sr, 22050)
++    audio = audio[:, :22050 * length]
++    if self.args.gpt_use_perceiver_resampler:
++        n_fft = 2048
++        hop_length = 256
++        win_length = 1024
++    else:
++        n_fft = 4096
++        hop_length = 1024
++        win_length = 4096
++    mel = wav_to_mel_cloning(audio, mel_norms=self.mel_stats.cpu(), n_fft=n_fft, hop_length=hop_length, win_length=win_length, power=2, normalized=False, sample_rate=22050, f_min=0, f_max=8000, n_mels=80)
+     cond_latent = self.gpt.get_style_emb(mel.to(self.device))
+     return cond_latent.transpose(1, 2)
+--- DOC_OLD ---
+Compute the conditioning latents for the GPT model from the given audio.
+
+        Args:
+            audio_path (str): Path to the audio file.
+            length (int): Length of the audio in seconds. Defaults to 3.
+=== END CASE ===
+
+=== CASE err_id=e134 ===
+PROJECT: TTS | SYMBOL: BaseTTS.on_init_start
+--- SIG_OLD ---
+def on_init_start(self, trainer):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,12 +1,12 @@
+ def on_init_start(self, trainer):
+     if self.speaker_manager is not None:
+-        output_path = os.path.join(trainer.output_path, 'speakers.json')
++        output_path = os.path.join(trainer.output_path, 'speakers.pth')
+         self.speaker_manager.save_ids_to_file(output_path)
+         trainer.config.speakers_file = output_path
+         if hasattr(trainer.config, 'model_args'):
+             trainer.config.model_args.speakers_file = output_path
+         trainer.config.save_json(os.path.join(trainer.output_path, 'config.json'))
+-        print(f' > `speakers.json` is saved to {output_path}.')
++        print(f' > `speakers.pth` is saved to {output_path}.')
+         print(' > `speakers_file` is updated in the config.json.')
+     if hasattr(self, 'language_manager') and self.language_manager is not None:
+         output_path = os.path.join(trainer.output_path, 'language_ids.json')
+--- DOC_OLD ---
+Save the speaker.json and language_ids.json at the beginning of the training. Also update both paths.
+=== END CASE ===
+
+=== CASE err_id=e143 ===
+PROJECT: frappe | SYMBOL: PathResolver.resolve
+--- SIG_OLD ---
+def resolve(self):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -6,8 +6,8 @@
+         return (self.path, NotFoundPage(self.path))
+     try:
+         resolve_redirect(self.path, request.query_string)
+-    except frappe.Redirect:
+-        return (frappe.flags.redirect_location, RedirectPage(self.path))
++    except frappe.Redirect as e:
++        return (frappe.flags.redirect_location, RedirectPage(self.path, e.http_status_code))
+     if frappe.get_hooks('website_path_resolver'):
+         for handler in frappe.get_hooks('website_path_resolver'):
+             endpoint = frappe.get_attr(handler)(self.path)
+--- DOC_OLD ---
+Returns endpoint and a renderer instance that can render the endpoint
+=== END CASE ===
+
+=== CASE err_id=e155 ===
+PROJECT: rasa | SYMBOL: set_markers_sample_arguments
+--- SIG_OLD ---
+def set_markers_sample_arguments(parser: argparse.ArgumentParser) -> None:
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,3 +1,3 @@
+ def set_markers_sample_arguments(parser: argparse.ArgumentParser) -> None:
+-    parser.add_argument('--seed', type=int, help="Seed to use if selecting trackers by 'sample'")
++    parser.add_argument('--seed', type=int, help="Seed to use if selecting trackers by 'sample_n'")
+     parser.add_argument('count', type=int, help='The number of trackers to extract markers from')
+--- DOC_OLD ---
+Specifies arguments for `rasa evaluate markers by_sample`.
+=== END CASE ===
+
+=== CASE err_id=e164 ===
+PROJECT: CrackMapExec | SYMBOL: database.add_computer
+--- SIG_OLD ---
+def add_computer(self, ip, hostname, domain, os, smbv1, signing, spooler=None, zerologon=None, petitpotam=None, dc=None):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -30,7 +30,8 @@
+                 computer_data['petitpotam'] = petitpotam
+             if dc is not None:
+                 computer_data['dc'] = dc
+-            hosts.append(computer_data)
++            if computer_data not in hosts:
++                hosts.append(computer_data)
+     logging.debug(f'Update Hosts: {hosts}')
+     q = Insert(self.ComputersTable)
+     q = q.on_conflict_do_update(index_elements=self.ComputersTable.primary_key, set_=self.ComputersTable.columns)
+--- DOC_OLD ---
+Check if this host has already been added to the database, if not, add it in.
+=== END CASE ===
+
+=== CASE err_id=e177 ===
+PROJECT: python3-saml | SYMBOL: OneLogin_Saml2_Logout_Request_Test.testGetNameId
+--- SIG_OLD ---
+def testGetNameId(self):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,14 +1,14 @@
+ def testGetNameId(self):
+     request = self.file_contents(join(self.data_path, 'logout_requests', 'logout_request.xml'))
+-    name_id = OneLogin_Saml2_Logout_Request.get_name_id(request)
++    name_id = OneLogin_Saml2_Logout_Request.get_nameid(request)
+     self.assertEqual(name_id, 'ONELOGIN_1e442c129e1f822c8096086a1103c5ee2c7cae1c')
+     request_2 = self.file_contents(join(self.data_path, 'logout_requests', 'logout_request_encrypted_nameid.xml'))
+     try:
+-        OneLogin_Saml2_Logout_Request.get_name_id(request_2)
++        OneLogin_Saml2_Logout_Request.get_nameid(request_2)
+         self.assertTrue(False)
+     except Exception as e:
+         self.assertIn('Key is required in order to decrypt the NameID', e.message)
+     settings = OneLogin_Saml2_Settings(self.loadSettingsJSON())
+     key = settings.get_sp_key()
+-    name_id_3 = OneLogin_Saml2_Logout_Request.get_name_id(request_2, key)
++    name_id_3 = OneLogin_Saml2_Logout_Request.get_nameid(request_2, key)
+     self.assertEqual('ONELOGIN_9c86c4542ab9d6fce07f2f7fd335287b9b3cdf69', name_id_3)
+--- DOC_OLD ---
+Tests the get_name_id of the OneLogin_Saml2_LogoutRequest
+=== END CASE ===
+
+=== CASE err_id=e191 ===
+PROJECT: pysc2 | SYMBOL: RendererHuman.get_mouse_pos
+--- SIG_OLD ---
+def get_mouse_pos(self, window_pos=None):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -5,4 +5,4 @@
+         if surf.surf_type != SurfType.CHROME and surf.surf_rect.contains_point(window_pt):
+             surf_rel_pt = window_pt - surf.surf_rect.tl
+             world_pt = surf.world_to_surf.back_pt(surf_rel_pt)
+-            return MousePos(world_pt, surf.surf_type)
++            return MousePos(world_pt, surf)
+--- DOC_OLD ---
+Return a MousePos filled with the world and screen/minimap positions.
+=== END CASE ===
+
+=== CASE err_id=e200 ===
+PROJECT: zulip | SYMBOL: GetSubscribersTest.test_gather_subscriptions
+--- SIG_OLD ---
+def test_gather_subscriptions(self):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -5,8 +5,14 @@
+     users_to_subscribe = [self.email, 'othello@zulip.com', 'cordelia@zulip.com']
+     ret = self.common_subscribe_to_streams(self.email, streams, dict(principals=ujson.dumps(users_to_subscribe)))
+     self.assert_json_success(ret)
++    msg = "\n            Hi there!  We thought you'd like to know that King Hamlet\n            just subscribed you to the following streams:\n\n            * #**stream_0**\n            * #**stream_1**\n            * #**stream_2**\n            * #**stream_3**\n            * #**stream_4**\n            * #**stream_5**\n            * #**stream_6**\n            * #**stream_7**\n            * #**stream_8**\n            * #**stream_9**\n\n            You can see historical content on a non-invite-only stream by narrowing to it.\n            "
++    self.assert_user_got_subscription_notification(msg)
++    ret = self.common_subscribe_to_streams(self.email, ['stream_invite_only_1'], dict(principals=ujson.dumps([self.email])), invite_only=True)
++    self.assert_json_success(ret)
+     ret = self.common_subscribe_to_streams(self.email, ['stream_invite_only_1'], dict(principals=ujson.dumps(users_to_subscribe)), invite_only=True)
+     self.assert_json_success(ret)
++    msg = "\n            Hi there!  We thought you'd like to know that King Hamlet\n            just subscribed you to the **invite-only** stream\n            #**stream_invite_only_1**.\n            "
++    self.assert_user_got_subscription_notification(msg)
+     with queries_captured() as queries:
+         subscriptions = gather_subscriptions(self.user_profile)
+     self.assertTrue(len(subscriptions[0]) >= 11)
+--- DOC_OLD ---
+gather_subscriptions returns correct results with only 3 queries
+=== END CASE ===
+
+=== CASE err_id=e210 ===
+PROJECT: public-apis | SYMBOL: check_duplicate_links
+--- SIG_OLD ---
+def check_duplicate_links(links: List[str]) -> bool:
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,5 +1,4 @@
+-def check_duplicate_links(links: List[str]) -> bool:
+-    print('Checking for duplicated links...')
++def check_duplicate_links(links: List[str]) -> Tuple[bool, List]:
+     seen = {}
+     duplicates = []
+     has_duplicate = False
+@@ -8,9 +7,6 @@
+             seen[link] = 1
+         elif seen[link] == 1:
+             duplicates.append(link)
+-    if not duplicates:
+-        print(f'No duplicate links.')
+-    else:
+-        print(f'Found duplicate links: {duplicates}')
++    if duplicates:
+         has_duplicate = True
+-    return has_duplicate
++    return (has_duplicate, duplicates)
+--- DOC_OLD ---
+Check for duplicated links and return True or False.
+=== END CASE ===

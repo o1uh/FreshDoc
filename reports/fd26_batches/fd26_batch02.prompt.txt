@@ -1,0 +1,1011 @@
+FD-26: слепая R9-разметка ошибок M2. Ты — изолированный разметчик.
+Доступа к репозиторию, датасету, меткам, другим батчам и интернету нет.
+Единственный вход — кейсы ниже. Решай только по diff+docstring.
+
+Вопрос на кейс: «нужно ли обновить документацию из-за этого изменения?»
+Шкала:
+- A. Нужно обновить — хотя бы одно утверждение docstring стало НЕВЕРНЫМ
+  (имя параметра, дефолт, форма результата, исключение, поведение).
+- B. Желательно обновить — неверного нет, но добавилось важное, чего нет в docstring.
+- C. Актуально — всё остаётся верным и полным.
+- D. Не могу решить — нужен контекст вне diff/docstring (укажи какой в why). D < 10%.
+ЖЁСТКОЕ ПРАВИЛО: нет ложного утверждения в docstring — НЕ A.
+Пример: дефолт изменился, но docstring дефолт не называл → C, не A.
+Как размечать: выпиши проверяемые утверждения docstring; найди каждому фрагмент диффа;
+есть ложное → A; неверного нет, но важное новое → B; иначе → C.
+Сомнение A/B → B; B/C → C (поясни в why).
+
+Верни ОДИН CSV-блок (без пояснений вне блока), заголовок строго:
+err_id,label,stale_statement,why
+- label в A/B/C/D; строк столько же, в том же порядке, что кейсы;
+- stale_statement — точная подстрока DOC_OLD, ставшая ложной (только для A, иначе пусто);
+  цитируй посимвольно;
+- why — одна фраза (для D — какого контекста не хватило).
+Код вне диффа не додумывать.
+
+КЕЙСЫ:
+=== CASE err_id=e005 ===
+PROJECT: pyserde | SYMBOL: typename
+--- SIG_OLD ---
+def typename(typ) -> str:
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -27,5 +27,11 @@
+             return 'Dict'
+     elif is_tuple(typ):
+         return f"Tuple[{', '.join([typename(e) for e in type_args(typ)])}]"
++    elif typ is Any:
++        return 'Any'
+     else:
+-        return typ.__name__
++        name = getattr(typ, '_name', None)
++        if name:
++            return name
++        else:
++            return typ.__name__
+--- DOC_OLD ---
+>>> from typing import List, Dict, Set
+    >>> typename(int)
+    'int'
+    >>> class Foo: pass
+    >>> typename(Foo)
+    'Foo'
+    >>> typename(List[Foo])
+    'List[Foo]'
+    >>> typename(Dict[str, Foo])
+    'Dict[str, Foo]'
+    >>> typename(Tuple[int, str, Foo, List[int], Dict[str, Foo]])
+    'Tuple[int, str, Foo, List[int], Dict[str, Foo]]'
+    >>> typename(Optional[List[Foo]])
+    'Optional[List[Foo]]'
+    >>> typename(Union[Optional[Foo], List[Foo], Union[str, int]])
+    'Union[Optional[Foo], List[Foo], str, int]'
+    >>> typename(Set[Foo])
+    'Set[Foo]'
+=== END CASE ===
+
+=== CASE err_id=e091 ===
+PROJECT: ipython | SYMBOL: InteractiveShell.system_raw
+--- SIG_OLD ---
+def system_raw(self, cmd):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -27,3 +27,5 @@
+         if ec > 128:
+             ec = -(ec - 128)
+     self.user_ns['_exit_code'] = ec
++    if self.system_raise_on_error and ec != 0:
++        raise CalledProcessError(ec, cmd)
+--- DOC_OLD ---
+Call the given cmd in a subprocess using os.system on Windows or
+subprocess.call using the system shell on other platforms.
+
+Parameters
+----------
+cmd : str
+    Command to execute.
+=== END CASE ===
+
+=== CASE err_id=e008 ===
+PROJECT: transformers | SYMBOL: drop_path
+--- SIG_OLD ---
+def drop_path(input, drop_prob=0.0, training=False, scale_by_keep=True):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -3,7 +3,7 @@
+         return input
+     keep_prob = 1 - drop_prob
+     shape = (input.shape[0],) + (1,) * (input.ndim - 1)
+-    random_tensor = input.new_empty(shape).bernoulli_(keep_prob)
+-    if keep_prob > 0.0 and scale_by_keep:
+-        random_tensor.div_(keep_prob)
+-    return input * random_tensor
++    random_tensor = keep_prob + torch.rand(shape, dtype=input.dtype, device=input.device)
++    random_tensor.floor_()
++    output = input.div(keep_prob) * random_tensor
++    return output
+--- DOC_OLD ---
+Drop paths (Stochastic Depth) per sample (when applied in main path of residual blocks).
+=== END CASE ===
+
+=== CASE err_id=e017 ===
+PROJECT: django-rest-framework | SYMBOL: urlize_quoted_links
+--- SIG_OLD ---
+def urlize_quoted_links(text, trim_url_limit=None, nofollow=True, autoescape=True):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -2,20 +2,34 @@
+     trim_url = lambda x, limit=trim_url_limit: limit is not None and (len(x) > limit and '%s...' % x[:max(0, limit - 3)]) or x
+     safe_input = isinstance(text, SafeData)
+     words = word_split_re.split(force_text(text))
+-    nofollow_attr = nofollow and ' rel="nofollow"' or ''
+     for i, word in enumerate(words):
+         match = None
+         if '.' in word or '@' in word or ':' in word:
+-            match = punctuation_re.match(word)
+-        if match:
+-            lead, middle, trail = match.groups()
++            lead, middle, trail = ('', word, '')
++            for punctuation in TRAILING_PUNCTUATION:
++                if middle.endswith(punctuation):
++                    middle = middle[:-len(punctuation)]
++                    trail = punctuation + trail
++            for opening, closing in WRAPPING_PUNCTUATION:
++                if middle.startswith(opening):
++                    middle = middle[len(opening):]
++                    lead = lead + opening
++                if middle.endswith(closing) and middle.count(closing) == middle.count(opening) + 1:
++                    middle = middle[:-len(closing)]
++                    trail = closing + trail
+             url = None
+-            if middle.startswith('http://') or middle.startswith('https://'):
+-                url = middle
+-            elif middle.startswith('www.') or ('@' not in middle and middle and (middle[0] in string.ascii_letters + string.digits) and (middle.endswith('.org') or middle.endswith('.net') or middle.endswith('.com'))):
+-                url = 'http://%s' % middle
+-            elif '@' in middle and (not ':' in middle) and simple_email_re.match(middle):
+-                url = 'mailto:%s' % middle
++            nofollow_attr = ' rel="nofollow"' if nofollow else ''
++            if simple_url_re.match(middle):
++                url = smart_urlquote(middle)
++            elif simple_url_2_re.match(middle):
++                url = smart_urlquote('http://%s' % middle)
++            elif not ':' in middle and simple_email_re.match(middle):
++                local, domain = middle.rsplit('@', 1)
++                try:
++                    domain = domain.encode('idna').decode('ascii')
++                except UnicodeError:
++                    continue
++                url = 'mailto:%s@%s' % (local, domain)
+                 nofollow_attr = ''
+             if url:
+                 trimmed = trim_url(middle)
+@@ -32,4 +46,4 @@
+             words[i] = mark_safe(word)
+         elif autoescape:
+             words[i] = escape(word)
+-    return mark_safe(''.join(words))
++    return ''.join(words)
+--- DOC_OLD ---
+Converts any URLs in text into clickable links.
+
+    Works on http://, https://, www. links and links ending in .org, .net or
+    .com. Links can have trailing punctuation (periods, commas, close-parens)
+    and leading punctuation (opening parens) and it'll still do the right
+    thing.
+
+    If trim_url_limit is not None, the URLs in link text longer than this limit
+    will truncated to trim_url_limit-3 characters and appended with an elipsis.
+
+    If nofollow is True, the URLs in link text will get a rel="nofollow"
+    attribute.
+
+    If autoescape is True, the link text and URLs will get autoescaped.
+=== END CASE ===
+
+=== CASE err_id=e019 ===
+PROJECT: espnet | SYMBOL: DPCLSolver.forward
+--- SIG_OLD ---
+def forward(self, ref, inf, others=None):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,6 +1,4 @@
+-def forward(self, ref, inf, others=None):
+-    if others is None:
+-        others = {}
++def forward(self, ref, inf, others={}):
+     assert 'tf_embedding' in others
+     loss = self.criterion(ref, others['tf_embedding']).mean()
+     stats = dict()
+--- DOC_OLD ---
+A naive DPCL solver
+
+Args:
+    ref (List[torch.Tensor]): [(batch, ...), ...] x n_spk
+    inf (List[torch.Tensor]): [(batch, ...), ...]
+    others (List): other data included in this solver
+        e.g. "tf_embedding" learned embedding of all T-F bins (B, T * F, D)
+
+Returns:
+    loss: (torch.Tensor): minimum loss with the best permutation
+    stats: (dict), for collecting training status
+    others: reserved
+=== END CASE ===
+
+=== CASE err_id=e028 ===
+PROJECT: TTS | SYMBOL: PhonemeDataset.compute_or_load
+--- SIG_OLD ---
+def compute_or_load(self, wav_file, text):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,5 +1,4 @@
+-def compute_or_load(self, wav_file, text):
+-    file_name = os.path.splitext(os.path.basename(wav_file))[0]
++def compute_or_load(self, file_name, text):
+     file_ext = '_phoneme.npy'
+     cache_path = os.path.join(self.cache_path, file_name + file_ext)
+     try:
+--- DOC_OLD ---
+Compute phonemes for the given text.
+
+If the phonemes are already cached, load them from cache.
+=== END CASE ===
+
+=== CASE err_id=e032 ===
+PROJECT: espnet | SYMBOL: test_task_and_cli_aliases
+--- SIG_OLD ---
+def test_task_and_cli_aliases(name):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,7 +1,7 @@
+-@pytest.mark.parametrize('name', ['audio_metric', 'universa'])
+-def test_task_and_cli_aliases(name):
++def test_task_and_cli_aliases():
++    name = 'universa'
+     task = importlib.import_module(f'espnet2.tasks.{name}')
+-    assert getattr(task, 'AudioMetricTask' if name == 'audio_metric' else 'UniversaTask') is AqaTask
++    assert task.UniversaTask is AqaTask
+     assert importlib.import_module(f'espnet2.bin.{name}_train').main is train_main
+     module = importlib.import_module(f'espnet2.bin.{name}_inference')
+     assert module.UniversaInference is AqaInference
+--- DOC_OLD ---
+Legacy names expose the same task, inference class, and train function.
+=== END CASE ===
+
+=== CASE err_id=e037 ===
+PROJECT: manim | SYMBOL: scene
+--- SIG_OLD ---
+def scene(**args):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,12 +1,12 @@
+ @cloup.command(context_settings=CONTEXT_SETTINGS, no_args_is_help=True, epilog=EPILOG)
+ @cloup.argument('scene_name', type=str, required=True)
+ @cloup.argument('file_name', type=str, required=False)
+-def scene(**args):
+-    template_name = click.prompt('template', type=click.Choice(get_template_names(), False), default='Default')
++def scene(**kwargs: Any) -> None:
++    template_name: str = click.prompt('template', type=click.Choice(get_template_names(), False), default='Default')
+     scene = (get_template_path() / f'{template_name}.mtp').resolve().read_text()
+-    scene = scene.replace(template_name + 'Template', args['scene_name'], 1)
+-    if args['file_name']:
+-        file_name = Path(args['file_name'])
++    scene = scene.replace(template_name + 'Template', kwargs['scene_name'], 1)
++    if kwargs['file_name']:
++        file_name = Path(kwargs['file_name'])
+         if file_name.suffix != '.py':
+             file_name = file_name.with_suffix(file_name.suffix + '.py')
+         if file_name.is_file():
+--- DOC_OLD ---
+Inserts a SCENE to an existing FILE or creates a new FILE.
+
+SCENE is the name of the scene that will be inserted.
+
+FILE is the name of file in which the SCENE will be inserted.
+=== END CASE ===
+
+=== CASE err_id=e043 ===
+PROJECT: TTS | SYMBOL: vctk
+--- SIG_OLD ---
+def vctk(root_path, meta_files=None, wavs_path='wav22', mic='mic2', ignored_speakers=None):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def vctk(root_path, meta_files=None, wavs_path='wav22', mic='mic2', ignored_speakers=None):
++def vctk(root_path, meta_files=None, wavs_path='wav48_silence_trimmed', mic='mic2', ignored_speakers=None):
+     file_ext = 'flac'
+     test_speakers = meta_files
+     items = []
+--- DOC_OLD ---
+https://datashare.ed.ac.uk/bitstream/handle/10283/3443/VCTK-Corpus-0.92.zip
+=== END CASE ===
+
+=== CASE err_id=e054 ===
+PROJECT: magenta | SYMBOL: Metronome.run
+--- SIG_OLD ---
+def run(self):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -7,7 +7,13 @@
+         if self._stop_time is not None and self._stop_time < tick_time:
+             break
+         sleeper.sleep_until(tick_time)
+-        metric_position = tick_number % len(self._pitches)
+-        self._outport.send(mido.Message(type='note_on', note=self._pitches[metric_position], channel=_METRONOME_CHANNEL, velocity=self._velocity))
+-        sleeper.sleep(self._duration)
+-        self._outport.send(mido.Message(type='note_off', note=self._pitches[metric_position], channel=_METRONOME_CHANNEL))
++        metric_position = tick_number % len(self._messages)
++        tick_message = self._messages[metric_position]
++        if tick_message is None:
++            continue
++        tick_message.channel = self._channel
++        self._outport.send(tick_message)
++        if tick_message.type == 'note_on':
++            sleeper.sleep(self._duration)
++            end_tick_message = mido.Message('note_off', note=tick_message.note, channel=self._channel)
++            self._outport.send(end_tick_message)
+--- DOC_OLD ---
+Outputs metronome tone on the qpm interval until stop signal received.
+=== END CASE ===
+
+=== CASE err_id=e060 ===
+PROJECT: celery-once | SYMBOL: force_string
+--- SIG_OLD ---
+def force_string(kwargs):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,6 +1,6 @@
+ def force_string(kwargs):
+     if isinstance(kwargs, dict):
+-        return {force_string(key): force_string(value) for key, value in six.iteritems(kwargs)}
++        return order_dict_to_string(OrderedDict(((force_string(key), force_string(value)) for key, value in items_sorted_by_key(kwargs))))
+     elif isinstance(kwargs, list):
+         return [force_string(element) for element in kwargs]
+     elif six.PY2 and isinstance(kwargs, unicode):
+--- DOC_OLD ---
+Force key in dict or list to a string.
+    Fixes: https://github.com/TrackMaven/celery-once/issues/11
+=== END CASE ===
+
+=== CASE err_id=e078 ===
+PROJECT: AzurLaneAutoScript | SYMBOL: random_id
+--- SIG_OLD ---
+def random_id(length=6):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,2 +1,2 @@
+-def random_id(length=6):
++def random_id(length: int=6) -> str:
+     return ''.join(random.sample(string.ascii_letters + string.digits, length))
+--- DOC_OLD ---
+Args:
+    length (int): 6 random letter (62^6 combinations) would be enough
+
+Returns:
+    str: Random ID, like "sTD2kF"
+=== END CASE ===
+
+=== CASE err_id=e086 ===
+PROJECT: AzurLaneAutoScript | SYMBOL: atomic_failure_cleanup
+--- SIG_OLD ---
+def atomic_failure_cleanup(directory: str, recursive: bool=False):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,22 +1,26 @@
+-def atomic_failure_cleanup(directory: str, recursive: bool=False):
++def atomic_failure_cleanup(folder: str, recursive: bool=False):
+     try:
+-        with os.scandir(directory) as entries:
++        with os.scandir(folder) as entries:
+             for entry in entries:
+                 if is_tmp_file(entry.name):
+-                    if entry.is_dir(follow_symlinks=False):
+-                        import shutil
+-                        shutil.rmtree(entry.path, ignore_errors=True)
+-                    else:
+-                        try:
+-                            os.unlink(entry.path)
+-                        except PermissionError:
+-                            pass
+-                        except FileNotFoundError:
+-                            pass
+-                        except:
+-                            pass
+-                elif entry.is_dir(follow_symlinks=False):
+-                    if recursive:
+-                        atomic_failure_cleanup(entry.path, recursive=True)
++                    try:
++                        if entry.is_dir(follow_symlinks=False):
++                            folder_rmtree(entry.path, may_symlinks=False)
++                        else:
++                            file_remove(entry.path)
++                    except PermissionError:
++                        pass
++                    except:
++                        pass
++                elif recursive:
++                    try:
++                        if entry.is_dir(follow_symlinks=False):
++                            atomic_failure_cleanup(entry.path, recursive=True)
++                    except:
++                        pass
+     except FileNotFoundError:
+         pass
++    except NotADirectoryError:
++        file_remove(folder)
++    except:
++        pass
+--- DOC_OLD ---
+Cleanup remaining temp file under given path.
+In most cases there should be no remaining temp files unless write process get interrupted.
+
+This method should only be called at startup
+to avoid deleting temp files that another process is writing.
+=== END CASE ===
+
+=== CASE err_id=e089 ===
+PROJECT: Bottles | SYMBOL: Manager.get_latest_runner
+--- SIG_OLD ---
+def get_latest_runner(self, runner_type: str='wine') -> list:
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,7 +1,5 @@
+-def get_latest_runner(self, runner_type: str='wine') -> list:
+-    try:
+-        if runner_type in ['', 'wine']:
+-            return self.__sort_runners('soda')
+-        return self.__sort_runners('proton')
+-    except IndexError:
+-        return []
++def get_latest_runner(self, runner_prefix: str='soda') -> list:
++    runners = self.__sort_runners(self.runners_available, runner_prefix)
++    if not runners:
++        runners = self.__sort_runners(self.runners_available, '')
++    return runners[0] if runners else []
+--- DOC_OLD ---
+Return the latest available runner for a given type.
+=== END CASE ===
+
+=== CASE err_id=e096 ===
+PROJECT: espnet | SYMBOL: ctc_align
+--- SIG_OLD ---
+def ctc_align(log_level: Union[int, str], asr_train_config: str, asr_model_file: str, audio: Path, text: TextIO, output: TextIO, print_utt_text: bool=True, print_utt_score: bool=True, **kwargs):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,15 +1,2 @@
+-@typechecked
+-def ctc_align(log_level: Union[int, str], asr_train_config: str, asr_model_file: str, audio: Path, text: TextIO, output: TextIO, print_utt_text: bool=True, print_utt_score: bool=True, **kwargs):
+-    logging.basicConfig(level=log_level, format='%(asctime)s (%(module)s:%(lineno)d) %(levelname)s: %(message)s')
+-    kwargs = {k: v for k, v in kwargs.items() if v is not None}
+-    model = {'asr_train_config': asr_train_config, 'asr_model_file': asr_model_file}
+-    aligner = CTCSegmentation(**model, **kwargs)
+-    assert audio.name != ''
+-    name = audio.stem
+-    speech, fs = soundfile.read(str(audio))
+-    transcripts = text.read()
+-    segments = aligner(speech=speech, text=transcripts, fs=fs, name=name)
+-    segments.print_utterance_text = print_utt_text
+-    segments.print_confidence_score = print_utt_score
+-    segments_str = str(segments)
+-    output.write(segments_str)
++def ctc_align(**kwargs):
++    align_file(CTCSegmentation, **kwargs)
+--- DOC_OLD ---
+Provide the scripting interface to align text to audio.
+=== END CASE ===
+
+=== CASE err_id=e098 ===
+PROJECT: ipython | SYMBOL: VerboseTB.format_exception_as_a_whole
+--- SIG_OLD ---
+def format_exception_as_a_whole(self, etype: type, evalue: Optional[BaseException], etb: Optional[TracebackType], number_of_lines_of_context, tb_offset: Optional[int]):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def format_exception_as_a_whole(self, etype: type, evalue: Optional[BaseException], etb: Optional[TracebackType], number_of_lines_of_context, tb_offset: Optional[int]):
++def format_exception_as_a_whole(self, etype: type, evalue: Optional[BaseException], etb: Optional[TracebackType], context: int, tb_offset: Optional[int]) -> list[list[str]]:
+     orig_etype = etype
+     try:
+         etype = etype.__name__
+@@ -7,7 +7,7 @@
+     tb_offset = self.tb_offset if tb_offset is None else tb_offset
+     assert isinstance(tb_offset, int)
+     head = self.prepare_header(str(etype), self.long_header)
+-    records = self.get_records(etb, number_of_lines_of_context, tb_offset) if etb else []
++    records = self.get_records(etb, context, tb_offset) if etb else []
+     frames = []
+     skipped = 0
+     lastrecord = len(records) - 1
+@@ -17,15 +17,11 @@
+                 skipped += 1
+                 continue
+         if skipped:
+-            Colors = self.Colors
+-            ColorsNormal = Colors.Normal
+-            frames.append('    %s[... skipping hidden %s frame]%s\n' % (Colors.excName, skipped, ColorsNormal))
++            frames.append(theme_table[self._theme_name].format([(Token, '    '), (Token.ExcName, '[... skipping hidden %s frame]' % skipped), (Token, '\n')]))
+             skipped = 0
+         frames.append(self.format_record(record))
+     if skipped:
+-        Colors = self.Colors
+-        ColorsNormal = Colors.Normal
+-        frames.append('    %s[... skipping hidden %s frame]%s\n' % (Colors.excName, skipped, ColorsNormal))
++        frames.append(theme_table[self._theme_name].format([(Token, '    '), (Token.ExcName, '[... skipping hidden %s frame]' % skipped), (Token, '\n')]))
+     formatted_exception = self.format_exception(etype, evalue)
+     if records:
+         frame_info = records[-1]
+--- DOC_OLD ---
+Formats the header, traceback and exception message for a single exception.
+
+This may be called multiple times by Python 3 exception chaining
+(PEP 3134).
+=== END CASE ===
+
+=== CASE err_id=e104 ===
+PROJECT: MMdnn | SYMBOL: CoreMLEmitter.emit_Flatten
+--- SIG_OLD ---
+def emit_Flatten(self, IR_node):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,5 +1,7 @@
+ def emit_Flatten(self, IR_node):
+-    input_name, output_name = self._get_in_out_names(IR_node)
+-    blob_order = 1
+-    '\n        # using keras_layer.input.shape have a "?" (Dimension[None] at the front),\n        # making a 3D tensor with unknown batch size 4D\n        if len(keras_layer.input.shape) == 4:\n            blob_order = 1\n        '
+-    self.builder.add_flatten(name=IR_node.name, mode=blob_order, input_name=input_name, output_name=output_name)
++    input_name = self.IR_graph.get_node(IR_node.in_edges[0]).real_name
++    output_name = IR_node.out_edges[0]
++    blob_order = 0
++    if len(keras_layer.input.shape) == 4:
++        blob_order = 1
++    self.builder.add_flatten(name=IR_node.name, mode=1, input_name=input_name, output_name=output_name)
+--- DOC_OLD ---
+Convert a flatten layer from keras to coreml.
+        ----------
+        Parameters
+        keras_layer: layer
+            A keras layer object.
+
+        builder: NeuralNetworkBuilder
+            A neural network builder object.
+=== END CASE ===
+
+=== CASE err_id=e107 ===
+PROJECT: espnet | SYMBOL: AudioKind.check
+--- SIG_OLD ---
+def check(self, value, field, model, *, output):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,4 +1,7 @@
+ def check(self, value, field, model, *, output):
++    rate = model.sample_rate
+     if output and isinstance(value, np.ndarray):
+-        return Audio(value, model.sample_rate)
+-    return Audio.coerce(value, model.sample_rate)
++        if rate is None:
++            raise TypeError(f'{field.name!r} returned as a bare array by a model that fixes no sample_rate; return an Audio with its rate')
++        return Audio(value, rate)
++    return Audio.coerce(value, rate)
+--- DOC_OLD ---
+Coerce what a caller holds; a hook's bare array is at the model's rate.
+=== END CASE ===
+
+=== CASE err_id=e111 ===
+PROJECT: AzurLaneAutoScript | SYMBOL: IslandRecipe.run_recipe
+--- SIG_OLD ---
+def run_recipe(self, recipe_id, batch_count=float('inf')):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def run_recipe(self, recipe_id, batch_count=float('inf')):
++def run_recipe(self, recipe_id, batch_count=float('inf'), mode=None):
+     self.last_unavailable_product = None
+     if not self.is_in_recipe_menu():
+         logger.warning('Not in recipe menu, cannot run recipe')
+@@ -6,15 +6,14 @@
+     if not self.set_recipe(recipe_id):
+         logger.warning(f'Failed to set recipe to {recipe_id}, cannot run recipe')
+         return None
+-    success, real_count = self.prepare_ingredients(recipe_id, batch_count=batch_count)
++    success, real_count = self.prepare_ingredients(recipe_id, batch_count=batch_count, mode=mode)
++    if real_count <= 0:
++        logger.warning('No batch can be produced with current ingredient stock, cannot run recipe')
++        self.last_unavailable_product = get_recipe_product_id(recipe_id)
++        return None
+     if not success:
+         logger.warning(f'Failed to prepare enough ingredient for {batch_count} batch(es) production')
+-        if real_count == 0:
+-            logger.warning('No batch can be produced with current ingredient stock, cannot run recipe')
+-            self.last_unavailable_product = get_recipe_product_id(recipe_id)
+-            return None
+-        else:
+-            logger.info(f'Can only produce {real_count} batch(es) with current ingredient stock, will try to run with this amount')
++        logger.info(f'Can only produce {real_count} batch(es) with current ingredient stock, will try to run with this amount')
+     if not self.set_recipe_batch_count(real_count):
+         logger.warning(f"Failed to set recipe batch count to {('max' if real_count == float('inf') else real_count)}, cannot run recipe")
+         return None
+--- DOC_OLD ---
+Returns:
+    tuple[timedelta, int | float]: remain time and actual batch count after starting,
+        or None if failed to start recipe
+=== END CASE ===
+
+=== CASE err_id=e119 ===
+PROJECT: manim | SYMBOL: test_deprecate_class_since_and_until
+--- SIG_OLD ---
+def test_deprecate_class_since_and_until(warn_caplog_manim):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,6 +1,6 @@
+-def test_deprecate_class_since_and_until(warn_caplog_manim):
++def test_deprecate_class_since_and_until(manim_caplog):
+     qx = Qux()
+-    assert len(warn_caplog_manim.record_tuples) == 1
+-    msg = _get_caplog_record_msg(warn_caplog_manim)
++    assert len(manim_caplog.record_tuples) == 1
++    msg = _get_caplog_record_msg(manim_caplog)
+     assert msg == 'The class Qux has been deprecated since 0.7.0 and is expected to be removed after 0.9.0-rc2.'
+     assert qx.__doc__ == f'{doc_admonition}{msg}'
+--- DOC_OLD ---
+Test the deprecation of a class (decorator with since and until arguments).
+=== END CASE ===
+
+=== CASE err_id=e122 ===
+PROJECT: AzurLaneAutoScript | SYMBOL: StorageHandler.storage_disassemble_equipment
+--- SIG_OLD ---
+def storage_disassemble_equipment(self, rarity=1, amount=40):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def storage_disassemble_equipment(self, rarity=1, amount=40):
++def storage_disassemble_equipment(self, rarity=1, amount=15):
+     logger.hr('Disassemble Equipment', level=2)
+     self.ui_goto_storage()
+     disassembled = 0
+--- DOC_OLD ---
+Disassemble target amount of equipment.
+If not having enough equipment, use boxes then disassemble.
+
+Args:
+    rarity (int): 1 for common, 2 for rare, 3 for elite, 4 for super_rare
+    amount (int): Expected amount to disassemble.
+        Actual amount >= expected
+
+Returns:
+    int: Actual amount of equipments disassembled
+
+Pages:
+    in: Any
+    out: page_storage, equipment, DISASSEMBLE
+=== END CASE ===
+
+=== CASE err_id=e132 ===
+PROJECT: ipython | SYMBOL: InteractiveShell.var_expand
+--- SIG_OLD ---
+def var_expand(self, cmd, depth=0, formatter=DollarFormatter()):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def var_expand(self, cmd, depth=0, formatter=DollarFormatter()):
++def var_expand(self, cmd, depth=0, formatter=_dollar_formatter):
+     ns = self.user_ns.copy()
+     try:
+         frame = sys._getframe(depth + 1)
+--- DOC_OLD ---
+Expand python variables in a string.
+
+The depth argument indicates how many frames above the caller should
+be walked to look for the local namespace where to expand variables.
+
+The global namespace for expansion is always the user's interactive
+namespace.
+=== END CASE ===
+
+=== CASE err_id=e149 ===
+PROJECT: AzurLaneAutoScript | SYMBOL: EmulatorManager.adb_replace
+--- SIG_OLD ---
+def adb_replace(self):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -7,7 +7,10 @@
+     for adb in replace:
+         logger.info(f'Replacing {adb}')
+         bak = self.adb_path_to_backup(adb, new_backup=True)
+-        logger.info(f'{adb} -----> {bak}')
+-        shutil.move(adb, bak)
+-        logger.info(f'{self.adb} -----> {adb}')
+-        shutil.copy(self.adb, adb)
++        try:
++            logger.info(f'{adb} -----> {bak}')
++            shutil.move(adb, bak)
++            logger.info(f'{self.adb} -----> {adb}')
++            shutil.copy(self.adb, adb)
++        except OSError as e:
++            logger.warning(f'Failed to replace {adb}, {e}')
+--- DOC_OLD ---
+Backup the adb in emulator folder to xxx.bak, replace it with your adb.
+`adb kill-server` must be called before replacing.
+=== END CASE ===
+
+=== CASE err_id=e094 ===
+PROJECT: rasa | SYMBOL: DIETClassifier.process
+--- SIG_OLD ---
+def process(self, message: Message, **kwargs: Any) -> Optional[Dict[Text, Any]]:
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def process(self, message: Message, **kwargs: Any) -> Optional[Dict[Text, Any]]:
++def process(self, message: Message, **kwargs: Any) -> None:
+     out = self._predict(message)
+     if self.component_config[INTENT_CLASSIFICATION]:
+         label, label_ranking = self._predict_label(out)
+@@ -7,4 +7,5 @@
+     if self.component_config[ENTITY_RECOGNITION]:
+         entities = self._predict_entities(out, message)
+         message.set(ENTITIES, entities, add_to_output=True)
+-    return values_to_numpy(out.get(DIAGNOSTIC_DATA)) if out else None
++    if out:
++        message.set(DIAGNOSTIC_DATA, values_to_numpy(out.get(DIAGNOSTIC_DATA)))
+--- DOC_OLD ---
+Augment the message with intents and entities and return diagnostic data.
+=== END CASE ===
+
+=== CASE err_id=e109 ===
+PROJECT: pytorch_geometric | SYMBOL: is_undirected
+--- SIG_OLD ---
+def is_undirected(edge_index: Tensor, edge_attr: Union[OptTensor, List[Tensor]]=None, num_nodes: Optional[int]=None) -> bool:
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -11,6 +11,7 @@
+         return False
+     if not torch.equal(edge_index1[1], edge_index2[0]):
+         return False
++    assert isinstance(edge_attrs1, list) and isinstance(edge_attrs2, list)
+     for edge_attr1, edge_attr2 in zip(edge_attrs1, edge_attrs2):
+         if not torch.equal(edge_attr1, edge_attr2):
+             return False
+--- DOC_OLD ---
+r"""Returns :obj:`True` if the graph given by :attr:`edge_index` is
+    undirected.
+
+    Args:
+        edge_index (LongTensor): The edge indices.
+        edge_attr (Tensor or List[Tensor], optional): Edge weights or multi-
+            dimensional edge features.
+            If given as a list, will check for equivalence in all its entries.
+            (default: :obj:`None`)
+        num_nodes (int, optional): The number of nodes, *i.e.*
+            :obj:`max_val + 1` of :attr:`edge_index`. (default: :obj:`None`)
+
+    :rtype: bool
+
+    Examples:
+
+        >>> edge_index = torch.tensor([[0, 1, 0],
+        ...                         [1, 0, 0]])
+        >>> weight = torch.tensor([0, 0, 1])
+        >>> is_undirected(edge_index, weight)
+        True
+
+        >>> weight = torch.tensor([0, 1, 1])
+        >>> is_undirected(edge_index, weight)
+        False
+=== END CASE ===
+
+=== CASE err_id=e115 ===
+PROJECT: django-rest-framework | SYMBOL: Issue1386Tests.test_issue_1386
+--- SIG_OLD ---
+def test_issue_1386(self):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,11 +1,11 @@
+ def test_issue_1386(self):
+     correct_urls = ['asdf.com', 'asdf.net', 'www.as_df.org', 'as.d8f.ghj8.gov']
+     for i in correct_urls:
+-        res = urlize_quoted_links(i)
++        res = urlize(i)
+         self.assertNotEqual(res, i)
+         self.assertIn(i, res)
+     incorrect_urls = ['mailto://asdf@fdf.com', 'asdf.netnet']
+     for i in incorrect_urls:
+-        res = urlize_quoted_links(i)
++        res = urlize(i)
+         self.assertEqual(i, res)
+-    urlize_quoted_links('asdf:[/p]zxcv.com')
++    urlize('asdf:[/p]zxcv.com')
+--- DOC_OLD ---
+Test function urlize_quoted_links with different args
+=== END CASE ===
+
+=== CASE err_id=e121 ===
+PROJECT: pytorch | SYMBOL: numpy_to_tensor
+--- SIG_OLD ---
+def numpy_to_tensor(value):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,5 +1,7 @@
+ def numpy_to_tensor(value):
+-    if isinstance(value, torch_np.ndarray):
++    if isinstance(value, np.ndarray):
++        return torch.as_tensor(value)
++    if isinstance(value, tnp.ndarray):
+         return value.tensor
+     elif isinstance(value, (tuple, list)):
+         return type(value)((numpy_to_tensor(obj) for obj in value))
+--- DOC_OLD ---
+Convert torch_np.ndarray to tensor, leave other types intact. If a list/tuple, loop through it to convert.
+=== END CASE ===
+
+=== CASE err_id=e129 ===
+PROJECT: matplotlib | SYMBOL: ToolViewsPositions.push_current
+--- SIG_OLD ---
+def push_current(self):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,8 +1,8 @@
+ def push_current(self):
+-    views = WeakKeyDictionary()
+-    pos = WeakKeyDictionary()
++    views = []
++    pos = []
+     for a in self.figure.get_axes():
+-        views[a] = a._get_view()
+-        pos[a] = self._axes_pos(a)
++        views.append(a._get_view())
++        pos.append((a.get_position(True).frozen(), a.get_position().frozen()))
+     self.views[self.figure].push(views)
+     self.positions[self.figure].push(pos)
+--- DOC_OLD ---
+Push the current view limits and position onto their respective stacks
+=== END CASE ===
+
+=== CASE err_id=e139 ===
+PROJECT: pytorch | SYMBOL: HeuristicInterface.get_prediction_confidence
+--- SIG_OLD ---
+def get_prediction_confidence(self, tests: List[str]) -> Dict[str, float]:
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,2 +1,2 @@
+-def get_prediction_confidence(self, tests: List[str]) -> Dict[str, float]:
++def get_prediction_confidence(self, tests: List[str]) -> TestPrioritizations:
+     pass
+--- DOC_OLD ---
+Like get_test_priorities, but instead returns a float ranking ranging
+        from -1 to 1, where negative means skip, positive means run, 0 means no
+        idea, and magnitude = how confident the heuristic is. Used by
+        AggregatedHeuristicsRankings.
+=== END CASE ===
+
+=== CASE err_id=e147 ===
+PROJECT: ipython | SYMBOL: test_get_xdg_dir_3
+--- SIG_OLD ---
+def test_get_xdg_dir_3():
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,8 +1,8 @@
+ def test_get_xdg_dir_3():
+     reload(path)
+     path.get_home_dir = lambda: HOME_TEST_DIR
+-    os.name = 'posix'
+-    sys.platform = 'darwin'
++    os.name = 'nt'
++    sys.platform = 'win32'
+     env.pop('IPYTHON_DIR', None)
+     env.pop('IPYTHONDIR', None)
+     env.pop('XDG_CONFIG_HOME', None)
+--- DOC_OLD ---
+test_get_xdg_dir_3, check xdg_dir not used on OS X
+=== END CASE ===
+
+=== CASE err_id=e159 ===
+PROJECT: matplotlib | SYMBOL: concatenate_paths
+--- SIG_OLD ---
+def concatenate_paths(paths):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,9 +1,4 @@
+ def concatenate_paths(paths):
+-    vertices = []
+-    codes = []
+-    for p in paths:
+-        p = make_path_regular(p)
+-        vertices.append(p.vertices)
+-        codes.append(p.codes)
+-    _path = Path(np.concatenate(vertices), np.concatenate(codes))
+-    return _path
++    vertices = np.concatenate([p.vertices for p in paths])
++    codes = np.concatenate([make_path_regular(p).codes for p in paths])
++    return Path(vertices, codes)
+--- DOC_OLD ---
+concatenate list of paths into a single path.
+=== END CASE ===
+
+=== CASE err_id=e172 ===
+PROJECT: rasa | SYMBOL: DynamoTrackerStore.serialise_tracker
+--- SIG_OLD ---
+def serialise_tracker(self, tracker: 'DialogueStateTracker') -> Dict:
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,4 +1,2 @@
+-def serialise_tracker(self, tracker: 'DialogueStateTracker') -> Dict:
+-    d = tracker.as_dialogue().as_dict()
+-    d.update({'sender_id': tracker.sender_id})
+-    return core_utils.replace_floats_with_decimals(d)
++def serialise_tracker(tracker: 'DialogueStateTracker') -> Dict:
++    return core_utils.replace_floats_with_decimals(SerializedTrackerAsDict.serialise_tracker(tracker))
+--- DOC_OLD ---
+Serializes the tracker, returns object with decimal types.
+=== END CASE ===
+
+=== CASE err_id=e183 ===
+PROJECT: scrapy | SYMBOL: add_http_if_no_scheme
+--- SIG_OLD ---
+def add_http_if_no_scheme(url):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,7 +1,8 @@
+ def add_http_if_no_scheme(url):
+-    parser = parse_url(url)
+     if url.startswith('//'):
+         url = 'http:' + url
+-    elif not parser.scheme or not parser.netloc:
++        return url
++    parser = parse_url(url)
++    if not parser.scheme or not parser.netloc:
+         url = 'http://' + url
+     return url
+--- DOC_OLD ---
+Adds http as the default scheme if it is missing from the url
+=== END CASE ===
+
+=== CASE err_id=e197 ===
+PROJECT: matplotlib | SYMBOL: ToolLineHandles.closest
+--- SIG_OLD ---
+def closest(self, x, y):
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -5,5 +5,5 @@
+     else:
+         p_pts = np.array([self.ax.transData.transform((0, p))[1] for p in self.positions])
+         dist = abs(p_pts - y)
+-    min_index = np.argmin(dist)
+-    return (min_index, dist[min_index])
++    index = np.argmin(dist)
++    return (index, dist[index])
+--- DOC_OLD ---
+Return index and pixel distance to closest handle.
+=== END CASE ===
+
+=== CASE err_id=e205 ===
+PROJECT: pandas | SYMBOL: extract_pandas_array
+--- SIG_OLD ---
+def extract_pandas_array(values: ArrayLike, dtype: DtypeObj | None, ndim: int) -> tuple[ArrayLike, DtypeObj | None]:
+--- DIFF ---
+--- a/code.py
++++ b/code.py
+@@ -1,8 +1,8 @@
+ def extract_pandas_array(values: ArrayLike, dtype: DtypeObj | None, ndim: int) -> tuple[ArrayLike, DtypeObj | None]:
+-    if isinstance(values, ABCPandasArray):
++    if isinstance(values, ABCNumpyExtensionArray):
+         values = values.to_numpy()
+         if ndim and ndim > 1:
+             values = np.atleast_2d(values)
+-    if isinstance(dtype, PandasDtype):
++    if isinstance(dtype, NumpyEADtype):
+         dtype = dtype.numpy_dtype
+     return (values, dtype)
+--- DOC_OLD ---
+Ensure that we don't allow PandasArray / PandasDtype in internals.
+=== END CASE ===
