@@ -391,7 +391,7 @@ def main() -> int:
     print(f"weight_audit: {weight_audit}")
 
     from transformers import AutoConfig
-    backbone = AutoModel.from_pretrained(model_name)
+    backbone = AutoModel.from_pretrained(model_name, torch_dtype=torch.float32)
     hidden = backbone.config.hidden_size
     model = DualHeadCodeClassifier(backbone, hidden_size=hidden,
                                    num_drift_classes=len(DRIFT_CLASSES),
