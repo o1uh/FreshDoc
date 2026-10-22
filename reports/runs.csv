@@ -1,2 +1,11 @@
 timestamp,output_dir,model_name,max_len,seed,epochs,train_time_sec,eval_pr_auc,n_train,n_val_real,train_mix,drop_diff
 2026-10-21T06:31:15.128504+00:00,/kaggle/working/checkpoints/m2_run1,microsoft/unixcoder-base,1024,42,3.0,1794.8,0.9790682590052837,21997,559,full,False
+2026-10-21T18:14:50.777280+00:00,/kaggle/working/checkpoints/slot1_real,microsoft/unixcoder-base,1024,42,3.0,203.2,0.9566472600528222,2393,559,real_only,False
+2026-10-21T19:05:45.262302+00:00,/kaggle/working/checkpoints/slot2_synth,microsoft/unixcoder-base,1024,42,3.0,1409.2,0.7163466561824223,19008,559,synth_only,False
+2026-10-21T19:59:43.686319+00:00,/kaggle/working/checkpoints/slot3_real_ast,microsoft/unixcoder-base,1024,42,3.0,1592.7,0.9666085195122966,21401,559,real_ast,False
+2026-10-21T20:54:17.042411+00:00,/kaggle/working/checkpoints/slot4_full,microsoft/unixcoder-base,1024,42,3.0,1627.5,0.9724119718884795,21997,559,full,False
+2026-10-21T22:08:14.902514+00:00,/kaggle/working/checkpoints/slot5_modernbert1024,answerdotai/ModernBERT-base,1024,42,3.0,2782.8,0.9695076804972841,21997,559,full,False
+2026-10-22T00:08:22.261279+00:00,/kaggle/working/checkpoints/slot7_modernbert2048,answerdotai/ModernBERT-base,2048,42,3.0,4574.5,0.9668526604026417,21997,559,full,False
+2026-10-22T04:25:59.993436+00:00,/kaggle/working/checkpoints/slot6_gte2048,Alibaba-NLP/gte-modernbert-base,2048,42,3.0,4667.6,0.9601826090296199,21997,559,full,False
+2026-10-22T05:22:55.216652+00:00,/kaggle/working/checkpoints/slot8_stacking,stacking_m1_m2,1024,42,0.0,0.5,0.958056394318148,559,559,val_preds,False
+2026-10-22T05:39:29.376446+00:00,/kaggle/working/checkpoints/slot9_ablation_no_diff,microsoft/unixcoder-base,1024,42,3.0,932.5,0.9583007951810241,21997,559,full,True
