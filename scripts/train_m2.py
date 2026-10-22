@@ -220,6 +220,40 @@ def append_runs_csv(path, row: dict) -> None:
     print(f"Строка runs.csv: {p}")
 
 
+def filter_dataset_by_mix(df: pd.DataFrame, train_mix: str) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Фильтрация состава обучающей выборки train по R6/R11/FD-24."""
+    m_train = df["split"].eq("train").to_numpy()
+    m_val_real = df["split"].eq("val").to_numpy() & df["source"].isin(list(REAL_SOURCES)).to_numpy()
+    train_df = df.loc[m_train].reset_index(drop=True)
+    val_df = df.loc[m_val_real].reset_index(drop=True)
+
+    if train_mix == "real_only":
+        train_df = train_df.loc[train_df["source"].isin(list(REAL_SOURCES))].reset_index(drop=True)
+    elif train_mix == "synth_only":
+        train_df = train_df.loc[train_df["source"].isin(["synth_ast"])].reset_index(drop=True)
+    elif train_mix == "real_ast":
+        train_df = train_df.loc[train_df["source"].isin(list(REAL_SOURCES) + ["synth_ast"])].reset_index(drop=True)
+    elif train_mix == "full":
+        pass
+    else:
+        raise ValueError(f"Неизвестный режим train_mix: {train_mix}")
+    return train_df, val_df
+
+
+def apply_drop_diff(train_df: pd.DataFrame,
+                    val_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """FD-24 E3: абляция признака diff_code (реальный код пути, не дубль для тестов).
+
+    Возвращает копии с занулённым diff_code в train и val.
+    Исходные фреймы не мутируются; остальные колонки сохраняются как есть.
+    """
+    train_out = train_df.copy()
+    val_out = val_df.copy()
+    train_out["diff_code"] = ""
+    val_out["diff_code"] = ""
+    return train_out, val_out
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="FD-21: обучение M2 (R10).")
     ap.add_argument("--config", default=str(IN_CONFIG))
@@ -244,9 +278,23 @@ def main() -> int:
                          "'label_source:вес,...' (напр. 'llm_p1:1.0'). "
                          "По умолчанию веса датасета (llm_p1=0.5 по решению "
                          "команды 13.10 после аудита 56-60%% шума; см. S3).")
+    ap.add_argument("--learning_rate", "--lr", type=float, default=None,
+                    help="FD-24: learning rate (переопределяет config/train.yaml). "
+                         "Дефолт 2e-5; при нестабильности FP16 на ModernBERT снизить до 1e-5.")
     ap.add_argument("--runs_csv", default="reports/runs.csv",
                     help="куда дописать строку прогона (формат FD-24). "
                          "Пустая строка отключает запись.")
+    ap.add_argument("--train_mix", choices=["real_only", "synth_only", "real_ast", "full"],
+                    default="full",
+                    help="FD-24 E2: режим фильтрации обучающей выборки (split==train). "
+                         "real_only: codocbench + history_neg; "
+                         "synth_only: synth_ast без synth_llm (изоляция эффекта AST); "
+                         "real_ast: real + synth_ast; "
+                         "full: полная смесь (дефолт, включая LLM).")
+    ap.add_argument("--drop_diff", action="store_true",
+                    help="FD-24 E3: абляция признака diff_code (подмена на пустую строку).")
+    ap.add_argument("--gradient_checkpointing", action="store_true",
+                    help="FD-24: включить gradient checkpointing (для контекста >=2048).")
     args = ap.parse_args()
 
     cfg = load_config(Path(args.config))
@@ -256,7 +304,8 @@ def main() -> int:
     epochs = float(args.num_train_epochs if args.num_train_epochs is not None
                    else cfg.get("num_train_epochs", 3))
     seed = int(args.seed if args.seed is not None else cfg.get("seed", 42))
-    lr = float(cfg.get("learning_rate", 2e-5))
+    lr = float(args.learning_rate if args.learning_rate is not None
+               else cfg.get("learning_rate", 2e-5))
     wd = float(cfg.get("weight_decay", 0.01))
     # transformers>=5: warmup_ratio удалён; warmup_steps<1 трактуется как доля.
     # Поддержаны оба ключа (старый warmup_ratio — для совместимости).
@@ -274,13 +323,16 @@ def main() -> int:
         print(f"В датасете нет колонок: {sorted(missing)}")
         return 2
 
-    m_train = df["split"].eq("train").to_numpy()
-    m_val_real = df["split"].eq("val").to_numpy() & df["source"].isin(
-        list(REAL_SOURCES)).to_numpy()
-    train_df = df.loc[m_train].reset_index(drop=True)
-    val_df = df.loc[m_val_real].reset_index(drop=True)
+    # FD-24 E2: фильтрация состава обучающей выборки (--train_mix)
+    train_df, val_df = filter_dataset_by_mix(df, args.train_mix)
+
+    # FD-24 E3: абляция без diff_code (--drop_diff)
+    if args.drop_diff:
+        train_df, val_df = apply_drop_diff(train_df, val_df)
+        print("E3 АБЛЯЦИЯ: diff_code подменен на пустую строку в train и val")
+
     print(f"Датасет: {args.data_path} ({len(df)} строк)")
-    print(f"train: {len(train_df)} (pos={int(train_df['label_stale'].sum())}), "
+    print(f"train ({args.train_mix}): {len(train_df)} (pos={int(train_df['label_stale'].sum())}), "
           f"val_real: {len(val_df)} (pos={int(val_df['label_stale'].sum())})")
 
     # Перевес обучения (S3): меняет веса только в этом прогоне, датасет не трогает.
@@ -350,7 +402,7 @@ def main() -> int:
     print(f"weight_audit: {weight_audit}")
 
     from transformers import AutoConfig
-    backbone = AutoModel.from_pretrained(model_name)
+    backbone = AutoModel.from_pretrained(model_name, torch_dtype=torch.float32)
     hidden = backbone.config.hidden_size
     model = DualHeadCodeClassifier(backbone, hidden_size=hidden,
                                    num_drift_classes=len(DRIFT_CLASSES),
@@ -363,6 +415,8 @@ def main() -> int:
         return 2
 
     out_dir = Path(args.output_dir)
+    import transformers as _tf
+    is_tf5 = int(_tf.__version__.split(".")[0]) >= 5
     targs_kwargs = dict(
         output_dir=str(out_dir),
         num_train_epochs=epochs,
@@ -371,7 +425,6 @@ def main() -> int:
         gradient_accumulation_steps=accum,
         learning_rate=lr,
         weight_decay=wd,
-        warmup_steps=warmup,
         max_grad_norm=float(cfg.get("max_grad_norm", 1.0)),
         lr_scheduler_type=cfg.get("lr_scheduler_type", "linear"),
         optim=cfg.get("optim", "adamw_torch"),
@@ -386,7 +439,7 @@ def main() -> int:
         report_to="none",
         fp16=fp16 and torch.cuda.is_available(),
         bf16=False,
-        gradient_checkpointing=bool(cfg.get("gradient_checkpointing", False)),
+        gradient_checkpointing=bool(args.gradient_checkpointing or cfg.get("gradient_checkpointing", False)),
         dataloader_num_workers=int(cfg.get("dataloader_num_workers", 2)),
         # True: голова дрейфа условная (маска y=1 и известный тип) — на шагах
         # без валидных строк drift_head не участвует в backward; с False DDP
@@ -394,6 +447,11 @@ def main() -> int:
         # пустой лосс дрейфа держит граф (logit_d.sum()*0.0) в m2_model.py.
         ddp_find_unused_parameters=True,
     )
+    if is_tf5 or warmup >= 1.0:
+        targs_kwargs["warmup_steps"] = warmup if is_tf5 else int(warmup)
+    else:
+        targs_kwargs["warmup_ratio"] = warmup
+
     if args.pilot_steps:
         targs_kwargs["max_steps"] = int(args.pilot_steps)
         print(f"PILOT: остановка после {args.pilot_steps} шагов")
@@ -421,8 +479,46 @@ def main() -> int:
             return [_json_safe(x) for x in v]
         return v
 
+    def _get_git_commit() -> str:
+        try:
+            import subprocess
+            return subprocess.check_output(
+                ["git", "rev-parse", "HEAD"],
+                cwd=str(PROJECT_ROOT),
+                text=True,
+                stderr=subprocess.DEVNULL,
+            ).strip()
+        except Exception:
+            return "unknown"
+
     metrics = trainer.evaluate()
     print(f"Eval val_real: {metrics}")
+    if args.pilot_steps:
+        losses = [e.get("loss") for e in trainer.state.log_history if "loss" in e]
+        eval_losses = [e.get("eval_loss") for e in trainer.state.log_history if "eval_loss" in e]
+        all_losses = losses + eval_losses
+        has_nan = any(l is None or (isinstance(l, float) and (np.isnan(l) or np.isinf(l))) for l in all_losses)
+        sec_per_step = train_time / max(1, args.pilot_steps)
+        world_size = 1
+        if torch.distributed.is_available() and torch.distributed.is_initialized():
+            world_size = torch.distributed.get_world_size()
+        elif "WORLD_SIZE" in os.environ:
+            try:
+                world_size = int(os.environ["WORLD_SIZE"])
+            except Exception:
+                world_size = torch.cuda.device_count() if torch.cuda.is_available() else 1
+        elif torch.cuda.is_available():
+            world_size = torch.cuda.device_count()
+        eff_bs = per_device * accum * max(1, world_size)
+        steps_per_epoch = max(1, len(train_df) // max(1, eff_bs))
+        est_epoch_min = (steps_per_epoch * sec_per_step) / 60.0
+        print(f"PILOT КАЛИБРОВКА: {sec_per_step:.2f} с/шаг (world_size={world_size}, eff_batch={eff_bs}). "
+              f"Прогноз времени эпохи ({steps_per_epoch} шагов для {len(train_df)} строк): {est_epoch_min:.1f} мин")
+        if has_nan or (metrics.get("eval_loss") is not None and np.isnan(metrics["eval_loss"])):
+            print("ОШИБКА ПИЛОТА: зафиксирован NaN/Inf в функции потерь!", file=sys.stderr)
+            print("СТОП-КРИТЕРИЙ: снизить learning_rate с 2e-5 до 1e-5 (--lr 1e-5).", file=sys.stderr)
+            return 3
+        print("PILOT ПРОВЕРКА ПРОЙДЕНА: потерь NaN нет, запуск стабилен.")
     # История PR-AUC по эпохам в артефакт (наблюдение прогона: гейт виден
     # только в финале; при провале нужно знать, на какой эпохе поехало).
     eval_history = [
@@ -448,7 +544,7 @@ def main() -> int:
                 json.dumps({"model_name": model_name, "hidden_size": hidden,
                             "num_drift_classes": len(DRIFT_CLASSES),
                             "drift_classes": DRIFT_CLASSES,
-                            "max_len": max_len, "doc_budget": doc_budget,
+                            "max_len": max_len, "doc_budget": doc_budget, "train_mix": args.train_mix, "drop_diff": bool(args.drop_diff),
                             "backbone_config": "config.json (бэкбон)"},
                            ensure_ascii=False, indent=2), encoding="utf-8")
             print(f"Конфиг бэкбона + dualhead_config.json: {best_dir}")
@@ -456,7 +552,8 @@ def main() -> int:
             print(f"ВНИМАНИЕ: не удалось сохранить конфиг бэкбона ({e})")
 
     meta = {
-        "task": "FD-21",
+        "task": "FD-24",
+        "git_commit": _get_git_commit(),
         "built_at": datetime.now(timezone.utc).isoformat(),
         "model_name": model_name,
         "max_len": max_len,
@@ -481,6 +578,9 @@ def main() -> int:
                                      if isinstance(v, (int, float))}),
         "eval_history": _json_safe(eval_history),
         "overfit_test": bool(args.overfit_test),
+        "train_mix_mode": args.train_mix,
+        "drop_diff": bool(args.drop_diff),
+        "gradient_checkpointing": bool(args.gradient_checkpointing or cfg.get("gradient_checkpointing", False)),
         "drift_classes": DRIFT_CLASSES,
     }
     if is_main:
@@ -497,7 +597,7 @@ def main() -> int:
                     "seed": seed, "epochs": epochs,
                     "train_time_sec": meta["train_time_sec"],
                     "eval_pr_auc": (meta["eval_val_real"] or {}).get("eval_pr_auc"),
-                    "n_train": meta["n_train"], "n_val_real": meta["n_val_real"]}
+                    "n_train": meta["n_train"], "n_val_real": meta["n_val_real"], "train_mix": args.train_mix, "drop_diff": bool(args.drop_diff)}
             append_runs_csv(args.runs_csv, _row)
     if args.overfit_test:
         # Машинный критерий шага 2 FD-21 (S4): PR-AUC>=0.99 на тех же 200.

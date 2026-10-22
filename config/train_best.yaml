@@ -1,0 +1,58 @@
+# ==============================================================================
+
+# FD-24: Итоговая конфигурация лучшей модели M2
+
+# Сформировано: 2026-10-22T08:13:25.030631+00:00
+
+# Инвариант выбора: строго по max PR-AUC на реальных строках val (не по тестам)
+
+# Оговорка статистической значимости: топ-4 модели лежат в окне DDP-шума (Delta=0.007),
+
+# доверительные интервалы перекрываются [0.950, 0.985]. Выбор UniXcoder утвержден
+
+# по вторичным критериям: drift-F1 (0.812 против 0.670) и скорости обучения (27 мин vs 76 мин).
+
+#
+
+# Победитель:
+
+#   Модель: microsoft/unixcoder-base
+
+#   Длина контекста: 1024
+
+#   Смесь обучения: full
+
+#   Абляция drop_diff: False
+
+#   PR-AUC на val_real: 0.97241
+
+#   Источник запуска: /kaggle/working/checkpoints/slot4_full
+
+# ==============================================================================
+
+
+model_name: microsoft/unixcoder-base
+max_len: 1024
+doc_budget: 384
+lambda_drift: 0.6
+dropout: 0.1
+learning_rate: 2.0e-05
+weight_decay: 0.01
+num_train_epochs: 3
+warmup_steps: 0.06
+max_grad_norm: 1.0
+lr_scheduler_type: linear
+optim: adamw_torch
+per_device_batch_size: 8
+per_device_eval_batch_size: 16
+gradient_accumulation_steps: 2
+fp16: true
+gradient_checkpointing: false
+save_total_limit: 2
+logging_steps: 25
+dataloader_num_workers: 2
+seed: 42
+metric_for_best_model: pr_auc
+eval_split_for_selection: val_real_only
+train_mix: full
+drop_diff: false
