@@ -240,6 +240,20 @@ def filter_dataset_by_mix(df: pd.DataFrame, train_mix: str) -> tuple[pd.DataFram
     return train_df, val_df
 
 
+def apply_drop_diff(train_df: pd.DataFrame,
+                    val_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """FD-24 E3: абляция признака diff_code (реальный код пути, не дубль для тестов).
+
+    Возвращает копии с занулённым diff_code в train и val.
+    Исходные фреймы не мутируются; остальные колонки сохраняются как есть.
+    """
+    train_out = train_df.copy()
+    val_out = val_df.copy()
+    train_out["diff_code"] = ""
+    val_out["diff_code"] = ""
+    return train_out, val_out
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="FD-21: обучение M2 (R10).")
     ap.add_argument("--config", default=str(IN_CONFIG))
@@ -314,10 +328,7 @@ def main() -> int:
 
     # FD-24 E3: абляция без diff_code (--drop_diff)
     if args.drop_diff:
-        train_df = train_df.copy()
-        val_df = val_df.copy()
-        train_df["diff_code"] = ""
-        val_df["diff_code"] = ""
+        train_df, val_df = apply_drop_diff(train_df, val_df)
         print("E3 АБЛЯЦИЯ: diff_code подменен на пустую строку в train и val")
 
     print(f"Датасет: {args.data_path} ({len(df)} строк)")
@@ -468,6 +479,18 @@ def main() -> int:
             return [_json_safe(x) for x in v]
         return v
 
+    def _get_git_commit() -> str:
+        try:
+            import subprocess
+            return subprocess.check_output(
+                ["git", "rev-parse", "HEAD"],
+                cwd=str(PROJECT_ROOT),
+                text=True,
+                stderr=subprocess.DEVNULL,
+            ).strip()
+        except Exception:
+            return "unknown"
+
     metrics = trainer.evaluate()
     print(f"Eval val_real: {metrics}")
     if args.pilot_steps:
@@ -529,7 +552,8 @@ def main() -> int:
             print(f"ВНИМАНИЕ: не удалось сохранить конфиг бэкбона ({e})")
 
     meta = {
-        "task": "FD-21",
+        "task": "FD-24",
+        "git_commit": _get_git_commit(),
         "built_at": datetime.now(timezone.utc).isoformat(),
         "model_name": model_name,
         "max_len": max_len,

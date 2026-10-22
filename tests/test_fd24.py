@@ -11,9 +11,11 @@ import pytest
 import yaml
 
 from scripts.finalize_best_config import main as finalize_main
-from scripts.train_m2 import append_runs_csv, filter_dataset_by_mix
+from scripts.predict_m2 import apply_drop_diff_to_diffs, resolve_drop_diff
+from scripts.train_m2 import append_runs_csv, apply_drop_diff, filter_dataset_by_mix
 from scripts.train_stacking import main as stacking_main
 from src.data.dataset import REAL_SOURCES
+from src.models.m2_data import encode_pair
 
 
 def test_append_runs_csv_conforms_to_fd24_header(tmp_path):
@@ -82,19 +84,94 @@ def test_train_mix_filtering_logic():
     assert len(df_full) == 4
 
 
-def test_drop_diff_ablation_logic():
-    train_df = pd.DataFrame({"diff_code": ["+ x = 1", "- y = 2"]})
-    val_df = pd.DataFrame({"diff_code": ["+ z = 3"]})
+def test_drop_diff_train_helper_uses_real_code():
+    """E3: реальный helper train_m2.apply_drop_diff, а не копия его тела."""
+    train_df = pd.DataFrame({
+        "pair_id": ["a", "b"],
+        "sig_old": ["def f(x):", "def g(y):"],
+        "diff_code": ["- x = 1\n+ x = 2", "@@ -1 +1 @@\n- y = 2"],
+        "label_stale": [1, 0],
+    })
+    val_df = pd.DataFrame({
+        "pair_id": ["c"],
+        "sig_old": ["def h(z):"],
+        "diff_code": ["+ z = 3"],
+        "label_stale": [1],
+    })
+    train_orig = train_df["diff_code"].tolist()
+    val_orig = val_df["diff_code"].tolist()
 
-    drop_diff = True
-    if drop_diff:
-        train_df = train_df.copy()
-        val_df = val_df.copy()
-        train_df["diff_code"] = ""
-        val_df["diff_code"] = ""
+    train_out, val_out = apply_drop_diff(train_df, val_df)
 
-    assert all(x == "" for x in train_df["diff_code"])
-    assert all(x == "" for x in val_df["diff_code"])
+    # Зануление реального пути
+    assert train_out["diff_code"].tolist() == ["", ""]
+    assert val_out["diff_code"].tolist() == [""]
+    # Остальные колонки нетронуты
+    assert train_out["pair_id"].tolist() == ["a", "b"]
+    assert train_out["sig_old"].tolist() == ["def f(x):", "def g(y):"]
+    assert train_out["label_stale"].tolist() == [1, 0]
+    # Входные фреймы не мутируются (иначе утечка абляции в соседние прогоны)
+    assert train_df["diff_code"].tolist() == train_orig
+    assert val_df["diff_code"].tolist() == val_orig
+    # Пустой вход — пустой выход без падения
+    et, ev = apply_drop_diff(
+        pd.DataFrame({"diff_code": pd.Series([], dtype=str)}),
+        pd.DataFrame({"diff_code": pd.Series([], dtype=str)}),
+    )
+    assert len(et) == 0 and len(ev) == 0
+
+
+def test_drop_diff_predict_helpers_use_real_code():
+    """E3: реальное правило resolve_drop_diff + зануление из predict_m2."""
+    # Таблица истинности: CLI-флаг ИЛИ dualhead_config.json
+    assert resolve_drop_diff(False, {}) is False
+    assert resolve_drop_diff(False, None) is False
+    assert resolve_drop_diff(False, {"drop_diff": False}) is False
+    assert resolve_drop_diff(True, {}) is True
+    assert resolve_drop_diff(False, {"drop_diff": True}) is True
+    assert resolve_drop_diff(True, {"drop_diff": True}) is True
+    # Строковые значения из JSON не должны случайно включаться:
+    # helper читает bool через dict.get, строка "False" truthy — фиксируем
+    # контракт: вызывающий передаёт уже распарсенный bool (как в main).
+    assert resolve_drop_diff(False, {"drop_diff": 0}) is False
+
+    diffs = ["- a = 1", "+ b = 2", "@@ hunk @@"]
+    zeroed = apply_drop_diff_to_diffs(diffs, True)
+    assert zeroed == ["", "", ""]
+    # Входной список не мутируется
+    assert diffs == ["- a = 1", "+ b = 2", "@@ hunk @@"]
+    kept = apply_drop_diff_to_diffs(diffs, False)
+    assert kept == diffs
+    assert kept is not diffs
+
+
+class _FakeTokenizer:
+    """Минимальный токенизатор для encode_pair без скачивания весов с HF."""
+
+    cls_token = "[CLS]"
+    cls_token_id = 101
+    sep_token_id = 102
+
+    def encode(self, text, add_special_tokens=False):
+        return [(ord(c) % 900) + 10 for c in text]
+
+
+def test_drop_diff_changes_model_input():
+    """E3: абляция реально меняет вход модели, а не только колонку."""
+    tok = _FakeTokenizer()
+    sig = "def fetch(url, timeout=10):"
+    doc = "Fetch a URL. Args: url, timeout."
+    diff = "- timeout=10\n+ timeout=0"
+
+    full = encode_pair(tok, sig, diff, doc, max_len=1024, doc_budget=384)
+    ablated = encode_pair(tok, sig, "", doc, max_len=1024, doc_budget=384)
+
+    assert ablated["n_a_tok"] < full["n_a_tok"]
+    assert len(ablated["input_ids"]) < len(full["input_ids"])
+    # Сквозной путь predict: helper + encode дают тот же эффект
+    diffs = apply_drop_diff_to_diffs([diff], True)
+    via_helper = encode_pair(tok, sig, diffs[0], doc, max_len=1024, doc_budget=384)
+    assert via_helper["input_ids"] == ablated["input_ids"]
 
 
 def test_train_stacking_script_flow(tmp_path, monkeypatch):
@@ -260,6 +337,10 @@ def test_finalize_ignores_legacy_without_artifacts(tmp_path, monkeypatch):
     base_cfg.write_text(yaml.dump({"learning_rate": 2e-5}), encoding="utf-8")
     out_cfg = tmp_path / "train_best.yaml"
 
+    monkeypatch.setattr(
+        "scripts.finalize_best_config.has_checkpoint_artifacts",
+        lambda p: (Path(p) / "best").exists() if p and Path(p).exists() else False,
+    )
     monkeypatch.setattr(
         "sys.argv",
         [

@@ -48,6 +48,25 @@ def resolve_threshold(cli_value, risk_path=None):
         return 0.5
 
 
+def resolve_drop_diff(cli_flag: bool, dual_cfg: dict | None) -> bool:
+    """FD-24 E3: реальное правило включения абляции на инференсе.
+
+    Абляция активна, если передан CLI-флаг --drop_diff ИЛИ в
+    dualhead_config.json чекпоинта записано drop_diff=true
+    (чекпоинт слота 9 обучен без диффа и инферится без него par default).
+    """
+    if cli_flag:
+        return True
+    return bool((dual_cfg or {}).get("drop_diff", False))
+
+
+def apply_drop_diff_to_diffs(diffs: list[str], drop_diff: bool) -> list[str]:
+    """FD-24 E3: реальное зануление списка диффов (возвращает новый список)."""
+    if drop_diff:
+        return ["" for _ in diffs]
+    return list(diffs)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="FD-21 шаг 5: инференс M2.")
     ap.add_argument("--checkpoint", required=True)
@@ -109,9 +128,9 @@ def main() -> int:
         model_name = dual_cfg.get("model_name", model_name)
         max_len = int(dual_cfg.get("max_len", max_len))
         doc_budget = int(dual_cfg.get("doc_budget", doc_budget))
-    drop_diff = bool(args.drop_diff or dual_cfg.get("drop_diff", False))
+    drop_diff = resolve_drop_diff(bool(args.drop_diff), dual_cfg)
     if drop_diff:
-        diffs = ["" for _ in diffs]
+        diffs = apply_drop_diff_to_diffs(diffs, True)
         print("E3 АБЛЯЦИЯ: diff_code занулён для всех строк (--drop_diff)")
     tok_src = str(ckpt) if (ckpt / "tokenizer.json").exists() or \
         (ckpt / "vocab.json").exists() else model_name
