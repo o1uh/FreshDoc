@@ -1,4 +1,4 @@
-err_id,project,symbol,sig_old,diff_code,doc_old,split,sig_type,source,n_src_lines
+err_id,project,symbol,sig_old,diff_code,doc_old,sig_type,n_src_lines
 e001,TTS,Vits.load_checkpoint,"def load_checkpoint(self, config, checkpoint_path, eval=False):","--- a/code.py
 +++ b/code.py
 @@ -1,7 +1,13 @@
@@ -15,7 +15,7 @@ e001,TTS,Vits.load_checkpoint,"def load_checkpoint(self, config, checkpoint_path
 +    self.load_state_dict(state['model'], strict=False)
      if eval:
          self.eval()
-         assert not self.training",Load the model checkpoint and setup for training or inference,test_real,none,history_neg,8
+         assert not self.training",Load the model checkpoint and setup for training or inference,none,8
 e002,espnet,DPCLSolver.forward,"def forward(self, ref, inf, others={}):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,6 @@
@@ -36,7 +36,7 @@ Args:
 Returns:
     loss: (torch.Tensor): minimum loss with the best permutation
     stats: (dict), for collecting training status
-    others: reserved",gold,default_changed,gold,18
+    others: reserved",default_changed,18
 e003,ipython,arg_split,"def arg_split(s, posix=False, strict=True):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -53,7 +53,7 @@ in inputs are respected.
 if strict=False, then any errors shlex.split would raise will result in the
 unparsed remainder being the last element of the list, rather than raising.
 This is because we sometimes use arg_split to parse things other than
-command-line args.",gold,param_renamed,gold,26
+command-line args.",param_renamed,26
 e004,ipython,CapturingTee.write,"def write(self, data):","--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,18 @@
@@ -76,7 +76,7 @@ e004,ipython,CapturingTee.write,"def write(self, data):","--- a/code.py
 +    if output_stream is None:
 +        output_stream = HistoryOutput(output_type=output_type, bundle={'stream': ''})
 +        outputs_by_counter[execution_count].append(output_stream)
-+    output_stream.bundle['stream'] += data",Write data to both the original stdout and the capture dictionary.,test_real,none,history_neg,7
++    output_stream.bundle['stream'] += data",Write data to both the original stdout and the capture dictionary.,none,7
 e005,pyserde,typename,def typename(typ) -> str:,"--- a/code.py
 +++ b/code.py
 @@ -27,5 +27,11 @@
@@ -108,7 +108,7 @@ e005,pyserde,typename,def typename(typ) -> str:,"--- a/code.py
     >>> typename(Union[Optional[Foo], List[Foo], Union[str, int]])
     'Union[Optional[Foo], List[Foo], str, int]'
     >>> typename(Set[Foo])
-    'Set[Foo]'",test_real,none,codocbench,49
+    'Set[Foo]'",none,49
 e006,matplotlib,move_from_center,"def move_from_center(coord, centers, deltas, axmask=(True, True, True)):","--- a/code.py
 +++ b/code.py
 @@ -1,10 +1,3 @@
@@ -123,7 +123,7 @@ e006,matplotlib,move_from_center,"def move_from_center(coord, centers, deltas, a
 -            coord[i] += deltas[i]
 -    return coord
 +    coord = np.asarray(coord)
-+    return coord + axmask * np.copysign(1, coord - centers) * deltas","Return a coordinate that is moved by ""deltas"" away from the center.",test_real,none,codocbench,11
++    return coord + axmask * np.copysign(1, coord - centers) * deltas","Return a coordinate that is moved by ""deltas"" away from the center.",none,11
 e007,StratosphereLinuxIPS,GoDirector.handle_gopy_data,"def handle_gopy_data(self, data: str):","--- a/code.py
 +++ b/code.py
 @@ -10,6 +10,6 @@
@@ -133,7 +133,7 @@ e007,StratosphereLinuxIPS,GoDirector.handle_gopy_data,"def handle_gopy_data(self
 -        self.print(""Couldn't load message from pigeon - invalid json"")
 +        self.print(f""Couldn't load message from pigeon - invalid Json from the pigeon: {data_dict}"")
      except KeyError:
-         self.print(f""Json from the pigeon: {data_dict} doesn't contain expected values message_type or message_contents"")",Method that receives raw data sent into p2p_gopy redis channel,test_real,none,codocbench,16
+         self.print(f""Json from the pigeon: {data_dict} doesn't contain expected values message_type or message_contents"")",Method that receives raw data sent into p2p_gopy redis channel,none,16
 e008,transformers,drop_path,"def drop_path(input, drop_prob=0.0, training=False, scale_by_keep=True):","--- a/code.py
 +++ b/code.py
 @@ -3,7 +3,7 @@
@@ -147,7 +147,7 @@ e008,transformers,drop_path,"def drop_path(input, drop_prob=0.0, training=False,
 +    random_tensor = keep_prob + torch.rand(shape, dtype=input.dtype, device=input.device)
 +    random_tensor.floor_()
 +    output = input.div(keep_prob) * random_tensor
-+    return output",Drop paths (Stochastic Depth) per sample (when applied in main path of residual blocks).,test_real,none,codocbench,10
++    return output",Drop paths (Stochastic Depth) per sample (when applied in main path of residual blocks).,none,10
 e009,InstaPy,log_record_all_followed,"def log_record_all_followed(login, followed, logger, logfolder):","--- a/code.py
 +++ b/code.py
 @@ -3,4 +3,4 @@
@@ -155,7 +155,7 @@ e009,InstaPy,log_record_all_followed,"def log_record_all_followed(login, followe
              followPool.write(followed + ',\n')
      except BaseException as e:
 -        logger.error('log_followed_pool error {}'.format(str(e)))
-+        logger.error('log__record_all_followed_pool error {}'.format(str(e)))",We save all followed to a pool that will never be erase,test_real,none,codocbench,7
++        logger.error('log__record_all_followed_pool error {}'.format(str(e)))",We save all followed to a pool that will never be erase,none,7
 e010,pytorch,GetGPUMemoryUsageStats,def GetGPUMemoryUsageStats():,"--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,5 @@
@@ -165,7 +165,7 @@ e010,pytorch,GetGPUMemoryUsageStats,def GetGPUMemoryUsageStats():,"--- a/code.py
 +    workspace.RunOperatorOnce(core.CreateOperator('GetGPUMemoryUsage', [], ['____mem____'], device_option=core.DeviceOption(workspace.GpuDeviceType, 0)))
      b = workspace.FetchBlob('____mem____')
      return {'total_by_gpu': b[0, :], 'max_by_gpu': b[1, :], 'total': np.sum(b[0, :]), 'max_total': np.sum(b[1, :])}","Get GPU memory usage stats from CUDAContext. This requires flag
-       --caffe2_gpu_memory_tracking to be enabled",test_real,none,codocbench,7
+       --caffe2_gpu_memory_tracking to be enabled",none,7
 e011,matplotlib,OSXInstalledFonts,"def OSXInstalledFonts(directories=None, fontext='ttf'):","--- a/code.py
 +++ b/code.py
 @@ -1,11 +1,4 @@
@@ -180,7 +180,7 @@ e011,matplotlib,OSXInstalledFonts,"def OSXInstalledFonts(directories=None, fonte
 -        else:
 -            files.extend(list_fonts(path, fontext))
 -    return files
-+    return [path for directory in directories for ext in get_fontext_synonyms(fontext) for path in list_fonts(directory, ext)]",Get list of font files on OS X - ignores font suffix by default.,test_real,none,codocbench,12
++    return [path for directory in directories for ext in get_fontext_synonyms(fontext) for path in list_fonts(directory, ext)]",Get list of font files on OS X - ignores font suffix by default.,none,12
 e012,AzurLaneAutoScript,FleetSelector.get,def get(self):,"--- a/code.py
 +++ b/code.py
 @@ -2,5 +2,5 @@
@@ -191,7 +191,7 @@ e012,AzurLaneAutoScript,FleetSelector.get,def get(self):,"--- a/code.py
 -    return 1
 +    logger.info('Unknown OpSi fleet')
 +    return 0","Returns:
-            int: Index of current fleet, 1 to 4.",test_real,none,codocbench,8
+            int: Index of current fleet, 1 to 4.",none,8
 e013,AzurLaneAutoScript,RewardDorm.dorm_view_reset,"def dorm_view_reset(self, skip_first_screenshot=True):","--- a/code.py
 +++ b/code.py
 @@ -1,10 +1,6 @@
@@ -224,7 +224,7 @@ e013,AzurLaneAutoScript,RewardDorm.dorm_view_reset,"def dorm_view_reset(self, sk
 
 Pages:
     in: page_dorm
-    out: page_dorm",gold,param_removed,gold,31
+    out: page_dorm",param_removed,31
 e014,ipython,test_existing_path_FileLinks_alt_formatter,def test_existing_path_FileLinks_alt_formatter():,"--- a/code.py
 +++ b/code.py
 @@ -1,14 +1,13 @@
@@ -251,7 +251,7 @@ e014,ipython,test_existing_path_FileLinks_alt_formatter,def test_existing_path_F
 +        actual.sort()
 +        expected = ['hello', 'world']
 +        expected.sort()
-+        assert actual == expected",FileLinks: Calling _repr_html_ functions as expected w/ an alt formatter,test_real,none,history_neg,15
++        assert actual == expected",FileLinks: Calling _repr_html_ functions as expected w/ an alt formatter,none,15
 e015,csvkit,CSVStat.print_csv,"def print_csv(self, table, column_ids, stats):","--- a/code.py
 +++ b/code.py
 @@ -1,18 +1,8 @@
@@ -279,7 +279,7 @@ e015,csvkit,CSVStat.print_csv,"def print_csv(self, table, column_ids, stats):","
 +    for row in self._rows(table, column_ids, stats):
 +        if 'freq' in row:
 +            row['freq'] = ', '.join([str(row['value']) for row in row['freq']])
-+        writer.writerow(row)",Print data for all statistics as a csv table.,gold,none,gold,19
++        writer.writerow(row)",Print data for all statistics as a csv table.,none,19
 e016,DeepFaceLive,Faceset.add_UImage,"def add_UImage(self, uimage_or_list: UImage, format: str='webp', quality: int=100):","--- a/code.py
 +++ b/code.py
 @@ -5,11 +5,8 @@
@@ -323,7 +323,7 @@ e016,DeepFaceLive,Faceset.add_UImage,"def add_UImage(self, uimage_or_list: UImag
                         jpg
                         jp2 ( jpeg2000 )
 
-         quality(100)   0-100 for formats jpg,jp2,webp",gold,none,gold,38
+         quality(100)   0-100 for formats jpg,jp2,webp",none,38
 e017,django-rest-framework,urlize_quoted_links,"def urlize_quoted_links(text, trim_url_limit=None, nofollow=True, autoescape=True):","--- a/code.py
 +++ b/code.py
 @@ -2,20 +2,34 @@
@@ -389,7 +389,7 @@ e017,django-rest-framework,urlize_quoted_links,"def urlize_quoted_links(text, tr
     If nofollow is True, the URLs in link text will get a rel=""nofollow""
     attribute.
 
-    If autoescape is True, the link text and URLs will get autoescaped.",gold,none,gold,49
+    If autoescape is True, the link text and URLs will get autoescaped.",none,49
 e018,akshare,macro_uk_bank_rate,def macro_uk_bank_rate():,"--- a/code.py
 +++ b/code.py
 @@ -1,11 +1,3 @@
@@ -408,7 +408,7 @@ e018,akshare,macro_uk_bank_rate,def macro_uk_bank_rate():,"--- a/code.py
      return temp_df","东方财富-经济数据-英国-央行公布利率决议
     http://data.eastmoney.com/cjsj/foreign_4_3.html
     :return: 央行公布利率决议
-    :rtype: pandas.DataFrame",gold,return_changed,gold,15
+    :rtype: pandas.DataFrame",return_changed,15
 e019,espnet,DPCLSolver.forward,"def forward(self, ref, inf, others=None):","--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,4 @@
@@ -429,7 +429,7 @@ Args:
 Returns:
     loss: (torch.Tensor): minimum loss with the best permutation
     stats: (dict), for collecting training status
-    others: reserved",gold,default_changed,gold,20
+    others: reserved",default_changed,20
 e020,TTS,VitsGeneratorLoss.forward,"def forward(self, waveform, waveform_hat, z_p, logs_q, m_p, logs_p, z_len, scores_disc_fake, feats_disc_fake, feats_disc_real, loss_duration, fine_tuning_mode=False, use_speaker_encoder_as_loss=False, gt_spk_emb=None, syn_spk_emb=None):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -447,7 +447,7 @@ e020,TTS,VitsGeneratorLoss.forward,"def forward(self, waveform, waveform_hat, z_
     - z_len: :math:`[B]`
     - scores_disc_fake[i]: :math:`[B, C]`
     - feats_disc_fake[i][j]: :math:`[B, C, T', P]`
-    - feats_disc_real[i][j]: :math:`[B, C, T', P]`",gold,default_changed,gold,37
+    - feats_disc_real[i][j]: :math:`[B, C, T', P]`",default_changed,37
 e021,StratosphereLinuxIPS,Daemon.setup_std_streams,def setup_std_streams(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,8 +1,10 @@
@@ -461,7 +461,7 @@ e021,StratosphereLinuxIPS,Daemon.setup_std_streams,def setup_std_streams(self):,
 -        except FileNotFoundError:
 +        except (FileNotFoundError, NotADirectoryError):
              os.mkdir(os.path.dirname(file))
-             open(file, 'w').close()",Create standard steam files and dirs and clear logs file,test_real,none,codocbench,9
+             open(file, 'w').close()",Create standard steam files and dirs and clear logs file,none,9
 e022,manim,SceneFileWriter.clean_cache,def clean_cache(self) -> None:,"--- a/code.py
 +++ b/code.py
 @@ -1,8 +1,14 @@
@@ -481,7 +481,7 @@ e022,manim,SceneFileWriter.clean_cache,def clean_cache(self) -> None:,"--- a/cod
          for file_to_delete in oldest_files_to_delete:
 -            file_to_delete.unlink()
 +            file_to_delete.unlink(missing_ok=True)
-         logger.info(f""The partial movie directory is full (> {config['max_files_cached']} files). Therefore, manim has removed the {number_files_to_delete} oldest file(s). You can change this behaviour by changing max_files_cached in config."")",Will clean the cache by removing the oldest partial_movie_files.,test_real,none,history_neg,9
+         logger.info(f""The partial movie directory is full (> {config['max_files_cached']} files). Therefore, manim has removed the {number_files_to_delete} oldest file(s). You can change this behaviour by changing max_files_cached in config."")",Will clean the cache by removing the oldest partial_movie_files.,none,9
 e023,rasa,InMemoryTrackerStore.save,"def save(self, tracker: DialogueStateTracker) -> None:","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,4 @@
@@ -490,7 +490,7 @@ e023,rasa,InMemoryTrackerStore.save,"def save(self, tracker: DialogueStateTracke
 -        self.stream_events(tracker)
 +    self.stream_events(tracker)
      serialised = InMemoryTrackerStore.serialise_tracker(tracker)
-     self.store[tracker.sender_id] = serialised",Updates and saves the current conversation state,test_real,none,codocbench,6
+     self.store[tracker.sender_id] = serialised",Updates and saves the current conversation state,none,6
 e024,CrackMapExec,CMEModule.options,"def options(self, context, module_options):","--- a/code.py
 +++ b/code.py
 @@ -2,5 +2,8 @@
@@ -501,7 +501,7 @@ e024,CrackMapExec,CMEModule.options,"def options(self, context, module_options):
      if module_options and 'SERVER' in module_options:
          self.server = module_options['SERVER']
 +    if module_options and 'BASE_DN' in module_options:
-+        self.base_dn = module_options['BASE_DN']","SERVER             PKI Enrollment Server to enumerate templates for. Default is None, use CN name",gold,none,gold,7
++        self.base_dn = module_options['BASE_DN']","SERVER             PKI Enrollment Server to enumerate templates for. Default is None, use CN name",none,7
 e025,posthog,retrieve_entity_from,"def retrieve_entity_from(entity_id: Union[str, int], events: List[Dict], actions: List[Dict]) -> Optional[Dict]:","--- a/code.py
 +++ b/code.py
 @@ -1,8 +1,8 @@
@@ -514,7 +514,7 @@ e025,posthog,retrieve_entity_from,"def retrieve_entity_from(entity_id: Union[str
 -        if action.get('id') == entity_id:
 +        if str(action.get('id')) == entity_id:
              return action
-     return None",Retrieves the entity from the events and actions.,test_real,none,codocbench,9
+     return None",Retrieves the entity from the events and actions.,none,9
 e026,transformers,check_all_auto_mappings_importable,def check_all_auto_mappings_importable():,"--- a/code.py
 +++ b/code.py
 @@ -8,7 +8,7 @@
@@ -525,7 +525,7 @@ e026,transformers,check_all_auto_mappings_importable,def check_all_auto_mappings
 +    for name in mappings_to_check:
          name = name.replace('_MAPPING_NAMES', '_MAPPING')
          if not hasattr(transformers, name):
-             failures.append(f'`{name}`')",Check all auto mappings could be imported.,test_real,none,codocbench,17
+             failures.append(f'`{name}`')",Check all auto mappings could be imported.,none,17
 e027,python3-saml,OneLogin_Saml2_Response.validate_signed_elements,"def validate_signed_elements(self, signed_elements):","--- a/code.py
 +++ b/code.py
 @@ -8,9 +8,9 @@
@@ -539,7 +539,7 @@ e027,python3-saml,OneLogin_Saml2_Response.validate_signed_elements,"def validate
          if len(expected_signature_nodes) != 1:
 -            raise Exception('Unexpected number of Assertion signatures found. SAML Response rejected.')
 +            raise OneLogin_Saml2_ValidationError('Unexpected number of Assertion signatures found. SAML Response rejected.', OneLogin_Saml2_ValidationError.WRONG_NUMBER_OF_SIGNATURES_IN_ASSERTION)
-     return True",Verifies that the document has the expected signed nodes.,test_real,exception_changed,codocbench,17
+     return True",Verifies that the document has the expected signed nodes.,exception_changed,17
 e028,TTS,PhonemeDataset.compute_or_load,"def compute_or_load(self, wav_file, text):","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,4 @@
@@ -550,7 +550,7 @@ e028,TTS,PhonemeDataset.compute_or_load,"def compute_or_load(self, wav_file, tex
      cache_path = os.path.join(self.cache_path, file_name + file_ext)
      try:","Compute phonemes for the given text.
 
-If the phonemes are already cached, load them from cache.",gold,param_renamed,gold,13
+If the phonemes are already cached, load them from cache.",param_renamed,13
 e029,AzurLaneAutoScript,MissionHandler.os_mission_enter,"def os_mission_enter(self, skip_first_screenshot=True):","--- a/code.py
 +++ b/code.py
 @@ -1,11 +1,7 @@
@@ -570,7 +570,7 @@ e029,AzurLaneAutoScript,MissionHandler.os_mission_enter,"def os_mission_enter(se
 
 Pages:
     in: MISSION_ENTER
-    out: MISSION_CHECK",gold,param_removed,gold,40
+    out: MISSION_CHECK",param_removed,40
 e030,manim,LogBase.inverse_function,"def inverse_function(self, value: float) -> float:","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,11 @@
@@ -586,7 +586,7 @@ e030,manim,LogBase.inverse_function,"def inverse_function(self, value: float) ->
          raise ValueError('log(0) is undefined. Make sure the value is in the domain of the function')
 -    value = math.log(value, self.base)
 +    value = func(value, self.base)
-     return value",Inverse of ``function``. The value must be greater than 0,test_real,none,history_neg,6
+     return value",Inverse of ``function``. The value must be greater than 0,none,6
 e031,d2l-en,box_iou,"def box_iou(boxes1, boxes2):","--- a/code.py
 +++ b/code.py
 @@ -1,10 +1,10 @@
@@ -607,7 +607,7 @@ e031,d2l-en,box_iou,"def box_iou(boxes1, boxes2):","--- a/code.py
 +    inters = (inter_lowerrights - inter_upperlefts).clip(min=0)
 +    inter_areas = inters[:, :, 0] * inters[:, :, 1]
 +    union_areas = areas1[:, None] + areas2 - inter_areas
-+    return inter_areas / union_areas","Compute IOU between two sets of boxes of shape (N,4) and (M,4).",test_real,none,codocbench,11
++    return inter_areas / union_areas","Compute IOU between two sets of boxes of shape (N,4) and (M,4).",none,11
 e032,espnet,test_task_and_cli_aliases,def test_task_and_cli_aliases(name):,"--- a/code.py
 +++ b/code.py
 @@ -1,7 +1,7 @@
@@ -620,7 +620,7 @@ e032,espnet,test_task_and_cli_aliases,def test_task_and_cli_aliases(name):,"--- 
 +    assert task.UniversaTask is AqaTask
      assert importlib.import_module(f'espnet2.bin.{name}_train').main is train_main
      module = importlib.import_module(f'espnet2.bin.{name}_inference')
-     assert module.UniversaInference is AqaInference","Legacy names expose the same task, inference class, and train function.",gold,param_removed,gold,8
+     assert module.UniversaInference is AqaInference","Legacy names expose the same task, inference class, and train function.",param_removed,8
 e033,AzurLaneAutoScript,EventStory.get_event_story_state,def get_event_story_state(self):,"--- a/code.py
 +++ b/code.py
 @@ -9,4 +9,6 @@
@@ -630,7 +630,7 @@ e033,AzurLaneAutoScript,EventStory.get_event_story_state,def get_event_story_sta
 +    if self.get_event_20250724_button():
 +        return 'story_alchemist'
      return 'unknown'","Returns:
-    str: 'finish', 'story', 'unknown'",gold,none,gold,14
+    str: 'finish', 'story', 'unknown'",none,14
 e034,manim,SVGMobject.generate_points,def generate_points(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,7 +1,9 @@
@@ -646,14 +646,14 @@ e034,manim,SVGMobject.generate_points,def generate_points(self):,"--- a/code.py
              self.add(*mobjects)
          else:","Called by the Mobject abstract base class. Responsible for generating
 the SVGMobject's points from XML tags, populating self.mobjects, and
-any submobjects within self.mobjects.",test_real,none,history_neg,12
+any submobjects within self.mobjects.",none,12
 e035,StratosphereLinuxIPS,Module.check_unknown_port,"def check_unknown_port(self, dport, proto, daddr, profileid, twid, uid, timestamp):","--- a/code.py
 +++ b/code.py
 @@ -7,3 +7,4 @@
          return False
      if not 'icmp' in proto and (not self.is_p2p(dport, proto, daddr)) and (not __database__.is_ftp_port(dport)):
          self.helper.set_evidence_unknown_port(daddr, dport, proto, timestamp, profileid, twid, uid)
-+        return True",Checks dports that are not in our slips_files/ports_info/ files,test_real,none,codocbench,10
++        return True",Checks dports that are not in our slips_files/ports_info/ files,none,10
 e036,frappe,EmailAccount.get_inbound_mails,"def get_inbound_mails(self, test_mails=None):","--- a/code.py
 +++ b/code.py
 @@ -9,12 +9,10 @@
@@ -670,7 +670,7 @@ e036,frappe,EmailAccount.get_inbound_mails,"def get_inbound_mails(self, test_mai
          seen_status = 1 if messages['seen_status'][uid] == 'SEEN' else 0
          mails.append(InboundMail(message, self, uid, seen_status))","retrive and return inbound mails.
 
-		TODO: Handle for tests",gold,none,gold,24
+		TODO: Handle for tests",none,24
 e037,manim,scene,def scene(**args):,"--- a/code.py
 +++ b/code.py
 @@ -1,12 +1,12 @@
@@ -694,7 +694,7 @@ e037,manim,scene,def scene(**args):,"--- a/code.py
 
 SCENE is the name of the scene that will be inserted.
 
-FILE is the name of file in which the SCENE will be inserted.",gold,param_renamed,gold,25
+FILE is the name of file in which the SCENE will be inserted.",param_renamed,25
 e038,ipython,Completer.global_matches,"def global_matches(self, text):","--- a/code.py
 +++ b/code.py
 @@ -1,15 +1,2 @@
@@ -717,7 +717,7 @@ e038,ipython,Completer.global_matches,"def global_matches(self, text):","--- a/c
 +    return self._global_matches(text)","Compute matches when text is a simple name.
 
 Return a list of all keywords, built-in functions and names currently
-defined in self.namespace or self.global_namespace that match.",test_real,none,history_neg,19
+defined in self.namespace or self.global_namespace that match.",none,19
 e039,locust,write_stat_csvs,"def write_stat_csvs(base_filepath, stats_history_enabled=False):","--- a/code.py
 +++ b/code.py
 @@ -3,3 +3,5 @@
@@ -725,7 +725,7 @@ e039,locust,write_stat_csvs,"def write_stat_csvs(base_filepath, stats_history_en
      with open(base_filepath + '_stats_history.csv', 'a') as f:
          f.write(stats_history_csv(stats_history_enabled) + '\n')
 +    with open(base_filepath + '_failures.csv', 'w') as f:
-+        f.write(failures_csv())",Writes the requests and distribution csvs.,test_real,none,codocbench,6
++        f.write(failures_csv())",Writes the requests and distribution csvs.,none,6
 e040,manim,ManimColor.parse,"def parse(cls, color: ParsableManimColor | list[ParsableManimColor] | None, alpha: float=1.0) -> Self | list[Self]:","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,12 @@
@@ -756,7 +756,7 @@ alpha
 Returns
 -------
 ManimColor
-    Either a list of colors or a singular color depending on the input",test_real,none,history_neg,18
+    Either a list of colors or a singular color depending on the input",none,18
 e041,flask,htmlsafe_dumps,"def htmlsafe_dumps(obj, **kwargs):","--- a/code.py
 +++ b/code.py
 @@ -1,2 +1,2 @@
@@ -777,7 +777,7 @@ e041,flask,htmlsafe_dumps,"def htmlsafe_dumps(obj, **kwargs):","--- a/code.py
     .. versionchanged:: 0.10
         Single quotes are escaped, making this safe to use in HTML,
         ``<script>`` tags, and single-quoted attributes without further
-        escaping.",gold,none,gold,18
+        escaping.",none,18
 e042,reflex,serialize_primitive,"def serialize_primitive(value: Union[bool, int, float, Base, None]) -> str:","--- a/code.py
 +++ b/code.py
 @@ -1,2 +1,2 @@
@@ -789,7 +789,7 @@ e042,reflex,serialize_primitive,"def serialize_primitive(value: Union[bool, int,
         value: The number to serialize.
 
     Returns:
-        The serialized number.",test_real,none,codocbench,9
+        The serialized number.",none,9
 e043,TTS,vctk,"def vctk(root_path, meta_files=None, wavs_path='wav22', mic='mic2', ignored_speakers=None):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -797,7 +797,7 @@ e043,TTS,vctk,"def vctk(root_path, meta_files=None, wavs_path='wav22', mic='mic2
 +def vctk(root_path, meta_files=None, wavs_path='wav48_silence_trimmed', mic='mic2', ignored_speakers=None):
      file_ext = 'flac'
      test_speakers = meta_files
-     items = []",https://datashare.ed.ac.uk/bitstream/handle/10283/3443/VCTK-Corpus-0.92.zip,gold,default_changed,gold,23
+     items = []",https://datashare.ed.ac.uk/bitstream/handle/10283/3443/VCTK-Corpus-0.92.zip,default_changed,23
 e044,manim,Line3D.perpendicular_to,"def perpendicular_to(cls, line: Line3D, point: Vector3D=ORIGIN, length: float=5, **kwargs) -> Line3D:","--- a/code.py
 +++ b/code.py
 @@ -1,9 +1,9 @@
@@ -843,7 +843,7 @@ Examples
             ax = ThreeDAxes((-5, 5), (-5, 5), (-5, 5), 10, 10, 10)
             line1 = Line3D(RIGHT * 2, UP + OUT, color=RED)
             line2 = Line3D.perpendicular_to(line1, color=BLUE)
-            self.add(ax, line1, line2)",test_real,none,history_neg,40
+            self.add(ax, line1, line2)",none,40
 e045,celery,BaseAsyncResult.status,def status(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,2 +1,2 @@
@@ -874,7 +874,7 @@ e045,celery,BaseAsyncResult.status,def status(self):,"--- a/code.py
             *SUCCESS*
 
                 The task executed successfully. The :attr:`result` attribute
-                contains the resulting value.",gold,none,gold,28
+                contains the resulting value.",none,28
 e046,transformers,glue_eval_data_collator,"def glue_eval_data_collator(dataset: Dataset, batch_size: int):","--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,8 @@
@@ -888,7 +888,7 @@ e046,transformers,glue_eval_data_collator,"def glue_eval_data_collator(dataset: 
 +        batch = dataset[idx]
          batch = {k: np.array(v) for k, v in batch.items()}
 -        batch = shard(batch)
-         yield batch","Returns batches of size `batch_size` from `eval dataset`, sharded over all local devices.",test_real,none,codocbench,7
+         yield batch","Returns batches of size `batch_size` from `eval dataset`, sharded over all local devices.",none,7
 e047,TTS,TTSTokenizer.encode,"def encode(self, text: str) -> List[int]:","--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,11 @@
@@ -904,7 +904,7 @@ e047,TTS,TTSTokenizer.encode,"def encode(self, text: str) -> List[int]:","--- a/
 +            if char not in self.not_found_characters:
 +                self.not_found_characters.append(char)
 +                print(f' [!] Character {repr(char)} not found in the vocabulary. Discarding it.')
-     return token_ids",Encodes a string of text as a sequence of IDs.,test_real,none,history_neg,7
+     return token_ids",Encodes a string of text as a sequence of IDs.,none,7
 e048,python-telegram-bot,InlineKeyboardMarkup.from_column,"def from_column(cls, button_column: List[InlineKeyboardButton], **kwargs: object) -> 'InlineKeyboardMarkup':","--- a/code.py
 +++ b/code.py
 @@ -1,3 +1,3 @@
@@ -919,7 +919,7 @@ e048,python-telegram-bot,InlineKeyboardMarkup.from_column,"def from_column(cls, 
 
         Args:
             button_column (List[:class:`telegram.InlineKeyboardButton`]): The button to use in the
-                markup",test_real,none,codocbench,12
+                markup",none,12
 e049,espnet,bert_score,"def bert_score(total_response_arr: List[str], bert_model_name: str='bert-base-uncased') -> str:","--- a/code.py
 +++ b/code.py
 @@ -3,16 +3,17 @@
@@ -975,7 +975,7 @@ e049,espnet,bert_score,"def bert_score(total_response_arr: List[str], bert_model
         >>> result = bert_score(total_responses, bert_model_name=""bert-base-uncased"")
         >>> print(result)
         ""Cosine Similarity: 75.89
-""",test_real,none,history_neg,53
+""",none,53
 e050,zulip,GetPublicStreamsTest.test_public_streams,def test_public_streams(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,7 +1,7 @@
@@ -986,7 +986,7 @@ e050,zulip,GetPublicStreamsTest.test_public_streams,def test_public_streams(self
 +    result = self.client.get('/json/streams?include_subscribed=false')
      self.assert_json_success(result)
      json = ujson.loads(result.content)
-     self.assertIn('streams', json)",Ensure that get_public_streams successfully returns a list of streams,test_real,none,codocbench,9
+     self.assertIn('streams', json)",Ensure that get_public_streams successfully returns a list of streams,none,9
 e051,manim,StreamLines.start_animation,"def start_animation(self, warm_up: bool=True, flow_speed: float=1, time_width: float=0.3, rate_func: Callable[[float], float]=linear, line_animation_class: type[ShowPassingFlash]=ShowPassingFlash, **kwargs) -> Self:","--- a/code.py
 +++ b/code.py
 @@ -1,21 +1,25 @@
@@ -1048,7 +1048,7 @@ Examples
             stream_lines = StreamLines(func, stroke_width=3, max_anchors_per_line=30)
             self.add(stream_lines)
             stream_lines.start_animation(warm_up=False, flow_speed=1.5)
-            self.wait(stream_lines.virtual_time / stream_lines.flow_speed)",test_real,none,history_neg,50
+            self.wait(stream_lines.virtual_time / stream_lines.flow_speed)",none,50
 e052,zipline,get_benchmark_returns,"def get_benchmark_returns(symbol, start_date, end_date):","--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,2 @@
@@ -1058,7 +1058,7 @@ e052,zipline,get_benchmark_returns,"def get_benchmark_returns(symbol, start_date
 -    first_open, first_close = data.ix[0, ['Open', 'Close']]
 -    returns.iloc[0] = (first_close - first_open) / first_open
 -    return returns
-+    return pd.read_csv(format_yahoo_index_url(symbol, start_date, end_date), parse_dates=['Date'], index_col='Date', usecols=['Adj Close', 'Date'], squeeze=True).sort_index().tz_localize('UTC').pct_change(1).iloc[1:]",Get a Series of benchmark returns from Yahoo.,test_real,none,codocbench,7
++    return pd.read_csv(format_yahoo_index_url(symbol, start_date, end_date), parse_dates=['Date'], index_col='Date', usecols=['Adj Close', 'Date'], squeeze=True).sort_index().tz_localize('UTC').pct_change(1).iloc[1:]",Get a Series of benchmark returns from Yahoo.,none,7
 e053,matplotlib,test_big_decorators_horizontal,def test_big_decorators_horizontal():,"--- a/code.py
 +++ b/code.py
 @@ -2,5 +2,3 @@
@@ -1066,7 +1066,7 @@ e053,matplotlib,test_big_decorators_horizontal,def test_big_decorators_horizonta
      axs[0].set_xlabel('a' * 30)
      axs[1].set_xlabel('b' * 30)
 -    with pytest.warns(UserWarning):
--        fig.tight_layout()",Test that warning emitted when xlabel too big.,test_real,none,codocbench,7
+-        fig.tight_layout()",Test that warning emitted when xlabel too big.,none,7
 e054,magenta,Metronome.run,def run(self):,"--- a/code.py
 +++ b/code.py
 @@ -7,7 +7,13 @@
@@ -1086,7 +1086,7 @@ e054,magenta,Metronome.run,def run(self):,"--- a/code.py
 +        if tick_message.type == 'note_on':
 +            sleeper.sleep(self._duration)
 +            end_tick_message = mido.Message('note_off', note=tick_message.note, channel=self._channel)
-+            self._outport.send(end_tick_message)",Outputs metronome tone on the qpm interval until stop signal received.,gold,none,gold,14
++            self._outport.send(end_tick_message)",Outputs metronome tone on the qpm interval until stop signal received.,none,14
 e055,manim,PMobject.add_points,"def add_points(self, points, rgbas=None, color=None, alpha=1):","--- a/code.py
 +++ b/code.py
 @@ -7,6 +7,6 @@
@@ -1096,7 +1096,7 @@ e055,manim,PMobject.add_points,"def add_points(self, points, rgbas=None, color=N
 -        raise ValueError('points and rgbas must have same shape')
 +        raise ValueError('points and rgbas must have same length')
      self.rgbas = np.append(self.rgbas, rgbas, axis=0)
-     return self","Points must be a Nx3 numpy array, as must rgbas if it is not None",test_real,none,codocbench,13
+     return self","Points must be a Nx3 numpy array, as must rgbas if it is not None",none,13
 e056,manim,find_intersection,"def find_intersection(p0s: Point3DLike_Array, v0s: Vector3D_Array, p1s: Point3DLike_Array, v1s: Vector3D_Array, threshold: float=1e-05) -> list[Point3D]:","--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,6 @@
@@ -1111,7 +1111,7 @@ e056,manim,find_intersection,"def find_intersection(p0s: Point3DLike_Array, v0s:
 with one passing through p1 in direction v1 (or array of intersections
 from arrays of such points/directions).
 For 3d values, it returns the point on the ray p0 + v0 * t closest to the
-ray p1 + v1 * t",test_real,none,history_neg,12
+ray p1 + v1 * t",none,12
 e057,frappe,export_to_files,"def export_to_files(record_list=None, record_module=None, verbose=0, create_init=None):","--- a/code.py
 +++ b/code.py
 @@ -3,4 +3,5 @@
@@ -1120,7 +1120,7 @@ e057,frappe,export_to_files,"def export_to_files(record_list=None, record_module
          for record in record_list:
 -            write_document_file(frappe.get_doc(record[0], record[1]), record_module, create_init=create_init)
 +            folder_name = record[2] if len(record) == 3 else None
-+            write_document_file(frappe.get_doc(record[0], record[1]), record_module, create_init=create_init, folder_name=folder_name)","Export record_list to files. record_list is a list of lists ([doctype],[docname] )  ,",test_real,none,codocbench,7
++            write_document_file(frappe.get_doc(record[0], record[1]), record_module, create_init=create_init, folder_name=folder_name)","Export record_list to files. record_list is a list of lists ([doctype],[docname] )  ,",none,7
 e058,QUANTAXIS,QA_fetch_ctp_tick,"def QA_fetch_ctp_tick(code, format='pd', collections=DATABASE.ctp_tick):","--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,6 @@
@@ -1140,7 +1140,7 @@ e058,QUANTAXIS,QA_fetch_ctp_tick,"def QA_fetch_ctp_tick(code, format='pd', colle
         collections {[type]} -- [description] (default: {DATABASE.ctp_tick})
     
     Returns:
-        [type] -- [description]",gold,none,gold,19
+        [type] -- [description]",none,19
 e059,monkey,Authenticate.post,def post(self):,"--- a/code.py
 +++ b/code.py
 @@ -2,8 +2,7 @@
@@ -1156,7 +1156,7 @@ e059,monkey,Authenticate.post,def post(self):,"--- a/code.py
         {
             ""username"": ""my_user"",
             ""password"": ""mypassword....""
-        }",test_real,none,codocbench,16
+        }",none,16
 e060,celery-once,force_string,def force_string(kwargs):,"--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,6 @@
@@ -1167,7 +1167,7 @@ e060,celery-once,force_string,def force_string(kwargs):,"--- a/code.py
      elif isinstance(kwargs, list):
          return [force_string(element) for element in kwargs]
      elif six.PY2 and isinstance(kwargs, unicode):","Force key in dict or list to a string.
-    Fixes: https://github.com/TrackMaven/celery-once/issues/11",gold,none,gold,10
+    Fixes: https://github.com/TrackMaven/celery-once/issues/11",none,10
 e061,manim,ThreeDScene.stop_ambient_camera_rotation,"def stop_ambient_camera_rotation(self, about='theta'):","--- a/code.py
 +++ b/code.py
 @@ -8,5 +8,5 @@
@@ -1176,7 +1176,7 @@ e061,manim,ThreeDScene.stop_ambient_camera_rotation,"def stop_ambient_camera_rot
              self.camera.clear_updaters()
 -    except:
 +    except Exception:
-         raise ValueError('Invalid ambient rotation angle.')",This method stops all ambient camera rotation.,test_real,none,history_neg,13
+         raise ValueError('Invalid ambient rotation angle.')",This method stops all ambient camera rotation.,none,13
 e062,taipy,hold_control,"def hold_control(state: State, callback: t.Optional[t.Union[str, t.Callable]]=None, message: t.Optional[str]='Work in Progress...'):","--- a/code.py
 +++ b/code.py
 @@ -2,4 +2,4 @@
@@ -1189,7 +1189,7 @@ e062,taipy,hold_control,"def hold_control(state: State, callback: t.Optional[t.U
     Args:
         state: the current user state as received in any callback.
         callback: The function to be called on _cancel_. If empty or None, no cancel action is provided to the user.
-        message: The message to show.",test_real,none,codocbench,11
+        message: The message to show.",none,11
 e063,zulip,GetSubscribersTest.test_nonsubscriber_private_stream,def test_nonsubscriber_private_stream(self) -> None:,"--- a/code.py
 +++ b/code.py
 @@ -6,3 +6,5 @@
@@ -1197,7 +1197,7 @@ e063,zulip,GetSubscribersTest.test_nonsubscriber_private_stream,def test_nonsubs
      result = self.make_subscriber_request(stream_id, email=other_email)
      self.assert_json_error(result, 'Invalid stream id')
 +    self.login(self.example_email('iago'))
-+    self.make_successful_subscriber_request(stream_name)",A non-subscriber to a private stream can't query that stream's membership.,test_real,none,codocbench,9
++    self.make_successful_subscriber_request(stream_name)",A non-subscriber to a private stream can't query that stream's membership.,none,9
 e064,posthog,raise_if_user_provided_url_unsafe,def raise_if_user_provided_url_unsafe(url: str):,"--- a/code.py
 +++ b/code.py
 @@ -2,18 +2,12 @@
@@ -1221,7 +1221,7 @@ e064,posthog,raise_if_user_provided_url_unsafe,def raise_if_user_provided_url_un
      for _, _, _, _, sockaddr in addrinfo:
          if ip_address(sockaddr[0]).is_private:
 -            raise ValueError('Invalid hostname')
-+            raise ValueError('Internal hostname')","Raise if the provided URL seems unsafe, otherwise do nothing.",test_real,none,codocbench,20
++            raise ValueError('Internal hostname')","Raise if the provided URL seems unsafe, otherwise do nothing.",none,20
 e065,manim,get_unit_normal,"def get_unit_normal(v1: Vector3D, v2: Vector3D, tol: float=1e-06) -> Vector3D:","--- a/code.py
 +++ b/code.py
 @@ -1,13 +1,15 @@
@@ -1258,7 +1258,7 @@ tol
 Returns
 -------
 np.ndarray
-    The normal of the two vectors.",test_real,none,history_neg,35
+    The normal of the two vectors.",none,35
 e066,AzurLaneAutoScript,Level.lv_get,"def lv_get(self, after_battle=False):","--- a/code.py
 +++ b/code.py
 @@ -1,10 +1,10 @@
@@ -1278,7 +1278,7 @@ e066,AzurLaneAutoScript,Level.lv_get,"def lv_get(self, after_battle=False):","--
      if after_battle:
          self.lv120_triggered()
      return self.lv","Args:
-            after_battle (bool): True if called after battle else False.",test_real,none,codocbench,12
+            after_battle (bool): True if called after battle else False.",none,12
 e067,matplotlib,ToolCursorPosition.send_message,"def send_message(self, event):","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,5 @@
@@ -1293,7 +1293,7 @@ e067,matplotlib,ToolCursorPosition.send_message,"def send_message(self, event):"
          else:
              message = s
 -    self.navigation.message_event(message, self)
-+    self.toolmanager.message_event(message, self)",Call `matplotlib.backend_bases.NavigationBase.message_event`,test_real,none,codocbench,13
++    self.toolmanager.message_event(message, self)",Call `matplotlib.backend_bases.NavigationBase.message_event`,none,13
 e068,TTS,korean_text_to_phonemes,"def korean_text_to_phonemes(text, character: str='hangeul') -> str:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,8 @@
@@ -1309,7 +1309,7 @@ e068,TTS,korean_text_to_phonemes,"def korean_text_to_phonemes(text, character: s
 example :
 
     input = '하늘' (Unicode : 하늘), (하 + 늘)
-    output = '하늘' (Unicode :하늘), (ᄒ + ᅡ + ᄂ + ᅳ + ᆯ)",test_real,none,history_neg,17
+    output = '하늘' (Unicode :하늘), (ᄒ + ᅡ + ᄂ + ᅳ + ᆯ)",none,17
 e069,pytorch,FullyShardedDataParallel.module,def module(self) -> FlattenParamsWrapper:,"--- a/code.py
 +++ b/code.py
 @@ -1,3 +1,3 @@
@@ -1317,7 +1317,7 @@ e069,pytorch,FullyShardedDataParallel.module,def module(self) -> FlattenParamsWr
 +def module(self) -> nn.Module:
      assert isinstance(self._fsdp_wrapped_module, FlattenParamsWrapper)
 -    return self._fsdp_wrapped_module
-+    return self._fsdp_wrapped_module.module","make model.module accessible, just like DDP.",test_real,return_changed,codocbench,4
++    return self._fsdp_wrapped_module.module","make model.module accessible, just like DDP.",return_changed,4
 e070,frappe,Oauth.connect,"def connect(self, _retry: int=0) -> None:","--- a/code.py
 +++ b/code.py
 @@ -9,9 +9,7 @@
@@ -1331,7 +1331,7 @@ e070,frappe,Oauth.connect,"def connect(self, _retry: int=0) -> None:","--- a/cod
 +            frappe.log_error('SMTP Connection Error - Authentication Failed', str(e), 'Email Account', self.email_account)
              raise
 -        self._access_token = access_token
-         self.connect(_retry + 1)",Connection method with retry on exception for Oauth,test_real,none,codocbench,18
+         self.connect(_retry + 1)",Connection method with retry on exception for Oauth,none,18
 e071,matplotlib,ContourLabeler.add_label,"def add_label(self, x, y, rotation, lev, cvalue):","--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,9 @@
@@ -1343,7 +1343,7 @@ e071,matplotlib,ContourLabeler.add_label,"def add_label(self, x, y, rotation, le
 +        t.set(rotation=data_rotation, transform_rotates_text=True)
      self.labelTexts.append(t)
      self.labelCValues.append(cvalue)
-     self.labelXYs.append((x, y))",Add contour label without `.Text.set_transform_rotates_text`.,test_real,none,codocbench,8
+     self.labelXYs.append((x, y))",Add contour label without `.Text.set_transform_rotates_text`.,none,8
 e072,ColossalAI,MicroBatchManager.cur_state,def cur_state(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -1352,7 +1352,7 @@ e072,ColossalAI,MicroBatchManager.cur_state,def cur_state(self):,"--- a/code.py
 +    if self.cur_description is None:
          return Status.PREFILL
 -    return self.cur_descrption.state
-+    return self.cur_description.state","Return the state of current micro batch, when current descrption is None, the state is PREFILL",test_real,none,codocbench,5
++    return self.cur_description.state","Return the state of current micro batch, when current descrption is None, the state is PREFILL",none,5
 e073,zulip,SubscriptionAPITest.test_can_subscribe_other_users,def test_can_subscribe_other_users(self) -> None:,"--- a/code.py
 +++ b/code.py
 @@ -1,12 +1,13 @@
@@ -1373,7 +1373,7 @@ e073,zulip,SubscriptionAPITest.test_can_subscribe_other_users,def test_can_subsc
 +    do_set_realm_property(othello.realm, 'invite_to_stream_policy', Realm.INVITE_TO_STREAM_POLICY_WAITING_PERIOD)
      othello.date_joined = timezone_now() - timedelta(days=othello.realm.waiting_period_threshold - 1)
      self.assertFalse(othello.can_subscribe_other_users())
-     othello.date_joined = timezone_now() - timedelta(days=othello.realm.waiting_period_threshold + 1)",You can't subscribe other people to streams if you are a guest or your waiting period is not over.,test_real,none,codocbench,14
+     othello.date_joined = timezone_now() - timedelta(days=othello.realm.waiting_period_threshold + 1)",You can't subscribe other people to streams if you are a guest or your waiting period is not over.,none,14
 e074,diffusers,StableDiffusionXLControlNetPipeline.get_guidance_scale_embedding,"def get_guidance_scale_embedding(self, w, embedding_dim=512, dtype=torch.float32):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -1392,7 +1392,7 @@ e074,diffusers,StableDiffusionXLControlNetPipeline.get_guidance_scale_embedding,
                 data type of the generated embeddings
 
         Returns:
-            `torch.FloatTensor`: Embedding vectors with shape `(len(timesteps), embedding_dim)`",gold,return_changed,gold,24
+            `torch.FloatTensor`: Embedding vectors with shape `(len(timesteps), embedding_dim)`",return_changed,24
 e075,pytorch_geometric,Batch.index_select,"def index_select(self, idx: IndexType) -> List[Data]:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -1411,7 +1411,7 @@ e075,pytorch_geometric,Batch.index_select,"def index_select(self, idx: IndexType
         Indices can be slices, lists, tuples, and a :obj:`torch.Tensor` or
         :obj:`np.ndarray` of type long or bool.
         The batch object must have been created via :meth:`from_data_list` in
-        order to be able to reconstruct the initial objects.",test_real,return_changed,codocbench,22
+        order to be able to reconstruct the initial objects.",return_changed,22
 e076,manim,VMobject.generate_rgbas_array,"def generate_rgbas_array(self, color, opacity):","--- a/code.py
 +++ b/code.py
 @@ -1,7 +1,7 @@
@@ -1429,7 +1429,7 @@ e076,manim,VMobject.generate_rgbas_array,"def generate_rgbas_array(self, color, 
 Likewise, opacity can either be a float, or a tuple of floats.
 If self.sheen_factor is not zero, and only
 one color was passed in, a second slightly light color
-will automatically be added for the gradient",test_real,none,history_neg,16
+will automatically be added for the gradient",none,16
 e077,ipython,test_get_home_dir_3,def test_get_home_dir_3():,"--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -1438,7 +1438,7 @@ e077,ipython,test_get_home_dir_3,def test_get_home_dir_3():,"--- a/code.py
 -    home_dir = path.get_home_dir()
 -    nt.assert_equal(home_dir, env['HOME'])
 +    home_dir = path.get_home_dir(True)
-+    nt.assert_equal(home_dir, os.path.realpath(env['HOME']))","Testcase $HOME is set, then use its value as home directory.",test_real,none,codocbench,5
++    nt.assert_equal(home_dir, os.path.realpath(env['HOME']))","Testcase $HOME is set, then use its value as home directory.",none,5
 e078,AzurLaneAutoScript,random_id,def random_id(length=6):,"--- a/code.py
 +++ b/code.py
 @@ -1,2 +1,2 @@
@@ -1448,7 +1448,7 @@ e078,AzurLaneAutoScript,random_id,def random_id(length=6):,"--- a/code.py
     length (int): 6 random letter (62^6 combinations) would be enough
 
 Returns:
-    str: Random ID, like ""sTD2kF""",gold,return_changed,gold,7
+    str: Random ID, like ""sTD2kF""",return_changed,7
 e079,manim,straight_path,def straight_path(*args) -> PATH_FUNC_TYPE:,"--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,2 @@
@@ -1496,7 +1496,7 @@ Examples
                     run_time=2,
                 )
             )
-            self.wait()",gold,param_removed,gold,45
+            self.wait()",param_removed,45
 e080,matplotlib,GridSpec.update,"def update(self, **kwargs):","--- a/code.py
 +++ b/code.py
 @@ -3,7 +3,7 @@
@@ -1508,7 +1508,7 @@ e080,matplotlib,GridSpec.update,"def update(self, **kwargs):","--- a/code.py
      for figmanager in _pylab_helpers.Gcf.figs.values():
          for ax in figmanager.canvas.figure.axes:
              if not isinstance(ax, mpl.axes.SubplotBase):","Update the current values.  If any kwarg is None, default to
-        the current value, if set, otherwise to rc.",test_real,none,codocbench,24
+        the current value, if set, otherwise to rc.",none,24
 e081,cupy,Backend.all_gather,"def all_gather(self, in_array, out_array, count, stream=None):","--- a/code.py
 +++ b/code.py
 @@ -1,2 +1,2 @@
@@ -1520,7 +1520,7 @@ e081,cupy,Backend.all_gather,"def all_gather(self, in_array, out_array, count, s
             in_array (cupy.ndarray):
             out_array (cupy.ndarray):
             op (str):
-            stream (cupy.cuda.Stream):",test_real,none,codocbench,9
+            stream (cupy.cuda.Stream):",none,9
 e082,StratosphereLinuxIPS,Output.has_pbar,def has_pbar(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,5 @@
@@ -1530,7 +1530,7 @@ e082,StratosphereLinuxIPS,Output.has_pbar,def has_pbar(self):,"--- a/code.py
          return False
 -    elif hasattr(self, 'progress_bar') and self.pbar_supported:
 +    else:
-         return True",returns false when pbar wasnt initialised or is done 100%,test_real,none,codocbench,6
+         return True",returns false when pbar wasnt initialised or is done 100%,none,6
 e083,scrapy,get_base_url,def get_base_url(response):,"--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,5 @@
@@ -1540,7 +1540,7 @@ e083,scrapy,get_base_url,def get_base_url(response):,"--- a/code.py
 -        _baseurl_cache[response] = urljoin_rfc(response.url, match.group(1)) if match else response.url
 +        text = response.body_as_unicode()[0:4096]
 +        _baseurl_cache[response] = html.get_base_url(text, response.url, response.encoding)
-     return _baseurl_cache[response]",Return the base url of the given response used to resolve relative links.,test_real,none,codocbench,6
+     return _baseurl_cache[response]",Return the base url of the given response used to resolve relative links.,none,6
 e084,paperless-ngx,BarcodeReader.convert_from_tiff_to_pdf,def convert_from_tiff_to_pdf(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,5 @@
@@ -1549,7 +1549,7 @@ e084,paperless-ngx,BarcodeReader.convert_from_tiff_to_pdf,def convert_from_tiff_
 +    if self.mime != 'image/tiff' or self._tiff_conversion_done:
          return
 +    self._tiff_conversion_done = True
-     self.pdf_file = convert_from_tiff_to_pdf(self.file, Path(self.temp_dir.name))","May convert a TIFF image into a PDF, if the input is a TIFF",test_real,none,codocbench,5
+     self.pdf_file = convert_from_tiff_to_pdf(self.file, Path(self.temp_dir.name))","May convert a TIFF image into a PDF, if the input is a TIFF",none,5
 e085,pytorch,is_deterministic,def is_deterministic():,"--- a/code.py
 +++ b/code.py
 @@ -1,2 +1,3 @@
@@ -1557,7 +1557,7 @@ e085,pytorch,is_deterministic,def is_deterministic():,"--- a/code.py
 -    return _C._get_deterministic()
 +    warnings.warn('torch.is_deterministic is deprecated and will be removed in a future release. Please use torch.are_deterministic_algorithms_enabled instead')
 +    return are_deterministic_algorithms_enabled()","r""""""Returns True if the global deterministic flag is turned on. Refer to
-    :func:`torch.set_deterministic` documentation for more details.",test_real,none,codocbench,4
+    :func:`torch.set_deterministic` documentation for more details.",none,4
 e086,AzurLaneAutoScript,atomic_failure_cleanup,"def atomic_failure_cleanup(directory: str, recursive: bool=False):","--- a/code.py
 +++ b/code.py
 @@ -1,22 +1,26 @@
@@ -1607,7 +1607,7 @@ e086,AzurLaneAutoScript,atomic_failure_cleanup,"def atomic_failure_cleanup(direc
 In most cases there should be no remaining temp files unless write process get interrupted.
 
 This method should only be called at startup
-to avoid deleting temp files that another process is writing.",gold,param_renamed,gold,27
+to avoid deleting temp files that another process is writing.",param_renamed,27
 e087,ipython,test_notebook_export_json_with_output,def test_notebook_export_json_with_output():,"--- a/code.py
 +++ b/code.py
 @@ -6,25 +6,30 @@
@@ -1662,7 +1662,7 @@ e087,ipython,test_notebook_export_json_with_output,def test_notebook_export_json
 +            assert actual['source'] == expected['source']
 +            assert actual['outputs'] == expected['outputs'], f'Outputs do not match for cell {i + 1} with source {command!r}'
 +    finally:
-+        _ip.colors = 'nocolor'","Tests if notebook export correctly captures outputs, errors, display outputs, and stream outputs.",test_real,none,history_neg,31
++        _ip.colors = 'nocolor'","Tests if notebook export correctly captures outputs, errors, display outputs, and stream outputs.",none,31
 e088,rasa,read_yaml,"def read_yaml(content: Text, reader_type: Union[Text, List[Text]]='rt') -> Any:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -1677,7 +1677,7 @@ Args:
     reader_type: Reader type to use. By default ""safe"" will be used.
 
 Raises:
-    ruamel.yaml.parser.ParserError: If there was an error when parsing the YAML.",gold,default_changed,gold,15
+    ruamel.yaml.parser.ParserError: If there was an error when parsing the YAML.",default_changed,15
 e089,Bottles,Manager.get_latest_runner,"def get_latest_runner(self, runner_type: str='wine') -> list:","--- a/code.py
 +++ b/code.py
 @@ -1,7 +1,5 @@
@@ -1692,7 +1692,7 @@ e089,Bottles,Manager.get_latest_runner,"def get_latest_runner(self, runner_type:
 +    runners = self.__sort_runners(self.runners_available, runner_prefix)
 +    if not runners:
 +        runners = self.__sort_runners(self.runners_available, '')
-+    return runners[0] if runners else []",Return the latest available runner for a given type.,gold,param_renamed,gold,8
++    return runners[0] if runners else []",Return the latest available runner for a given type.,param_renamed,8
 e090,erpnext,TestDepreciationBasics.test_number_of_depreciations,def test_number_of_depreciations(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,3 +1,5 @@
@@ -1700,7 +1700,7 @@ e090,erpnext,TestDepreciationBasics.test_number_of_depreciations,def test_number
      asset = create_asset(item_code='Macbook Pro', calculate_depreciation=1, available_for_use_date='2019-12-31', total_number_of_depreciations=3, expected_value_after_useful_life=10000, depreciation_start_date='2020-07-01', opening_accumulated_depreciation=10000, number_of_depreciations_booked=5, do_not_save=1)
      self.assertRaises(frappe.ValidationError, asset.save)
 +    asset_2 = create_asset(item_code='Macbook Pro', calculate_depreciation=1, available_for_use_date='2019-12-31', total_number_of_depreciations=5, expected_value_after_useful_life=10000, depreciation_start_date='2020-07-01', opening_accumulated_depreciation=10000, number_of_depreciations_booked=5, do_not_save=1)
-+    self.assertRaises(frappe.ValidationError, asset_2.save)",Tests if an error is raised when number_of_depreciations_booked > total_number_of_depreciations.,test_real,none,codocbench,4
++    self.assertRaises(frappe.ValidationError, asset_2.save)",Tests if an error is raised when number_of_depreciations_booked > total_number_of_depreciations.,none,4
 e091,ipython,InteractiveShell.system_raw,"def system_raw(self, cmd):","--- a/code.py
 +++ b/code.py
 @@ -27,3 +27,5 @@
@@ -1714,7 +1714,7 @@ subprocess.call using the system shell on other platforms.
 Parameters
 ----------
 cmd : str
-    Command to execute.",gold,exception_changed,gold,36
+    Command to execute.",exception_changed,36
 e092,AzurLaneAutoScript,InfoHandler.story_skip,"def story_skip(self, drop=None):","--- a/code.py
 +++ b/code.py
 @@ -39,8 +39,10 @@
@@ -1728,7 +1728,7 @@ e092,AzurLaneAutoScript,InfoHandler.story_skip,"def story_skip(self, drop=None):
                  self.device.click(OS_CLICK_SAFE_AREA)
              self._story_confirm.reset()
              self.story_popup_timeout.reset()","2023.09.14 Story options changed with big white options in the middle,
-    Check STORY_SKIP_3 but click the original STORY_SKIP.",test_real,none,history_neg,60
+    Check STORY_SKIP_3 but click the original STORY_SKIP.",none,60
 e093,mindsdb,FileHandler.get_tables,def get_tables(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,4 @@
@@ -1739,7 +1739,7 @@ e093,mindsdb,FileHandler.get_tables,def get_tables(self):,"--- a/code.py
 -        response['data'].append(TablesRow(TABLE_NAME=file_meta['name'], TABLE_ROWS=file_meta['row_count']))
 -    return response
 +    data = [{'TABLE_NAME': x['name'], 'TABLE_ROWS': x['row_count']} for x in files_meta]
-+    return HandlerResponse(RESPONSE_TYPE.TABLE, data_frame=pd.DataFrame(data))",List all tabels in PostgreSQL without the system tables information_schema and pg_catalog,test_real,none,codocbench,7
++    return HandlerResponse(RESPONSE_TYPE.TABLE, data_frame=pd.DataFrame(data))",List all tabels in PostgreSQL without the system tables information_schema and pg_catalog,none,7
 e094,rasa,DIETClassifier.process,"def process(self, message: Message, **kwargs: Any) -> Optional[Dict[Text, Any]]:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -1754,7 +1754,7 @@ e094,rasa,DIETClassifier.process,"def process(self, message: Message, **kwargs: 
          message.set(ENTITIES, entities, add_to_output=True)
 -    return values_to_numpy(out.get(DIAGNOSTIC_DATA)) if out else None
 +    if out:
-+        message.set(DIAGNOSTIC_DATA, values_to_numpy(out.get(DIAGNOSTIC_DATA)))",Augment the message with intents and entities and return diagnostic data.,test_real,return_changed,codocbench,11
++        message.set(DIAGNOSTIC_DATA, values_to_numpy(out.get(DIAGNOSTIC_DATA)))",Augment the message with intents and entities and return diagnostic data.,return_changed,11
 e095,AzurLaneAutoScript,Camera.in_sight,"def in_sight(self, location, sight=(-3, -1, 3, 2)):","--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,8 @@
@@ -1770,7 +1770,7 @@ e095,AzurLaneAutoScript,Camera.in_sight,"def in_sight(self, location, sight=(-3,
 
         Args:
             location:
-            sight:",gold,default_changed,gold,22
+            sight:",default_changed,22
 e096,espnet,ctc_align,"def ctc_align(log_level: Union[int, str], asr_train_config: str, asr_model_file: str, audio: Path, text: TextIO, output: TextIO, print_utt_text: bool=True, print_utt_score: bool=True, **kwargs):","--- a/code.py
 +++ b/code.py
 @@ -1,15 +1,2 @@
@@ -1790,7 +1790,7 @@ e096,espnet,ctc_align,"def ctc_align(log_level: Union[int, str], asr_train_confi
 -    segments_str = str(segments)
 -    output.write(segments_str)
 +def ctc_align(**kwargs):
-+    align_file(CTCSegmentation, **kwargs)",Provide the scripting interface to align text to audio.,gold,param_removed,gold,16
++    align_file(CTCSegmentation, **kwargs)",Provide the scripting interface to align text to audio.,param_removed,16
 e097,erpnext,reconcile_against_document,def reconcile_against_document(args):,"--- a/code.py
 +++ b/code.py
 @@ -1,16 +1,25 @@
@@ -1828,7 +1828,7 @@ e097,erpnext,reconcile_against_document,def reconcile_against_document(args):,"-
          frappe.flags.ignore_party_validation = False
 -        if d.voucher_type in ('Payment Entry', 'Journal Entry'):
 +        if entry.voucher_type in ('Payment Entry', 'Journal Entry'):
-             doc.update_expense_claim()","Cancel JV, Update aginst document, split if required and resubmit jv",gold,none,gold,17
+             doc.update_expense_claim()","Cancel JV, Update aginst document, split if required and resubmit jv",none,17
 e098,ipython,VerboseTB.format_exception_as_a_whole,"def format_exception_as_a_whole(self, etype: type, evalue: Optional[BaseException], etb: Optional[TracebackType], number_of_lines_of_context, tb_offset: Optional[int]):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -1866,14 +1866,14 @@ e098,ipython,VerboseTB.format_exception_as_a_whole,"def format_exception_as_a_wh
          frame_info = records[-1]","Formats the header, traceback and exception message for a single exception.
 
 This may be called multiple times by Python 3 exception chaining
-(PEP 3134).",gold,param_renamed,gold,39
+(PEP 3134).",param_renamed,39
 e099,d2l-en,try_all_gpus,def try_all_gpus():,"--- a/code.py
 +++ b/code.py
 @@ -1,3 +1,2 @@
  def try_all_gpus():
 -    devices = [npx.gpu(i) for i in range(npx.num_gpus())]
 -    return devices if devices else [npx.cpu()]
-+    return [gpu(i) for i in range(num_gpus())]","Return all available GPUs, or [cpu()] if no GPU exists.",gold,none,gold,4
++    return [gpu(i) for i in range(num_gpus())]","Return all available GPUs, or [cpu()] if no GPU exists.",none,4
 e100,manim,NumberLine.get_number_mobject,"def get_number_mobject(self, x: float, direction: Sequence[float] | None=None, buff: float | None=None, font_size: float | None=None, label_constructor: VMobject | None=None, **number_config) -> VMobject:","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,5 @@
@@ -1913,7 +1913,7 @@ label_constructor
 Returns
 -------
 :class:`~.DecimalNumber`
-    The positioned mobject.",test_real,none,history_neg,37
+    The positioned mobject.",none,37
 e101,TTS,mailabs,"def mailabs(root_path, meta_files=None, ununsed_speakers=None):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -1937,7 +1937,7 @@ e101,TTS,mailabs,"def mailabs(root_path, meta_files=None, ununsed_speakers=None)
 Args:
     root_path (str): root folder of the MAILAB language folder.
     meta_files (str):  list of meta files to be used in the training. If None, finds all the csv files
-        recursively. Defaults to None",gold,param_renamed,gold,40
+        recursively. Defaults to None",param_renamed,40
 e102,manim,NumberLine.get_number_mobject,"def get_number_mobject(self, x: float, direction: Vector3D | None=None, buff: float | None=None, font_size: float | None=None, label_constructor: type[MathTex] | None=None, **number_config: dict[str, Any]) -> VMobject:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -1975,7 +1975,7 @@ label_constructor
 Returns
 -------
 :class:`~.DecimalNumber`
-    The positioned mobject.",test_real,none,history_neg,37
+    The positioned mobject.",none,37
 e103,manim,CoordinateSystem.get_line_from_axis_to_point,"def get_line_from_axis_to_point(self, index: int, point: Sequence[float], line_func: Line=DashedLine, line_config: dict | None=None, color: Color | None=None, stroke_width: float=2) -> Line:","--- a/code.py
 +++ b/code.py
 @@ -1,8 +1,8 @@
@@ -2013,7 +2013,7 @@ Returns
 
 .. seealso::
     :meth:`~.CoordinateSystem.get_vertical_line`
-    :meth:`~.CoordinateSystem.get_horizontal_line`",test_real,none,history_neg,35
+    :meth:`~.CoordinateSystem.get_horizontal_line`",none,35
 e104,MMdnn,CoreMLEmitter.emit_Flatten,"def emit_Flatten(self, IR_node):","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,7 @@
@@ -2034,7 +2034,7 @@ e104,MMdnn,CoreMLEmitter.emit_Flatten,"def emit_Flatten(self, IR_node):","--- a/
             A keras layer object.
 
         builder: NeuralNetworkBuilder
-            A neural network builder object.",gold,none,gold,13
+            A neural network builder object.",none,13
 e105,locust,FastResponse.text,def text(self):,"--- a/code.py
 +++ b/code.py
 @@ -6,4 +6,4 @@
@@ -2043,7 +2043,7 @@ e105,locust,FastResponse.text,def text(self):,"--- a/code.py
              self.encoding = self.headers.get('content-type', '').partition('charset=')[2] or 'utf-8'
 -    return unicode(self.content, self.encoding, errors='replace')
 +    return str(self.content, self.encoding, errors='replace')","Returns the text content of the response as a decoded string
-        (unicode on python2)",gold,none,gold,11
+        (unicode on python2)",none,11
 e106,InstaPy,follow_user,"def follow_user(browser, track, login, user_name, button, blacklist, logger, logfolder):","--- a/code.py
 +++ b/code.py
 @@ -5,47 +5,33 @@
@@ -2118,7 +2118,7 @@ e106,InstaPy,follow_user,"def follow_user(browser, track, login, user_name, butt
 +                return (False, 'unexpected failure')
      elif track == 'dialog':
          click_element(browser, button)
-         sleep(3)","Follows the user from either its 'profile' page, a 'post' page or the users 'dialog' box",test_real,none,codocbench,64
+         sleep(3)","Follows the user from either its 'profile' page, a 'post' page or the users 'dialog' box",none,64
 e107,espnet,AudioKind.check,"def check(self, value, field, model, *, output):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,7 @@
@@ -2130,7 +2130,7 @@ e107,espnet,AudioKind.check,"def check(self, value, field, model, *, output):","
 +        if rate is None:
 +            raise TypeError(f'{field.name!r} returned as a bare array by a model that fixes no sample_rate; return an Audio with its rate')
 +        return Audio(value, rate)
-+    return Audio.coerce(value, rate)",Coerce what a caller holds; a hook's bare array is at the model's rate.,gold,exception_changed,gold,5
++    return Audio.coerce(value, rate)",Coerce what a caller holds; a hook's bare array is at the model's rate.,exception_changed,5
 e108,zulip,parse_gcm_options,"def parse_gcm_options(options: Dict[str, Any], data: Dict[str, Any]) -> None:","--- a/code.py
 +++ b/code.py
 @@ -1,3 +1,7 @@
@@ -2141,7 +2141,7 @@ e108,zulip,parse_gcm_options,"def parse_gcm_options(options: Dict[str, Any], dat
 +        raise JsonableError(_('Invalid GCM option to bouncer: priority %r') % (priority,))
      if options:
          raise JsonableError(_('Invalid GCM options to bouncer: %s') % (ujson.dumps(options),))
-+    return priority","Parse GCM options, raising an error if invalid.",test_real,return_changed,codocbench,4
++    return priority","Parse GCM options, raising an error if invalid.",return_changed,4
 e109,pytorch_geometric,is_undirected,"def is_undirected(edge_index: Tensor, edge_attr: Union[OptTensor, List[Tensor]]=None, num_nodes: Optional[int]=None) -> bool:","--- a/code.py
 +++ b/code.py
 @@ -11,6 +11,7 @@
@@ -2175,7 +2175,7 @@ e109,pytorch_geometric,is_undirected,"def is_undirected(edge_index: Tensor, edge
 
         >>> weight = torch.tensor([0, 1, 1])
         >>> is_undirected(edge_index, weight)
-        False",test_real,none,codocbench,42
+        False",none,42
 e110,TTS,Xtts.full_inference,"def full_inference(self, text, ref_audio_path, language, temperature=0.65, length_penalty=1, repetition_penalty=2.0, top_k=50, top_p=0.85, do_sample=True, gpt_cond_len=6, max_ref_len=10, sound_norm_refs=False, decoder_iterations=100, cond_free=True, cond_free_k=2, diffusion_temperature=1.0, decoder_sampler='ddim', decoder='hifigan', **hf_generate_kwargs):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -2216,7 +2216,7 @@ Args:
 
 Returns:
     Generated audio clip(s) as a torch tensor. Shape 1,S if k=1 else, (k,1,S) where S is the sample length.
-    Sample rate is 24kHz.",gold,param_removed,gold,38
+    Sample rate is 24kHz.",param_removed,38
 e111,AzurLaneAutoScript,IslandRecipe.run_recipe,"def run_recipe(self, recipe_id, batch_count=float('inf')):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -2248,7 +2248,7 @@ e111,AzurLaneAutoScript,IslandRecipe.run_recipe,"def run_recipe(self, recipe_id,
          logger.warning(f""Failed to set recipe batch count to {('max' if real_count == float('inf') else real_count)}, cannot run recipe"")
          return None","Returns:
     tuple[timedelta, int | float]: remain time and actual batch count after starting,
-        or None if failed to start recipe",gold,param_added,gold,36
+        or None if failed to start recipe",param_added,36
 e112,paperless-ngx,FetchView.render_to_response,"def render_to_response(self, context, **response_kwargs):","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,7 @@
@@ -2258,7 +2258,7 @@ e112,paperless-ngx,FetchView.render_to_response,"def render_to_response(self, co
 +        return HttpResponse(GnuPG.decrypted(self.object.thumb_file), content_type=content_types[Document.TYPE_JPG])
      response = HttpResponse(GnuPG.decrypted(self.object.source_file), content_type=content_types[self.object.file_type])
      response['Content-Disposition'] = 'attachment; filename=""{}""'.format(self.object.file_name)
-     return response",Override the default to return the unencrypted PDF as raw data.,test_real,none,codocbench,6
+     return response",Override the default to return the unencrypted PDF as raw data.,none,6
 e113,loguru,Logger.patch,"def patch(self, patcher):","--- a/code.py
 +++ b/code.py
 @@ -1,3 +1,3 @@
@@ -2306,7 +2306,7 @@ e113,loguru,Logger.patch,"def patch(self, patcher):","--- a/code.py
         >>> def recv_record_from_network(pipe):
         ...     record = pickle.loads(pipe.read())
         ...     level, message = record[""level""], record[""message""]
-        ...     logger.patch(lambda r: r.update(record)).log(level, message)",gold,none,gold,44
+        ...     logger.patch(lambda r: r.update(record)).log(level, message)",none,44
 e114,ipython,test_get_ipython_dir_7,def test_get_ipython_dir_7():,"--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,6 @@
@@ -2316,7 +2316,7 @@ e114,ipython,test_get_ipython_dir_7,def test_get_ipython_dir_7():,"--- a/code.py
 -    env['IPYTHON_DIR'] = os.path.join('~', 'somewhere')
 +    env['IPYTHONDIR'] = os.path.join('~', 'somewhere')
      ipdir = path.get_ipython_dir()
-     nt.assert_equal(ipdir, os.path.join(home_dir, 'somewhere'))","test_get_ipython_dir_7, test home directory expansion on IPYTHON_DIR",test_real,none,codocbench,7
+     nt.assert_equal(ipdir, os.path.join(home_dir, 'somewhere'))","test_get_ipython_dir_7, test home directory expansion on IPYTHON_DIR",none,7
 e115,django-rest-framework,Issue1386Tests.test_issue_1386,def test_issue_1386(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,11 +1,11 @@
@@ -2333,7 +2333,7 @@ e115,django-rest-framework,Issue1386Tests.test_issue_1386,def test_issue_1386(se
 +        res = urlize(i)
          self.assertEqual(i, res)
 -    urlize_quoted_links('asdf:[/p]zxcv.com')
-+    urlize('asdf:[/p]zxcv.com')",Test function urlize_quoted_links with different args,test_real,none,codocbench,12
++    urlize('asdf:[/p]zxcv.com')",Test function urlize_quoted_links with different args,none,12
 e116,StratosphereLinuxIPS,test_getProfileIdFromIP,def test_getProfileIdFromIP():,"--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -2341,7 +2341,7 @@ e116,StratosphereLinuxIPS,test_getProfileIdFromIP,def test_getProfileIdFromIP():
      os.system('./slips.py -c slips.conf -cc')
 -    db.addProfile('profile_192.168.1.1', '00:00', '1')
 +    db.add_profile('profile_192.168.1.1', '00:00', '1')
-     assert db.get_profileid_from_ip(test_ip) is not False",unit test for addProfile and getProfileIdFromIP,test_real,none,codocbench,5
+     assert db.get_profileid_from_ip(test_ip) is not False",unit test for addProfile and getProfileIdFromIP,none,5
 e117,d2l-en,train_2d,"def train_2d(trainer, steps=20, f_grad=None):","--- a/code.py
 +++ b/code.py
 @@ -7,4 +7,5 @@
@@ -2349,7 +2349,7 @@ e117,d2l-en,train_2d,"def train_2d(trainer, steps=20, f_grad=None):","--- a/code
              x1, x2, s1, s2 = trainer(x1, x2, s1, s2)
          results.append((x1, x2))
 +    print(f'epoch {i + 1:d}, x1: {x1:f}, x2: {x2:f}')
-     return results",Optimize a 2-dim objective function with a customized trainer.,test_real,none,codocbench,11
+     return results",Optimize a 2-dim objective function with a customized trainer.,none,11
 e118,AzurLaneAutoScript,ActionPointHandler.action_point_quit,"def action_point_quit(self, skip_first_screenshot=True):","--- a/code.py
 +++ b/code.py
 @@ -1,2 +1,12 @@
@@ -2367,7 +2367,7 @@ e118,AzurLaneAutoScript,ActionPointHandler.action_point_quit,"def action_point_q
 +        if self.handle_map_event():
 +            continue","Pages:
     in: ACTION_POINT_USE
-    out: page_os",test_real,none,history_neg,5
+    out: page_os",none,5
 e119,manim,test_deprecate_class_since_and_until,def test_deprecate_class_since_and_until(warn_caplog_manim):,"--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,6 @@
@@ -2379,7 +2379,7 @@ e119,manim,test_deprecate_class_since_and_until,def test_deprecate_class_since_a
 +    assert len(manim_caplog.record_tuples) == 1
 +    msg = _get_caplog_record_msg(manim_caplog)
      assert msg == 'The class Qux has been deprecated since 0.7.0 and is expected to be removed after 0.9.0-rc2.'
-     assert qx.__doc__ == f'{doc_admonition}{msg}'",Test the deprecation of a class (decorator with since and until arguments).,gold,param_renamed,gold,7
+     assert qx.__doc__ == f'{doc_admonition}{msg}'",Test the deprecation of a class (decorator with since and until arguments).,param_renamed,7
 e120,TTS,check_config_and_model_args,"def check_config_and_model_args(config, arg_name, value):","--- a/code.py
 +++ b/code.py
 @@ -4,4 +4,4 @@
@@ -2392,7 +2392,7 @@ e120,TTS,check_config_and_model_args,"def check_config_and_model_args(config, ar
 
     It is to patch up the compatibility between models with and without `model_args`.
 
-    TODO: Remove this in the future with a unified approach.",gold,exception_changed,gold,13
+    TODO: Remove this in the future with a unified approach.",exception_changed,13
 e121,pytorch,numpy_to_tensor,def numpy_to_tensor(value):,"--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,7 @@
@@ -2403,7 +2403,7 @@ e121,pytorch,numpy_to_tensor,def numpy_to_tensor(value):,"--- a/code.py
 +    if isinstance(value, tnp.ndarray):
          return value.tensor
      elif isinstance(value, (tuple, list)):
-         return type(value)((numpy_to_tensor(obj) for obj in value))","Convert torch_np.ndarray to tensor, leave other types intact. If a list/tuple, loop through it to convert.",test_real,none,codocbench,8
+         return type(value)((numpy_to_tensor(obj) for obj in value))","Convert torch_np.ndarray to tensor, leave other types intact. If a list/tuple, loop through it to convert.",none,8
 e122,AzurLaneAutoScript,StorageHandler.storage_disassemble_equipment,"def storage_disassemble_equipment(self, rarity=1, amount=40):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -2424,7 +2424,7 @@ Returns:
 
 Pages:
     in: Any
-    out: page_storage, equipment, DISASSEMBLE",gold,default_changed,gold,31
+    out: page_storage, equipment, DISASSEMBLE",default_changed,31
 e123,StratosphereLinuxIPS,Main.shutdown_gracefully,def shutdown_gracefully(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,5 @@
@@ -2441,7 +2441,7 @@ e123,StratosphereLinuxIPS,Main.shutdown_gracefully,def shutdown_gracefully(self)
 +                                break
              except KeyboardInterrupt:
                  pass
-         PIDs = self.PIDs.copy()",Wait for all modules to confirm that they're done processing and then shutdown,test_real,none,codocbench,74
+         PIDs = self.PIDs.copy()",Wait for all modules to confirm that they're done processing and then shutdown,none,74
 e124,frappe,TestPermissions.test_ignore_user_permissions_if_missing,def test_ignore_user_permissions_if_missing(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,10 +1,9 @@
@@ -2457,7 +2457,7 @@ e124,frappe,TestPermissions.test_ignore_user_permissions_if_missing,def test_ign
 -    self.set_ignore_user_permissions_if_missing(1)
 +    remove_user_permission('Blog Category', '_Test Blog Category', 'test2@example.com')
      frappe.set_user('test2@example.com')
-     self.assertTrue(doc.has_permission('write'))","If `Ignore User Permissions If Missing` is checked in System Settings, show records even if User Permissions are missing for a linked doctype",test_real,none,codocbench,11
+     self.assertTrue(doc.has_permission('write'))","If `Ignore User Permissions If Missing` is checked in System Settings, show records even if User Permissions are missing for a linked doctype",none,11
 e125,transformers,window_reverse,"def window_reverse(windows, window_size, height, width):","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,5 @@
@@ -2477,7 +2477,7 @@ e125,transformers,window_reverse,"def window_reverse(windows, window_size, heigh
         height (`int`):
             Height of the resized audio
         width (`int`):
-            Width of the resized audio",test_real,none,codocbench,14
+            Width of the resized audio",none,14
 e126,manim,NumberLine.add_numbers,"def add_numbers(self, x_values: Iterable[float] | None=None, excluding: Iterable[float] | None=None, font_size: float | None=None, label_constructor: type[MathTex] | None=None, **kwargs: Any) -> Self:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -2511,7 +2511,7 @@ font_size
 label_constructor
     The :class:`~.VMobject` class that will be used to construct the label.
     Defaults to the ``label_constructor`` attribute of the number line
-    if not specified.",test_real,none,history_neg,35
+    if not specified.",none,35
 e127,ipython,catch_corrupt_db,"def catch_corrupt_db(f, self, *a, **kw):","--- a/code.py
 +++ b/code.py
 @@ -1,31 +1,35 @@
@@ -2585,7 +2585,7 @@ a corrupt SQLite database, move the old database out of the way, and create
 a new one.
 
 We avoid clobbering larger databases because this may be triggered due to filesystem issues,
-not just a corrupt file.",gold,param_removed,gold,37
+not just a corrupt file.",param_removed,37
 e128,manim,NumberLine.add_labels,"def add_labels(self, dict_values: dict[float, str | float | VMobject], direction: Point3DLike | None=None, buff: float | None=None, font_size: float | None=None, label_constructor: type[MathTex] | None=None) -> Self:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -2638,7 +2638,7 @@ label_constructor
 Raises
 ------
 AttributeError
-    If the label does not have a ``font_size`` attribute, an ``AttributeError`` is raised.",test_real,none,history_neg,46
+    If the label does not have a ``font_size`` attribute, an ``AttributeError`` is raised.",none,46
 e129,matplotlib,ToolViewsPositions.push_current,def push_current(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,8 +1,8 @@
@@ -2653,7 +2653,7 @@ e129,matplotlib,ToolViewsPositions.push_current,def push_current(self):,"--- a/c
 +        views.append(a._get_view())
 +        pos.append((a.get_position(True).frozen(), a.get_position().frozen()))
      self.views[self.figure].push(views)
-     self.positions[self.figure].push(pos)",Push the current view limits and position onto their respective stacks,test_real,none,codocbench,9
+     self.positions[self.figure].push(pos)",Push the current view limits and position onto their respective stacks,none,9
 e130,textual,Tree.scroll_to_node,"def scroll_to_node(self, node: TreeNode) -> None:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -2664,7 +2664,7 @@ e130,textual,Tree.scroll_to_node,"def scroll_to_node(self, node: TreeNode) -> No
          self.scroll_to_line(line)","Scroll to the given node.
 
         Args:
-            node (TreeNode): Node to scroll in to view.",test_real,none,codocbench,8
+            node (TreeNode): Node to scroll in to view.",none,8
 e131,ipython,ensure_dir_exists,"def ensure_dir_exists(path, mode=493):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -2677,7 +2677,7 @@ e131,ipython,ensure_dir_exists,"def ensure_dir_exists(path, mode=493):","--- a/c
 If it doesn't exist, try to create it and protect against a race condition
 if another process is doing the same.
 
-The default permissions are 755, which differ from os.makedirs default of 777.",test_real,none,history_neg,15
+The default permissions are 755, which differ from os.makedirs default of 777.",none,15
 e132,ipython,InteractiveShell.var_expand,"def var_expand(self, cmd, depth=0, formatter=DollarFormatter()):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -2691,7 +2691,7 @@ The depth argument indicates how many frames above the caller should
 be walked to look for the local namespace where to expand variables.
 
 The global namespace for expansion is always the user's interactive
-namespace.",gold,default_changed,gold,20
+namespace.",default_changed,20
 e133,pyro,ParamStoreDict.set_state,"def set_state(self, state):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -2699,7 +2699,7 @@ e133,pyro,ParamStoreDict.set_state,"def set_state(self, state):","--- a/code.py
 +def set_state(self, state: dict):
      assert isinstance(state, dict), 'malformed ParamStore state'
      assert set(state.keys()) == set(['params', 'constraints']), 'malformed ParamStore keys {}'.format(state.keys())
-     for param_name, param in state['params'].items():",Set the ParamStore state using state from a previous get_state() call,test_real,none,codocbench,11
+     for param_name, param in state['params'].items():",Set the ParamStore state using state from a previous get_state() call,none,11
 e134,TTS,BaseTTS.on_init_start,"def on_init_start(self, trainer):","--- a/code.py
 +++ b/code.py
 @@ -1,12 +1,12 @@
@@ -2716,7 +2716,7 @@ e134,TTS,BaseTTS.on_init_start,"def on_init_start(self, trainer):","--- a/code.p
 +        print(f' > `speakers.pth` is saved to {output_path}.')
          print(' > `speakers_file` is updated in the config.json.')
      if hasattr(self, 'language_manager') and self.language_manager is not None:
-         output_path = os.path.join(trainer.output_path, 'language_ids.json')",Save the speaker.json and language_ids.json at the beginning of the training. Also update both paths.,test_real,none,codocbench,20
+         output_path = os.path.join(trainer.output_path, 'language_ids.json')",Save the speaker.json and language_ids.json at the beginning of the training. Also update both paths.,none,20
 e135,manim,Scene.compile_animations,"def compile_animations(self, *args: Animation, **kwargs):","--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,7 @@
@@ -2741,7 +2741,7 @@ Parameters
 Returns
 -------
 Tuple[:class:`Animation`]
-    Animations to be played.",test_real,none,history_neg,28
+    Animations to be played.",none,28
 e136,pytorch,TestFxGraphCacheHashing.test_tensor_constants,def test_tensor_constants(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,3 @@
@@ -2749,7 +2749,7 @@ e136,pytorch,TestFxGraphCacheHashing.test_tensor_constants,def test_tensor_const
      data = FxGraphCachePickler.dumps(torch.tensor(list(range(9))))
 -    self.assertIsInstance(pickle.loads(data), TensorMetadata)
 -    data = FxGraphCachePickler.dumps(torch.tensor(list(range(8))))
-     self.assertIsInstance(pickle.loads(data), TensorMetadataAndValues)",Test the handling of small vs. large tensor constants.,test_real,none,codocbench,6
+     self.assertIsInstance(pickle.loads(data), TensorMetadataAndValues)",Test the handling of small vs. large tensor constants.,none,6
 e137,rasa,bert_embeddings_post_processor,"def bert_embeddings_post_processor(sequence_embeddings: np.array) -> Tuple[np.array, np.array]:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -2759,7 +2759,7 @@ e137,rasa,bert_embeddings_post_processor,"def bert_embeddings_post_processor(seq
      post_processed_embedding = sequence_embeddings[1:-1]
      return (sentence_embedding, post_processed_embedding)","Post process embeddings from BERT by removing CLS and SEP embeddings and returning CLS
 
-    token embedding as sentence representation",test_real,return_changed,codocbench,7
+    token embedding as sentence representation",return_changed,7
 e138,manim,Section.get_dict,"def get_dict(self, sections_dir: str) -> dict[str, Any]:","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,5 @@
@@ -2773,7 +2773,7 @@ e138,manim,Section.get_dict,"def get_dict(self, sections_dir: str) -> dict[str, 
 
 The output from this function is used from every section to build the sections index file.
 The output video must have been created in the ``sections_dir`` before executing this method.
-This is the main part of the Segmented Video API.",test_real,none,history_neg,10
+This is the main part of the Segmented Video API.",none,10
 e139,pytorch,HeuristicInterface.get_prediction_confidence,"def get_prediction_confidence(self, tests: List[str]) -> Dict[str, float]:","--- a/code.py
 +++ b/code.py
 @@ -1,2 +1,2 @@
@@ -2782,7 +2782,7 @@ e139,pytorch,HeuristicInterface.get_prediction_confidence,"def get_prediction_co
      pass","Like get_test_priorities, but instead returns a float ranking ranging
         from -1 to 1, where negative means skip, positive means run, 0 means no
         idea, and magnitude = how confident the heuristic is. Used by
-        AggregatedHeuristicsRankings.",test_real,return_changed,codocbench,6
+        AggregatedHeuristicsRankings.",return_changed,6
 e140,zulip,fix_realm_authentication_bitfield,"def fix_realm_authentication_bitfield(data: TableData, table: TableName, field_name: Field) -> None:","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,7 @@
@@ -2793,7 +2793,7 @@ e140,zulip,fix_realm_authentication_bitfield,"def fix_realm_authentication_bitfi
 +        charlist.reverse()
 +        values_as_bitstring = ''.join(charlist)
          values_as_int = int(values_as_bitstring, 2)
-         item[field_name] = values_as_int",Used to fixup the authentication_methods bitfield to be a string,test_real,none,codocbench,6
+         item[field_name] = values_as_int",Used to fixup the authentication_methods bitfield to be a string,none,6
 e141,manim,LinearTransformationScene.add_title,"def add_title(self, title, scale_factor=1.5, animate=False):","--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,6 @@
@@ -2821,7 +2821,7 @@ e141,manim,LinearTransformationScene.add_title,"def add_title(self, title, scale
         Returns
         -------
         LinearTransformationScene
-            The scene with the title added to it.",gold,none,gold,29
+            The scene with the title added to it.",none,29
 e142,python-telegram-bot,Chat.add_chat_ids,"def add_chat_ids(self, chat_id: SLT[int]) -> None:","--- a/code.py
 +++ b/code.py
 @@ -1,2 +1,2 @@
@@ -2831,7 +2831,7 @@ e142,python-telegram-bot,Chat.add_chat_ids,"def add_chat_ids(self, chat_id: SLT[
 
         Args:
             chat_id(:obj:`int` | Tuple[:obj:`int`] | List[:obj:`int`]): Which chat ID(s) to allow
-                through.",test_real,none,codocbench,7
+                through.",none,7
 e143,frappe,PathResolver.resolve,def resolve(self):,"--- a/code.py
 +++ b/code.py
 @@ -6,8 +6,8 @@
@@ -2844,7 +2844,7 @@ e143,frappe,PathResolver.resolve,def resolve(self):,"--- a/code.py
 +        return (frappe.flags.redirect_location, RedirectPage(self.path, e.http_status_code))
      if frappe.get_hooks('website_path_resolver'):
          for handler in frappe.get_hooks('website_path_resolver'):
-             endpoint = frappe.get_attr(handler)(self.path)",Returns endpoint and a renderer instance that can render the endpoint,test_real,none,codocbench,25
+             endpoint = frappe.get_attr(handler)(self.path)",Returns endpoint and a renderer instance that can render the endpoint,none,25
 e144,StratosphereLinuxIPS,test_download_malicious_file,"def test_download_malicious_file(outputQueue, database, url):","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,6 @@
@@ -2854,7 +2854,7 @@ e144,StratosphereLinuxIPS,test_download_malicious_file,"def test_download_malici
 +    old_etag = '*' + old_etag[1:]
      database.set_TI_file_info(url.split('/')[-1], {'e-tag': old_etag})
 -    assert update_manager.update_TI_file(url) == True
-+    assert update_manager._UpdateFileManager__check_if_update(url) == True",we're tetsing this condition old_e_tag == new_e_tag,test_real,none,codocbench,6
++    assert update_manager._UpdateFileManager__check_if_update(url) == True",we're tetsing this condition old_e_tag == new_e_tag,none,6
 e145,manim,ThreeDScene.add_fixed_in_frame_mobjects,"def add_fixed_in_frame_mobjects(self, *mobjects):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -2870,7 +2870,7 @@ e145,manim,ThreeDScene.add_fixed_in_frame_mobjects,"def add_fixed_in_frame_mobje
         Parameters
         ----------
         *mobjects : Mobjects
-            The Mobjects whose orientation must be fixed.",test_real,none,codocbench,19
+            The Mobjects whose orientation must be fixed.",none,19
 e146,ipython,test_notebook_export_json_with_output,def test_notebook_export_json_with_output():,"--- a/code.py
 +++ b/code.py
 @@ -1,40 +1,31 @@
@@ -2937,7 +2937,7 @@ e146,ipython,test_notebook_export_json_with_output,def test_notebook_export_json
 +        if command == '1/0':
 +            actual['outputs'][0].pop('traceback')
 +            expected['outputs'][0].pop('traceback')
-+        assert actual['outputs'] == expected['outputs'], f'Outputs do not match for cell {i + 1} with source {command!r}'","Tests if notebook export correctly captures outputs, errors, display outputs, and stream outputs.",test_real,none,history_neg,41
++        assert actual['outputs'] == expected['outputs'], f'Outputs do not match for cell {i + 1} with source {command!r}'","Tests if notebook export correctly captures outputs, errors, display outputs, and stream outputs.",none,41
 e147,ipython,test_get_xdg_dir_3,def test_get_xdg_dir_3():,"--- a/code.py
 +++ b/code.py
 @@ -1,8 +1,8 @@
@@ -2950,7 +2950,7 @@ e147,ipython,test_get_xdg_dir_3,def test_get_xdg_dir_3():,"--- a/code.py
 +    sys.platform = 'win32'
      env.pop('IPYTHON_DIR', None)
      env.pop('IPYTHONDIR', None)
-     env.pop('XDG_CONFIG_HOME', None)","test_get_xdg_dir_3, check xdg_dir not used on OS X",test_real,none,codocbench,12
+     env.pop('XDG_CONFIG_HOME', None)","test_get_xdg_dir_3, check xdg_dir not used on OS X",none,12
 e148,manim,SceneFileWriter.clean_cache,def clean_cache(self):,"--- a/code.py
 +++ b/code.py
 @@ -5,4 +5,4 @@
@@ -2958,7 +2958,7 @@ e148,manim,SceneFileWriter.clean_cache,def clean_cache(self):,"--- a/code.py
          for file_to_delete in oldest_files_to_delete:
              os.remove(file_to_delete)
 -        logger.info(f""The partial movie directory is full (> {config['max_files_cached']} files). Therefore, manim has removed {number_files_to_delete} file(s) used by it the longest ago."" + 'You can change this behaviour by changing max_files_cached in config.')
-+        logger.info(f""The partial movie directory is full (> {config['max_files_cached']} files). Therefore, manim has removed the {number_files_to_delete} oldest file(s)."", 'You can change this behaviour by changing max_files_cached in config.')",Will clean the cache by removing the partial_movie_files used by manim the longest ago.,test_real,none,codocbench,9
++        logger.info(f""The partial movie directory is full (> {config['max_files_cached']} files). Therefore, manim has removed the {number_files_to_delete} oldest file(s)."", 'You can change this behaviour by changing max_files_cached in config.')",Will clean the cache by removing the partial_movie_files used by manim the longest ago.,none,9
 e149,AzurLaneAutoScript,EmulatorManager.adb_replace,def adb_replace(self):,"--- a/code.py
 +++ b/code.py
 @@ -7,7 +7,10 @@
@@ -2976,7 +2976,7 @@ e149,AzurLaneAutoScript,EmulatorManager.adb_replace,def adb_replace(self):,"--- 
 +            shutil.copy(self.adb, adb)
 +        except OSError as e:
 +            logger.warning(f'Failed to replace {adb}, {e}')","Backup the adb in emulator folder to xxx.bak, replace it with your adb.
-`adb kill-server` must be called before replacing.",gold,none,gold,15
+`adb kill-server` must be called before replacing.",none,15
 e150,sentry,DIFCache.get_symcaches,"def get_symcaches(self, project, debug_ids, on_dif_referenced=None, with_conversion_errors=False):","--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,6 @@
@@ -2987,7 +2987,7 @@ e150,sentry,DIFCache.get_symcaches,"def get_symcaches(self, project, debug_ids, 
 +    symcaches = self._load_cachefiles_via_fs(project, cachefiles, SymCache)
      if with_conversion_errors:
          return (symcaches, dict(((k, v) for k, v in conversion_errors.items())))
-     return symcaches",Given some debug ids returns the symcaches loaded for these debug ids.,test_real,none,codocbench,7
+     return symcaches",Given some debug ids returns the symcaches loaded for these debug ids.,none,7
 e151,manim,CoordinateSystem.get_graph_label,"def get_graph_label(self, graph: ParametricFunction, label: float | str | Mobject='f(x)', x_val: float | None=None, direction: Sequence[float]=RIGHT, buff: float=MED_SMALL_BUFF, color: ParsableManimColor | None=None, dot: bool=False, dot_config: dict[str, Any] | None=None) -> Mobject:","--- a/code.py
 +++ b/code.py
 @@ -1,9 +1,9 @@
@@ -3060,7 +3060,7 @@ Examples
                 direction=UR,
             )
 
-            self.add(ax, sin, label)",test_real,none,history_neg,64
+            self.add(ax, sin, label)",none,64
 e152,ipython,test_recursive_FileLinks,def test_recursive_FileLinks():,"--- a/code.py
 +++ b/code.py
 @@ -1,13 +1,12 @@
@@ -3085,7 +3085,7 @@ e152,ipython,test_recursive_FileLinks,def test_recursive_FileLinks():,"--- a/cod
 +        fl = display.FileLinks(td, recursive=False)
 +        actual = str(fl)
 +        actual = actual.split('\n')
-+        assert len(actual) == 2, actual",FileLinks: Does not recurse when recursive=False,test_real,none,history_neg,14
++        assert len(actual) == 2, actual",FileLinks: Does not recurse when recursive=False,none,14
 e153,gpt_academic,predict,"def predict(inputs, llm_kwargs, *args, **kwargs):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -3099,7 +3099,7 @@ e153,gpt_academic,predict,"def predict(inputs, llm_kwargs, *args, **kwargs):","-
     top_p, temperature是LLM的内部调优参数
     history 是之前的对话列表（注意无论是inputs还是history，内容太长了都会触发token数量溢出的错误）
     chatbot 为WebUI中显示的对话列表，修改它，然后yeild出去，可以直接修改对话界面内容
-    additional_fn代表点击的哪个按钮，按钮见functional.py",gold,none,gold,11
+    additional_fn代表点击的哪个按钮，按钮见functional.py",none,11
 e154,espnet,ctc_only_search,"def ctc_only_search(search_class, n_frames):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -3119,14 +3119,14 @@ e154,espnet,ctc_only_search,"def ctc_only_search(search_class, n_frames):","--- 
 
 Labels 3, 5 and 2 are spoken at frames 0, 4 and 8, the rest is blank.
 Returns the search, the posteriors to decode, the labels, and their CTC
-log likelihood as `torch.nn.functional.ctc_loss` computes it.",gold,param_added,gold,18
+log likelihood as `torch.nn.functional.ctc_loss` computes it.",param_added,18
 e155,rasa,set_markers_sample_arguments,def set_markers_sample_arguments(parser: argparse.ArgumentParser) -> None:,"--- a/code.py
 +++ b/code.py
 @@ -1,3 +1,3 @@
  def set_markers_sample_arguments(parser: argparse.ArgumentParser) -> None:
 -    parser.add_argument('--seed', type=int, help=""Seed to use if selecting trackers by 'sample'"")
 +    parser.add_argument('--seed', type=int, help=""Seed to use if selecting trackers by 'sample_n'"")
-     parser.add_argument('count', type=int, help='The number of trackers to extract markers from')",Specifies arguments for `rasa evaluate markers by_sample`.,test_real,none,codocbench,4
+     parser.add_argument('count', type=int, help='The number of trackers to extract markers from')",Specifies arguments for `rasa evaluate markers by_sample`.,none,4
 e156,ipython,test_existing_path_FileLinks,def test_existing_path_FileLinks():,"--- a/code.py
 +++ b/code.py
 @@ -1,11 +1,10 @@
@@ -3148,7 +3148,7 @@ e156,ipython,test_existing_path_FileLinks,def test_existing_path_FileLinks():,"-
 +        actual.sort()
 +        expected = ['%s/<br>' % td, ""&nbsp;&nbsp;<a href='%s' target='_blank'>%s</a><br>"" % (tf2.name.replace('\\', '/'), split(tf2.name)[1]), ""&nbsp;&nbsp;<a href='%s' target='_blank'>%s</a><br>"" % (tf1.name.replace('\\', '/'), split(tf1.name)[1])]
 +        expected.sort()
-+        assert actual == expected",FileLinks: Calling _repr_html_ functions as expected on existing dir,test_real,none,history_neg,12
++        assert actual == expected",FileLinks: Calling _repr_html_ functions as expected on existing dir,none,12
 e157,transformers,check_onnx_model_list,def check_onnx_model_list(overwrite=False):,"--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,5 @@
@@ -3157,7 +3157,7 @@ e157,transformers,check_onnx_model_list,def check_onnx_model_list(overwrite=Fals
 +    current_list, start_index, end_index, lines = _find_text_in_file(filename=os.path.join(PATH_TO_DOCS, 'serialization.mdx'), start_prompt='<!--This table is automatically generated by make style, do not fill manually!-->', end_prompt='The ONNX conversion is supported for the PyTorch versions of the models.')
      new_list = get_onnx_model_list()
      if current_list != new_list:
-         if overwrite:",Check the model list in the serialization.rst is consistent with the state of the lib and maybe `overwrite`.,test_real,none,codocbench,10
+         if overwrite:",Check the model list in the serialization.rst is consistent with the state of the lib and maybe `overwrite`.,none,10
 e158,pytorch,get_labels,def get_labels(pr_number: int) -> Set[str]:,"--- a/code.py
 +++ b/code.py
 @@ -1,10 +1,3 @@
@@ -3172,7 +3172,7 @@ e158,pytorch,get_labels,def get_labels(pr_number: int) -> Set[str]:,"--- a/code.
 -        return set()
 -    return {label.get('name') for label in json_response if label.get('name')}
 +    pr_info = get_pr_info(pr_number)
-+    return {label.get('name') for label in pr_info.get('labels', []) if label.get('name')}",Dynamical get the latest list of labels from the pull request,test_real,none,codocbench,11
++    return {label.get('name') for label in pr_info.get('labels', []) if label.get('name')}",Dynamical get the latest list of labels from the pull request,none,11
 e159,matplotlib,concatenate_paths,def concatenate_paths(paths):,"--- a/code.py
 +++ b/code.py
 @@ -1,9 +1,4 @@
@@ -3187,7 +3187,7 @@ e159,matplotlib,concatenate_paths,def concatenate_paths(paths):,"--- a/code.py
 -    return _path
 +    vertices = np.concatenate([p.vertices for p in paths])
 +    codes = np.concatenate([make_path_regular(p).codes for p in paths])
-+    return Path(vertices, codes)",concatenate list of paths into a single path.,test_real,none,codocbench,10
++    return Path(vertices, codes)",concatenate list of paths into a single path.,none,10
 e160,manim,Mobject.add_updater,"def add_updater(self, update_function: Updater, index: Optional[int]=None, call_updater: bool=False):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -3253,7 +3253,7 @@ See also
 --------
 :meth:`get_updaters`
 :meth:`remove_updater`
-:class:`~.UpdateFromFunc`",test_real,none,history_neg,67
+:class:`~.UpdateFromFunc`",none,67
 e161,manim,rotation_matrix,"def rotation_matrix(angle: float, axis: np.ndarray, homogeneous: bool=False) -> np.ndarray:","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,5 @@
@@ -3263,7 +3263,7 @@ e161,manim,rotation_matrix,"def rotation_matrix(angle: float, axis: np.ndarray, 
 +    inhomogeneous_rotation_matrix = Rotation.from_rotvec(angle * normalize(axis)).as_matrix()
      if not homogeneous:
          return inhomogeneous_rotation_matrix
-     else:",Rotation in R^3 about a specified axis of rotation.,test_real,none,history_neg,9
+     else:",Rotation in R^3 about a specified axis of rotation.,none,9
 e162,transformers,is_tensor,def is_tensor(x):,"--- a/code.py
 +++ b/code.py
 @@ -7,4 +7,9 @@
@@ -3275,7 +3275,7 @@ e162,transformers,is_tensor,def is_tensor(x):,"--- a/code.py
 +        from jax.interpreters.partial_eval import DynamicJaxprTracer
 +        if isinstance(x, (jax_xla.DeviceArray, DynamicJaxprTracer)):
 +            return True
-     return isinstance(x, np.ndarray)","Tests if ``x`` is a :obj:`torch.Tensor`, :obj:`tf.Tensor` or :obj:`np.ndarray`.",test_real,none,codocbench,11
+     return isinstance(x, np.ndarray)","Tests if ``x`` is a :obj:`torch.Tensor`, :obj:`tf.Tensor` or :obj:`np.ndarray`.",none,11
 e163,AzurLaneAutoScript,Item.name,"def name(self, value):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,6 @@
@@ -3287,7 +3287,7 @@ e163,AzurLaneAutoScript,Item.name,"def name(self, value):","--- a/code.py
 +            value = pre
      self._name = value","Args:
             value (str): Item name, Camel-Case, such as 'PlateGeneralT3'. Suffix in name will be ignore.
-                For example, 'Javelin' and 'Javelin_2' are different templates, but have same output name 'Javelin'.",test_real,none,codocbench,7
+                For example, 'Javelin' and 'Javelin_2' are different templates, but have same output name 'Javelin'.",none,7
 e164,CrackMapExec,database.add_computer,"def add_computer(self, ip, hostname, domain, os, smbv1, signing, spooler=None, zerologon=None, petitpotam=None, dc=None):","--- a/code.py
 +++ b/code.py
 @@ -30,7 +30,8 @@
@@ -3299,7 +3299,7 @@ e164,CrackMapExec,database.add_computer,"def add_computer(self, ip, hostname, do
 +                hosts.append(computer_data)
      logging.debug(f'Update Hosts: {hosts}')
      q = Insert(self.ComputersTable)
-     q = q.on_conflict_do_update(index_elements=self.ComputersTable.primary_key, set_=self.ComputersTable.columns)","Check if this host has already been added to the database, if not, add it in.",test_real,none,codocbench,38
+     q = q.on_conflict_do_update(index_elements=self.ComputersTable.primary_key, set_=self.ComputersTable.columns)","Check if this host has already been added to the database, if not, add it in.",none,38
 e165,manim,CoordinateSystem.get_graph_label,"def get_graph_label(self, graph: ParametricFunction, label: float | str | Mobject='f(x)', x_val: float | None=None, direction: Sequence[float]=RIGHT, buff: float=MED_SMALL_BUFF, color: Color | None=None, dot: bool=False, dot_config: dict | None=None) -> Mobject:","--- a/code.py
 +++ b/code.py
 @@ -1,7 +1,8 @@
@@ -3355,7 +3355,7 @@ Examples
                 direction=UR,
             )
 
-            self.add(ax, sin, label)",test_real,none,history_neg,63
+            self.add(ax, sin, label)",none,63
 e166,akshare,futures_foreign_commodity_realtime,def futures_foreign_commodity_realtime(subscribe_list: list) -> pd.DataFrame:,"--- a/code.py
 +++ b/code.py
 @@ -1,14 +1,15 @@
@@ -3382,7 +3382,7 @@ e166,akshare,futures_foreign_commodity_realtime,def futures_foreign_commodity_re
     :param subscribe_list: 通过调用 ak.hq_subscribe_exchange_symbol 函数来获取
     :type subscribe_list: list
     :return: 行情数据
-    :rtype: pandas.DataFrame",gold,none,gold,49
+    :rtype: pandas.DataFrame",none,49
 e167,transformers,eval_data_collator,"def eval_data_collator(dataset: Dataset, batch_size: int):","--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,8 @@
@@ -3396,7 +3396,7 @@ e167,transformers,eval_data_collator,"def eval_data_collator(dataset: Dataset, b
 +        batch = dataset[idx]
          batch = {k: np.array(v) for k, v in batch.items()}
 -        batch = shard(batch)
-         yield batch","Returns batches of size `batch_size` from `eval dataset`, sharded over all local devices.",test_real,none,codocbench,7
+         yield batch","Returns batches of size `batch_size` from `eval dataset`, sharded over all local devices.",none,7
 e168,locust,requests_csv,def requests_csv():,"--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,10 @@
@@ -3411,7 +3411,7 @@ e168,locust,requests_csv,def requests_csv():,"--- a/code.py
 +        else:
 +            percentile_str = ','.join(['""N/A""'] * len(PERCENTILES_TO_REPORT))
 +        rows.append('""%s"",""%s"",%i,%i,%i,%i,%i,%i,%i,%.2f,%.2f,%s' % (s.method, s.name, s.num_requests, s.num_failures, s.median_response_time, s.avg_response_time, s.min_response_time or 0, s.max_response_time, s.avg_content_length, s.total_rps, s.total_fail_per_sec, percentile_str))
-     return '\n'.join(rows)",Returns the contents of the 'requests' tab as CSV.,test_real,none,codocbench,7
+     return '\n'.join(rows)",Returns the contents of the 'requests' tab as CSV.,none,7
 e169,matplotlib,ColorbarBase.set_label,"def set_label(self, label, *, loc=None, **kwargs):","--- a/code.py
 +++ b/code.py
 @@ -17,6 +17,8 @@
@@ -3442,7 +3442,7 @@ e169,matplotlib,ColorbarBase.set_label,"def set_label(self, label, *, loc=None, 
         **kwargs
             Keyword arguments are passed to `~.Axes.set_xlabel` /
             `~.Axes.set_ylabel`.
-            Supported keywords are *labelpad* and `.Text` properties.",gold,none,gold,40
+            Supported keywords are *labelpad* and `.Text` properties.",none,40
 e170,gpt4free,get_orientation,def get_orientation(image: Image.Image) -> int:,"--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -3456,7 +3456,7 @@ e170,gpt4free,get_orientation,def get_orientation(image: Image.Image) -> int:,"-
         image (Image.Image): The image.
 
     Returns:
-        int: The orientation value.",gold,none,gold,13
+        int: The orientation value.",none,13
 e171,manim,Mobject.length_over_dim,"def length_over_dim(self, dim: int) -> float:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,6 @@
@@ -3467,7 +3467,7 @@ e171,manim,Mobject.length_over_dim,"def length_over_dim(self, dim: int) -> float
 +    min_coord = self.reduce_across_dimension(min, dim)
 +    if max_coord is None or min_coord is None:
 +        return 0
-     return max_coord - min_coord",Measure the length of an :class:`~.Mobject` in a certain direction.,test_real,none,history_neg,5
+     return max_coord - min_coord",Measure the length of an :class:`~.Mobject` in a certain direction.,none,5
 e172,rasa,DynamoTrackerStore.serialise_tracker,"def serialise_tracker(self, tracker: 'DialogueStateTracker') -> Dict:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,2 @@
@@ -3476,7 +3476,7 @@ e172,rasa,DynamoTrackerStore.serialise_tracker,"def serialise_tracker(self, trac
 -    d.update({'sender_id': tracker.sender_id})
 -    return core_utils.replace_floats_with_decimals(d)
 +def serialise_tracker(tracker: 'DialogueStateTracker') -> Dict:
-+    return core_utils.replace_floats_with_decimals(SerializedTrackerAsDict.serialise_tracker(tracker))","Serializes the tracker, returns object with decimal types.",test_real,param_removed,codocbench,5
++    return core_utils.replace_floats_with_decimals(SerializedTrackerAsDict.serialise_tracker(tracker))","Serializes the tracker, returns object with decimal types.",param_removed,5
 e173,StratosphereLinuxIPS,Main.close_open_redis_servers,def close_open_redis_servers(self):,"--- a/code.py
 +++ b/code.py
 @@ -10,8 +10,9 @@
@@ -3490,7 +3490,7 @@ e173,StratosphereLinuxIPS,Main.close_open_redis_servers,def close_open_redis_ser
 +                print(f'Killed redis server on port {port}.')
              else:
                  print(f""Redis server running on port {port} is either already killed or you don't have enough permission to kill it."")
-         except (KeyError, ValueError):",Function to close unused open redis-servers based on what the user choose,test_real,none,codocbench,20
+         except (KeyError, ValueError):",Function to close unused open redis-servers based on what the user choose,none,20
 e174,ipython,get_home_dir,def get_home_dir(require_writable=False) -> str:,"--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -3513,7 +3513,7 @@ require_writable : bool [default: False]
         guarantees the return value is a writable directory, otherwise
         raises HomeDirError
     if False:
-        The path is resolved, but it is not guaranteed to exist or be writable.",test_real,none,history_neg,31
+        The path is resolved, but it is not guaranteed to exist or be writable.",none,31
 e175,TTS,ESpeak.version,def version(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,6 @@
@@ -3527,7 +3527,7 @@ e175,TTS,ESpeak.version,def version(self):,"--- a/code.py
          return version","Get the version of the used backend.
 
 Returns:
-    str: Version of the used backend.",gold,return_changed,gold,10
+    str: Version of the used backend.",return_changed,10
 e176,rasa,FormAction.extract_requested_slot,"def extract_requested_slot(self, tracker: 'DialogueStateTracker', domain: Domain) -> Dict[Text, Any]:","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,4 @@
@@ -3536,7 +3536,7 @@ e176,rasa,FormAction.extract_requested_slot,"def extract_requested_slot(self, tr
 +def extract_requested_slot(self, tracker: 'DialogueStateTracker', domain: Domain, slot_to_fill: Text) -> Dict[Text, Any]:
      logger.debug(f""Trying to extract requested slot '{slot_to_fill}' ..."")
      requested_slot_mappings = self.get_mappings_for_slot(slot_to_fill, domain)
-     for requested_slot_mapping in requested_slot_mappings:",Extracts the value of requested slot from a user input else return `None`.,test_real,param_added,codocbench,24
+     for requested_slot_mapping in requested_slot_mappings:",Extracts the value of requested slot from a user input else return `None`.,param_added,24
 e177,python3-saml,OneLogin_Saml2_Logout_Request_Test.testGetNameId,def testGetNameId(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,14 +1,14 @@
@@ -3556,7 +3556,7 @@ e177,python3-saml,OneLogin_Saml2_Logout_Request_Test.testGetNameId,def testGetNa
      key = settings.get_sp_key()
 -    name_id_3 = OneLogin_Saml2_Logout_Request.get_name_id(request_2, key)
 +    name_id_3 = OneLogin_Saml2_Logout_Request.get_nameid(request_2, key)
-     self.assertEqual('ONELOGIN_9c86c4542ab9d6fce07f2f7fd335287b9b3cdf69', name_id_3)",Tests the get_name_id of the OneLogin_Saml2_LogoutRequest,test_real,none,codocbench,15
+     self.assertEqual('ONELOGIN_9c86c4542ab9d6fce07f2f7fd335287b9b3cdf69', name_id_3)",Tests the get_name_id of the OneLogin_Saml2_LogoutRequest,none,15
 e178,manim,Line3D.parallel_to,"def parallel_to(cls, line: Line3D, point: Vector3D=ORIGIN, length: float=5, **kwargs) -> Line3D:","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,5 @@
@@ -3597,7 +3597,7 @@ Examples
             ax = ThreeDAxes((-5, 5), (-5, 5), (-5, 5), 10, 10, 10)
             line1 = Line3D(RIGHT * 2, UP + OUT, color=RED)
             line2 = Line3D.parallel_to(line1, color=YELLOW)
-            self.add(ax, line1, line2)",test_real,none,history_neg,36
+            self.add(ax, line1, line2)",none,36
 e179,frappe,EmailAccount.autoname,def autoname(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,4 @@
@@ -3606,7 +3606,7 @@ e179,frappe,EmailAccount.autoname,def autoname(self):,"--- a/code.py
          self.email_account_name = self.email_id.split('@', 1)[0].replace('_', ' ').replace('.', ' ').replace('-', ' ').title()
 -        if self.service:
 -            self.email_account_name = self.email_account_name + ' ' + self.service
-     self.name = self.email_account_name",Set name as `email_account_name` or make title from email id.,test_real,none,codocbench,7
+     self.name = self.email_account_name",Set name as `email_account_name` or make title from email id.,none,7
 e180,AzurLaneAutoScript,MedalShop2.shop_items,def shop_items(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,2 +1,2 @@
@@ -3617,7 +3617,7 @@ so to use  @Config must define
 a unique alias as cover
 
 Returns:
-    ShopItemGrid:",gold,return_changed,gold,8
+    ShopItemGrid:",return_changed,8
 e181,espnet,ConformerConvolution.forward,"def forward(self, x: torch.Tensor, cache: Optional[torch.Tensor]=None, mask: Optional[torch.Tensor]=None) -> Tuple[torch.Tensor, torch.Tensor]:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -3633,7 +3633,7 @@ e181,espnet,ConformerConvolution.forward,"def forward(self, x: torch.Tensor, cac
 
         Returns:
             x: ConformerConvolution output sequences. (B, T, D_hidden)
-            cache: ConformerConvolution output cache. (1, conv_kernel, D_hidden)",gold,none,gold,24
+            cache: ConformerConvolution output cache. (1, conv_kernel, D_hidden)",none,24
 e182,StratosphereLinuxIPS,test_timewindows,def test_timewindows(database):,"--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,7 @@
@@ -3645,7 +3645,7 @@ e182,StratosphereLinuxIPS,test_timewindows,def test_timewindows(database):,"--- 
      database.addNewTW(profileid, 0.0)
 +    database.addNewTW(profileid, 5.0)
      assert database.getFirstTWforProfile(profileid) == [('timewindow1', 0.0)]
-+    assert database.getLastTWforProfile(profileid) == [('timewindow2', 5.0)]",unit tests for addNewTW and getFirstTWforProfile,test_real,none,codocbench,7
++    assert database.getLastTWforProfile(profileid) == [('timewindow2', 5.0)]",unit tests for addNewTW and getFirstTWforProfile,none,7
 e183,scrapy,add_http_if_no_scheme,def add_http_if_no_scheme(url):,"--- a/code.py
 +++ b/code.py
 @@ -1,7 +1,8 @@
@@ -3658,7 +3658,7 @@ e183,scrapy,add_http_if_no_scheme,def add_http_if_no_scheme(url):,"--- a/code.py
 +    parser = parse_url(url)
 +    if not parser.scheme or not parser.netloc:
          url = 'http://' + url
-     return url",Adds http as the default scheme if it is missing from the url,test_real,none,codocbench,8
+     return url",Adds http as the default scheme if it is missing from the url,none,8
 e184,AzurLaneAutoScript,WorkerPool.release_full_lock,def release_full_lock(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,3 +1,6 @@
@@ -3678,7 +3678,7 @@ Then the pool blocks himself.
 The fastest worker, and also the only worker, receives the message,
 `if self.notify_worker.acquire(blocking=False):`
 Worker tells the pool, new pool slot is ready, you are ready to go.
-`self.notify_pool.release()`",test_real,none,history_neg,14
+`self.notify_pool.release()`",none,14
 e185,AzurLaneAutoScript,MapEventHandler.os_auto_search_quit,"def os_auto_search_quit(self, drop=None, skip_first_screenshot=True):","--- a/code.py
 +++ b/code.py
 @@ -1,15 +1,19 @@
@@ -3708,7 +3708,7 @@ e185,AzurLaneAutoScript,MapEventHandler.os_auto_search_quit,"def os_auto_search_
              confirm_timer.reset()
 +    return cleared","Args:
             drop (DropImage):
-            skip_first_screenshot (bool):",test_real,none,codocbench,28
+            skip_first_screenshot (bool):",none,28
 e186,AzurLaneAutoScript,get_bbox_reversed,"def get_bbox_reversed(image, threshold=0):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -3723,21 +3723,21 @@ Args:
     threshold (int): Color >= threshold will be considered white
 
 Returns:
-    tuple: (upper_left_x, upper_left_y, bottom_right_x, bottom_right_y)",gold,default_changed,gold,14
+    tuple: (upper_left_x, upper_left_y, bottom_right_x, bottom_right_y)",default_changed,14
 e187,matplotlib,Affine2DBase.to_values,def to_values(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,3 +1,3 @@
  def to_values(self):
      mtx = self.get_matrix()
 -    return tuple(mtx[:2].swapaxes(0, 1).flatten())
-+    return tuple(mtx[:2].swapaxes(0, 1).flat)","Return the values of the matrix as a sequence (a,b,c,d,e,f)",test_real,none,codocbench,4
++    return tuple(mtx[:2].swapaxes(0, 1).flat)","Return the values of the matrix as a sequence (a,b,c,d,e,f)",none,4
 e188,rasa,get_auth_retry_wrapper,def get_auth_retry_wrapper(tracker_store: 'TrackerStore') -> 'TrackerStore':,"--- a/code.py
 +++ b/code.py
 @@ -1,3 +1,3 @@
  @hookspec(firstresult=True)
 -def get_auth_retry_wrapper(tracker_store: 'TrackerStore') -> 'TrackerStore':
 +def get_auth_retry_wrapper(endpoint_config: Union['TrackerStore', 'EndpointConfig'], domain: 'Domain', event_broker: Optional['EventBroker']=None) -> 'TrackerStore':
-     pass",Hook specification for wrapping with AuthRetryTrackerStore.,gold,param_removed,gold,4
+     pass",Hook specification for wrapping with AuthRetryTrackerStore.,param_removed,4
 e189,manim,test_deprecate_func_param_redirect_lambda,def test_deprecate_func_param_redirect_lambda(warn_caplog_manim):,"--- a/code.py
 +++ b/code.py
 @@ -1,7 +1,7 @@
@@ -3750,7 +3750,7 @@ e189,manim,test_deprecate_func_param_redirect_lambda,def test_deprecate_func_par
 +    assert len(manim_caplog.record_tuples) == 1
 +    msg = _get_caplog_record_msg(manim_caplog)
      assert msg == 'The parameter runtime_in_ms of method Top.qux has been deprecated and may be removed in a later version.'
-     assert obj == {'run_time': 0.5}",Test the deprecation of a method parameter and redirecting it to a new one using lambda function.,gold,param_renamed,gold,8
+     assert obj == {'run_time': 0.5}",Test the deprecation of a method parameter and redirecting it to a new one using lambda function.,param_renamed,8
 e190,WechatSogou,WechatSogouRequest.gen_hot_url,"def gen_hot_url(hot_index, page=1):","--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,5 @@
@@ -3771,7 +3771,7 @@ e190,WechatSogou,WechatSogouRequest.gen_hot_url,"def gen_hot_url(hot_index, page
         Returns
         -------
         str
-            热门文章分类的url",gold,none,gold,19
+            热门文章分类的url",none,19
 e191,pysc2,RendererHuman.get_mouse_pos,"def get_mouse_pos(self, window_pos=None):","--- a/code.py
 +++ b/code.py
 @@ -5,4 +5,4 @@
@@ -3779,7 +3779,7 @@ e191,pysc2,RendererHuman.get_mouse_pos,"def get_mouse_pos(self, window_pos=None)
              surf_rel_pt = window_pt - surf.surf_rect.tl
              world_pt = surf.world_to_surf.back_pt(surf_rel_pt)
 -            return MousePos(world_pt, surf.surf_type)
-+            return MousePos(world_pt, surf)",Return a MousePos filled with the world and screen/minimap positions.,test_real,none,codocbench,9
++            return MousePos(world_pt, surf)",Return a MousePos filled with the world and screen/minimap positions.,none,9
 e192,frappe,Page.is_permitted,def is_permitted(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,6 @@
@@ -3789,7 +3789,7 @@ e192,frappe,Page.is_permitted,def is_permitted(self):,"--- a/code.py
 +    allowed = [d.role for d in frappe.get_all('Has Role', fields=['role'], filters={'parent': self.name})]
      if not allowed:
          return True
-     roles = frappe.get_roles()",Returns true if Page Role is not set or the user is allowed.,test_real,none,codocbench,9
+     roles = frappe.get_roles()",Returns true if Page Role is not set or the user is allowed.,none,9
 e193,AzurLaneAutoScript,atomic_rmtree,def atomic_rmtree(folder: str):,"--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,7 @@
@@ -3803,7 +3803,7 @@ e193,AzurLaneAutoScript,atomic_rmtree,def atomic_rmtree(folder: str):,"--- a/cod
 +        return
 +    folder_rmtree(temp)","Atomic folder rmtree
 Rename folder as temp folder and remove it,
-folder can be removed by atomic_failure_cleanup at next startup if remove gets interrupted",test_real,none,history_neg,7
+folder can be removed by atomic_failure_cleanup at next startup if remove gets interrupted",none,7
 e194,pytorch,filter,"def filter(test_matrix: Dict[str, List[Any]], labels: Set[str]) -> Dict[str, List[Any]]:","--- a/code.py
 +++ b/code.py
 @@ -6,10 +6,14 @@
@@ -3831,7 +3831,7 @@ e194,pytorch,filter,"def filter(test_matrix: Dict[str, List[Any]], labels: Set[s
     if a PR has both ciflow/trunk and test-config/functorch, only trunk functorch builds
     and tests will be run
 
-    If the PR has none of the test-config label, all tests are run as usual.",test_real,none,codocbench,24
+    If the PR has none of the test-config label, all tests are run as usual.",none,24
 e195,AzurLaneAutoScript,PrivateQuarters.run,def run(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,9 @@
@@ -3848,7 +3848,7 @@ e195,AzurLaneAutoScript,PrivateQuarters.run,def run(self):,"--- a/code.py
 +        logger.info('If want to address, review necessary assets, replace, update above condition, and test')
      self.config.task_delay(server_update=True)","Pages:
     in: Any page
-    out: page_main, may have info_bar",test_real,none,history_neg,8
+    out: page_main, may have info_bar",none,8
 e196,InstaPy,verify_liking,"def verify_liking(browser, max, min, logger):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -3870,7 +3870,7 @@ e196,InstaPy,verify_liking,"def verify_liking(browser, max, min, logger):","--- 
          logger.info('Not liked this post! ~less likes exist off minumum limit at {}'.format(likes_count))
          return False
      return True","Get the amount of existing existing likes and compare it against max
-    & min values defined by user",gold,param_renamed,gold,28
+    & min values defined by user",param_renamed,28
 e197,matplotlib,ToolLineHandles.closest,"def closest(self, x, y):","--- a/code.py
 +++ b/code.py
 @@ -5,5 +5,5 @@
@@ -3880,7 +3880,7 @@ e197,matplotlib,ToolLineHandles.closest,"def closest(self, x, y):","--- a/code.p
 -    min_index = np.argmin(dist)
 -    return (min_index, dist[min_index])
 +    index = np.argmin(dist)
-+    return (index, dist[index])",Return index and pixel distance to closest handle.,test_real,none,codocbench,10
++    return (index, dist[index])",Return index and pixel distance to closest handle.,none,10
 e198,AzurLaneAutoScript,CampaignMap.load_map_data,"def load_map_data(self, use_loop=False):","--- a/code.py
 +++ b/code.py
 @@ -1,7 +1,7 @@
@@ -3894,7 +3894,7 @@ e198,AzurLaneAutoScript,CampaignMap.load_map_data,"def load_map_data(self, use_l
          self._load_map_data(self.map_data_loop)
      else:
          self._load_map_data(self.map_data)","Args:
-            use_loop (bool): If at clearing mode.",test_real,none,codocbench,9
+            use_loop (bool): If at clearing mode.",none,9
 e199,pytorch_geometric,SAGEConv.forward,"def forward(self, x, edge_index, edge_weight=None, size=None, res_n_id=None):","--- a/code.py
 +++ b/code.py
 @@ -1,11 +1,4 @@
@@ -3914,7 +3914,7 @@ e199,pytorch_geometric,SAGEConv.forward,"def forward(self, x, edge_index, edge_w
             :obj:`DataFlow`, which is generated by :obj:`NeighborSampler`.
             Are used to select current node features in :obj:`x`, asuming self
             loops are present. Required if :obj:`concatenate` is :obj:`True`.
-            (default: :obj:`None`)",test_real,none,codocbench,17
+            (default: :obj:`None`)",none,17
 e200,zulip,GetSubscribersTest.test_gather_subscriptions,def test_gather_subscriptions(self):,"--- a/code.py
 +++ b/code.py
 @@ -5,8 +5,14 @@
@@ -3931,7 +3931,7 @@ e200,zulip,GetSubscribersTest.test_gather_subscriptions,def test_gather_subscrip
 +    self.assert_user_got_subscription_notification(msg)
      with queries_captured() as queries:
          subscriptions = gather_subscriptions(self.user_profile)
-     self.assertTrue(len(subscriptions[0]) >= 11)",gather_subscriptions returns correct results with only 3 queries,test_real,none,codocbench,18
+     self.assertTrue(len(subscriptions[0]) >= 11)",gather_subscriptions returns correct results with only 3 queries,none,18
 e201,zulip,find_ldap_users_by_email,def find_ldap_users_by_email(email: str) -> Optional[List[_LDAPUser]]:,"--- a/code.py
 +++ b/code.py
 @@ -1,3 +1,2 @@
@@ -3940,7 +3940,7 @@ e201,zulip,find_ldap_users_by_email,def find_ldap_users_by_email(email: str) -> 
 -    return email_search.search_for_users(should_populate=False)
 +def find_ldap_users_by_email(email: str) -> List[_LDAPUser]:
 +    return LDAPReverseEmailSearch().search_for_users(email)","Returns list of _LDAPUsers matching the email search,
-    or None if no matches are found.",test_real,return_changed,codocbench,5
+    or None if no matches are found.",return_changed,5
 e202,TTS,Xtts.get_gpt_cond_latents,"def get_gpt_cond_latents(self, audio, sr, length: int=3):","--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,15 @@
@@ -3965,7 +3965,7 @@ e202,TTS,Xtts.get_gpt_cond_latents,"def get_gpt_cond_latents(self, audio, sr, le
 
         Args:
             audio_path (str): Path to the audio file.
-            length (int): Length of the audio in seconds. Defaults to 3.",gold,none,gold,11
+            length (int): Length of the audio in seconds. Defaults to 3.",none,11
 e203,manim,VMobject.set_sheen_direction,"def set_sheen_direction(self, direction: Vector3D, family: bool=True) -> Self:","--- a/code.py
 +++ b/code.py
 @@ -1,8 +1,8 @@
@@ -3996,7 +3996,7 @@ Normal usage::
 See Also
 --------
 :meth:`~.VMobject.set_sheen`
-:meth:`~.VMobject.rotate_sheen_direction`",test_real,none,history_neg,25
+:meth:`~.VMobject.rotate_sheen_direction`",none,25
 e204,erpnext,add_permissions,def add_permissions():,"--- a/code.py
 +++ b/code.py
 @@ -5,3 +5,5 @@
@@ -4004,7 +4004,7 @@ e204,erpnext,add_permissions,def add_permissions():,"--- a/code.py
              update_permission_property(doctype, role, 0, 'write', 1)
              update_permission_property(doctype, role, 0, 'create', 1)
 +    if not frappe.db.get_value('Custom Role', dict(report='VAT Audit Report')):
-+        frappe.get_doc(dict(doctype='Custom Role', report='VAT Audit Report', roles=[dict(role='Accounts User'), dict(role='Accounts Manager'), dict(role='Auditor')])).insert()",Add Permissions for South Africa VAT Settings and South Africa VAT Account,test_real,none,codocbench,8
++        frappe.get_doc(dict(doctype='Custom Role', report='VAT Audit Report', roles=[dict(role='Accounts User'), dict(role='Accounts Manager'), dict(role='Auditor')])).insert()",Add Permissions for South Africa VAT Settings and South Africa VAT Account,none,8
 e205,pandas,extract_pandas_array,"def extract_pandas_array(values: ArrayLike, dtype: DtypeObj | None, ndim: int) -> tuple[ArrayLike, DtypeObj | None]:","--- a/code.py
 +++ b/code.py
 @@ -1,8 +1,8 @@
@@ -4017,7 +4017,7 @@ e205,pandas,extract_pandas_array,"def extract_pandas_array(values: ArrayLike, dt
 -    if isinstance(dtype, PandasDtype):
 +    if isinstance(dtype, NumpyEADtype):
          dtype = dtype.numpy_dtype
-     return (values, dtype)",Ensure that we don't allow PandasArray / PandasDtype in internals.,test_real,none,codocbench,9
+     return (values, dtype)",Ensure that we don't allow PandasArray / PandasDtype in internals.,none,9
 e206,manim,TipableVMobject.create_tip,"def create_tip(self, tip_shape=None, tip_length=None, tip_width=None, at_start=False):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -4026,7 +4026,7 @@ e206,manim,TipableVMobject.create_tip,"def create_tip(self, tip_shape=None, tip_
      tip = self.get_unpositioned_tip(tip_shape, tip_length, tip_width)
      self.position_tip(tip, at_start)
      return tip","Stylises the tip, positions it spatially, and returns
-the newly instantiated tip to the caller.",test_real,none,history_neg,6
+the newly instantiated tip to the caller.",none,6
 e207,django-rest-framework,TestContentParsing.test_overloaded_behaviour_allows_content_tunnelling,def test_overloaded_behaviour_allows_content_tunnelling(self):,"--- a/code.py
 +++ b/code.py
 @@ -5,4 +5,4 @@
@@ -4034,7 +4034,7 @@ e207,django-rest-framework,TestContentParsing.test_overloaded_behaviour_allows_c
      request = Request(factory.post('/', form_data))
      request.parsers = (JSONParser(),)
 -    self.assertEqual(request.DATA, json_data)
-+    self.assertEqual(request.data, json_data)",Ensure request.DATA returns content for overloaded POST request.,test_real,none,codocbench,9
++    self.assertEqual(request.data, json_data)",Ensure request.DATA returns content for overloaded POST request.,none,9
 e208,manim,GenericGraph.change_layout,"def change_layout(self, layout: str | dict='spring', layout_scale: float=2, layout_config: dict | None=None, partitions: list[list[Hashable]] | None=None, root_vertex: Hashable | None=None) -> Graph:","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,10 @@
@@ -4067,7 +4067,7 @@ Examples
                       )
             self.play(Create(G))
             self.play(G.animate.change_layout(""circular""))
-            self.wait()",test_real,none,history_neg,24
+            self.wait()",none,24
 e209,pandas,Block.delete,"def delete(self, loc) -> None:","--- a/code.py
 +++ b/code.py
 @@ -1,7 +1,4 @@
@@ -4081,7 +4081,7 @@ e209,pandas,Block.delete,"def delete(self, loc) -> None:","--- a/code.py
 +def delete(self, loc) -> Block:
 +    values = np.delete(self.values, loc, 0)
 +    mgr_locs = self._mgr_locs.delete(loc)
-+    return type(self)(values, placement=mgr_locs, ndim=self.ndim)",Delete given loc(-s) from block in-place.,test_real,return_changed,codocbench,8
++    return type(self)(values, placement=mgr_locs, ndim=self.ndim)",Delete given loc(-s) from block in-place.,return_changed,8
 e210,public-apis,check_duplicate_links,def check_duplicate_links(links: List[str]) -> bool:,"--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,4 @@
@@ -4102,4 +4102,4 @@ e210,public-apis,check_duplicate_links,def check_duplicate_links(links: List[str
 +    if duplicates:
          has_duplicate = True
 -    return has_duplicate
-+    return (has_duplicate, duplicates)",Check for duplicated links and return True or False.,test_real,return_changed,codocbench,17
++    return (has_duplicate, duplicates)",Check for duplicated links and return True or False.,return_changed,17

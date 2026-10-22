@@ -1,0 +1,36 @@
+err_id,label,stale_statement,why
+e024,B,,new BASE_DN option handled but not documented
+e006,C,,same move-away behavior only reimplemented with numpy
+e099,A,or [cpu()] if no GPU exists,empty list returned when no GPU instead of cpu fallback
+e009,C,,only log message text changed behavior still matches doc
+e011,C,,same font filtering only refactored to comprehension
+e021,B,,new -S stdout skip and NotADirectoryError handling undocumented
+e025,C,,generic retrieval description still true despite str-only change
+e027,B,,new specific ValidationError type and codes undocumented
+e035,B,,new True return on evidence path undocumented
+e042,C,,Base removal still fits primitive-number description
+e048,C,,List still accepted Sequence widening is compatible
+e052,C,,still returns Yahoo benchmark Series with different calc
+e055,C,,only error wording changed shape requirement still true
+e059,C,,request example still valid hashing change is server-side only
+e063,C,,original non-subscriber assertion still present extra success check is minor
+e066,B,,new STOP_IF_REACH_LV120 early return undocumented
+e069,C,,still exposes module like DDP only unwraps inner module
+e071,A,without `.Text.set_transform_rotates_text`,now conditionally sets transform_rotates_text True
+e073,C,,same guest waiting-period check only test helpers changed
+e077,C,,still uses HOME value realpath is only precision refinement
+e081,C,,only exception message extended with all_gather
+e083,C,,still returns base url only resolution delegated
+e085,B,,deprecation and replacement function undocumented
+e093,C,,still lists tables only response container changed
+e108,B,,new priority return and validation undocumented
+e114,A,IPYTHON_DIR,code now uses IPYTHONDIR without underscore
+e117,C,,print is trivial side effect optimization claim still true
+e124,C,,same permission-missing behavior only test setup changed
+e136,A,small vs. large,only one tensor size now asserted
+e144,A,old_e_tag == new_e_tag,code now forces mismatch and checks update path
+e157,C,,same list-consistency check only prompt string changed
+e167,A,sharded over all local devices,shard call removed no longer sharded
+e179,C,,service suffix removal not mentioned in doc so still true
+e192,A,Page Role,code now queries Has Role instead
+e201,A,or None if no matches are found,return type is now List never None

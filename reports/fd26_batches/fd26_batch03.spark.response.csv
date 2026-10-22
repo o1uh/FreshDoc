@@ -1,0 +1,36 @@
+err_id,label,stale_statement,why
+e001,C,,generic doc still true internal robustness only
+e013,C,,param not in doc pages unchanged refactor only
+e022,C,,still removes oldest robustness guards only
+e010,C,,same stats behaviour constant alias only
+e012,A,"int: Index of current fleet, 1 to 4.",now returns 0 on unknown outside documented range
+e023,C,,still updates and saves unconditional stream internal
+e026,C,,same iteration variable rename only
+e031,C,,same IOU computation variable renames only
+e039,B,,adds failures.csv output not mentioned in doc
+e046,A,sharded over all local devices,removed shard call so no longer sharded
+e050,A,Ensure that get_public_streams successfully returns a list of streams,endpoint changed no longer calls get_public_streams
+e053,A,Test that warning emitted when xlabel too big.,warning assertion removed no longer verifies warning
+e057,B,,supports optional third element folder_name not documented
+e062,C,,warning text change only doc unaffected
+e064,C,,still raises on unsafe validation details not in doc
+e067,A,Call `matplotlib.backend_bases.NavigationBase.message_event`,now calls toolmanager.message_event instead
+e070,C,,still retries refresh detail not in doc
+e072,C,,typo fix only behaviour unchanged
+e075,B,,adds HeteroData return support not documented
+e080,C,,error text change only doc unaffected
+e082,C,,same false conditions refactor to helper only
+e084,C,,still converts TIFF once idempotence guard internal
+e090,B,,adds equal case expectation not covered by doc
+e166,C,,same columns and return internal mapping only
+e175,C,,same version return internal call change only
+e186,C,,default changed but doc never stated default
+e196,A,Get the amount of existing existing likes and compare it against max,params renamed max min to maximum minimum
+e130,C,,still TreeNode generic parameter only
+e140,C,,still converts to string order detail not in doc
+e148,C,,log wording only behaviour unchanged
+e162,B,,adds jax types returning True not documented
+e173,C,,still closes by user choice flush details internal
+e185,B,,now returns cleared flag not documented
+e198,C,,same branching plus log only
+e207,A,Ensure request.DATA returns content for overloaded POST request.,attribute renamed DATA to data

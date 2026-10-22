@@ -1,4 +1,4 @@
-err_id,project,symbol,sig_old,diff_code,doc_old,split,sig_type,source,n_src_lines
+err_id,project,symbol,sig_old,diff_code,doc_old,sig_type,n_src_lines
 e005,pyserde,typename,def typename(typ) -> str:,"--- a/code.py
 +++ b/code.py
 @@ -27,5 +27,11 @@
@@ -30,7 +30,7 @@ e005,pyserde,typename,def typename(typ) -> str:,"--- a/code.py
     >>> typename(Union[Optional[Foo], List[Foo], Union[str, int]])
     'Union[Optional[Foo], List[Foo], str, int]'
     >>> typename(Set[Foo])
-    'Set[Foo]'",test_real,none,codocbench,49
+    'Set[Foo]'",none,49
 e091,ipython,InteractiveShell.system_raw,"def system_raw(self, cmd):","--- a/code.py
 +++ b/code.py
 @@ -27,3 +27,5 @@
@@ -44,7 +44,7 @@ subprocess.call using the system shell on other platforms.
 Parameters
 ----------
 cmd : str
-    Command to execute.",gold,exception_changed,gold,36
+    Command to execute.",exception_changed,36
 e008,transformers,drop_path,"def drop_path(input, drop_prob=0.0, training=False, scale_by_keep=True):","--- a/code.py
 +++ b/code.py
 @@ -3,7 +3,7 @@
@@ -58,7 +58,7 @@ e008,transformers,drop_path,"def drop_path(input, drop_prob=0.0, training=False,
 +    random_tensor = keep_prob + torch.rand(shape, dtype=input.dtype, device=input.device)
 +    random_tensor.floor_()
 +    output = input.div(keep_prob) * random_tensor
-+    return output",Drop paths (Stochastic Depth) per sample (when applied in main path of residual blocks).,test_real,none,codocbench,10
++    return output",Drop paths (Stochastic Depth) per sample (when applied in main path of residual blocks).,none,10
 e017,django-rest-framework,urlize_quoted_links,"def urlize_quoted_links(text, trim_url_limit=None, nofollow=True, autoescape=True):","--- a/code.py
 +++ b/code.py
 @@ -2,20 +2,34 @@
@@ -124,7 +124,7 @@ e017,django-rest-framework,urlize_quoted_links,"def urlize_quoted_links(text, tr
     If nofollow is True, the URLs in link text will get a rel=""nofollow""
     attribute.
 
-    If autoescape is True, the link text and URLs will get autoescaped.",gold,none,gold,49
+    If autoescape is True, the link text and URLs will get autoescaped.",none,49
 e019,espnet,DPCLSolver.forward,"def forward(self, ref, inf, others=None):","--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,4 @@
@@ -145,7 +145,7 @@ Args:
 Returns:
     loss: (torch.Tensor): minimum loss with the best permutation
     stats: (dict), for collecting training status
-    others: reserved",gold,default_changed,gold,20
+    others: reserved",default_changed,20
 e028,TTS,PhonemeDataset.compute_or_load,"def compute_or_load(self, wav_file, text):","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,4 @@
@@ -156,7 +156,7 @@ e028,TTS,PhonemeDataset.compute_or_load,"def compute_or_load(self, wav_file, tex
      cache_path = os.path.join(self.cache_path, file_name + file_ext)
      try:","Compute phonemes for the given text.
 
-If the phonemes are already cached, load them from cache.",gold,param_renamed,gold,13
+If the phonemes are already cached, load them from cache.",param_renamed,13
 e032,espnet,test_task_and_cli_aliases,def test_task_and_cli_aliases(name):,"--- a/code.py
 +++ b/code.py
 @@ -1,7 +1,7 @@
@@ -169,7 +169,7 @@ e032,espnet,test_task_and_cli_aliases,def test_task_and_cli_aliases(name):,"--- 
 +    assert task.UniversaTask is AqaTask
      assert importlib.import_module(f'espnet2.bin.{name}_train').main is train_main
      module = importlib.import_module(f'espnet2.bin.{name}_inference')
-     assert module.UniversaInference is AqaInference","Legacy names expose the same task, inference class, and train function.",gold,param_removed,gold,8
+     assert module.UniversaInference is AqaInference","Legacy names expose the same task, inference class, and train function.",param_removed,8
 e037,manim,scene,def scene(**args):,"--- a/code.py
 +++ b/code.py
 @@ -1,12 +1,12 @@
@@ -193,7 +193,7 @@ e037,manim,scene,def scene(**args):,"--- a/code.py
 
 SCENE is the name of the scene that will be inserted.
 
-FILE is the name of file in which the SCENE will be inserted.",gold,param_renamed,gold,25
+FILE is the name of file in which the SCENE will be inserted.",param_renamed,25
 e043,TTS,vctk,"def vctk(root_path, meta_files=None, wavs_path='wav22', mic='mic2', ignored_speakers=None):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -201,7 +201,7 @@ e043,TTS,vctk,"def vctk(root_path, meta_files=None, wavs_path='wav22', mic='mic2
 +def vctk(root_path, meta_files=None, wavs_path='wav48_silence_trimmed', mic='mic2', ignored_speakers=None):
      file_ext = 'flac'
      test_speakers = meta_files
-     items = []",https://datashare.ed.ac.uk/bitstream/handle/10283/3443/VCTK-Corpus-0.92.zip,gold,default_changed,gold,23
+     items = []",https://datashare.ed.ac.uk/bitstream/handle/10283/3443/VCTK-Corpus-0.92.zip,default_changed,23
 e054,magenta,Metronome.run,def run(self):,"--- a/code.py
 +++ b/code.py
 @@ -7,7 +7,13 @@
@@ -221,7 +221,7 @@ e054,magenta,Metronome.run,def run(self):,"--- a/code.py
 +        if tick_message.type == 'note_on':
 +            sleeper.sleep(self._duration)
 +            end_tick_message = mido.Message('note_off', note=tick_message.note, channel=self._channel)
-+            self._outport.send(end_tick_message)",Outputs metronome tone on the qpm interval until stop signal received.,gold,none,gold,14
++            self._outport.send(end_tick_message)",Outputs metronome tone on the qpm interval until stop signal received.,none,14
 e060,celery-once,force_string,def force_string(kwargs):,"--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,6 @@
@@ -232,7 +232,7 @@ e060,celery-once,force_string,def force_string(kwargs):,"--- a/code.py
      elif isinstance(kwargs, list):
          return [force_string(element) for element in kwargs]
      elif six.PY2 and isinstance(kwargs, unicode):","Force key in dict or list to a string.
-    Fixes: https://github.com/TrackMaven/celery-once/issues/11",gold,none,gold,10
+    Fixes: https://github.com/TrackMaven/celery-once/issues/11",none,10
 e078,AzurLaneAutoScript,random_id,def random_id(length=6):,"--- a/code.py
 +++ b/code.py
 @@ -1,2 +1,2 @@
@@ -242,7 +242,7 @@ e078,AzurLaneAutoScript,random_id,def random_id(length=6):,"--- a/code.py
     length (int): 6 random letter (62^6 combinations) would be enough
 
 Returns:
-    str: Random ID, like ""sTD2kF""",gold,return_changed,gold,7
+    str: Random ID, like ""sTD2kF""",return_changed,7
 e086,AzurLaneAutoScript,atomic_failure_cleanup,"def atomic_failure_cleanup(directory: str, recursive: bool=False):","--- a/code.py
 +++ b/code.py
 @@ -1,22 +1,26 @@
@@ -292,7 +292,7 @@ e086,AzurLaneAutoScript,atomic_failure_cleanup,"def atomic_failure_cleanup(direc
 In most cases there should be no remaining temp files unless write process get interrupted.
 
 This method should only be called at startup
-to avoid deleting temp files that another process is writing.",gold,param_renamed,gold,27
+to avoid deleting temp files that another process is writing.",param_renamed,27
 e089,Bottles,Manager.get_latest_runner,"def get_latest_runner(self, runner_type: str='wine') -> list:","--- a/code.py
 +++ b/code.py
 @@ -1,7 +1,5 @@
@@ -307,7 +307,7 @@ e089,Bottles,Manager.get_latest_runner,"def get_latest_runner(self, runner_type:
 +    runners = self.__sort_runners(self.runners_available, runner_prefix)
 +    if not runners:
 +        runners = self.__sort_runners(self.runners_available, '')
-+    return runners[0] if runners else []",Return the latest available runner for a given type.,gold,param_renamed,gold,8
++    return runners[0] if runners else []",Return the latest available runner for a given type.,param_renamed,8
 e096,espnet,ctc_align,"def ctc_align(log_level: Union[int, str], asr_train_config: str, asr_model_file: str, audio: Path, text: TextIO, output: TextIO, print_utt_text: bool=True, print_utt_score: bool=True, **kwargs):","--- a/code.py
 +++ b/code.py
 @@ -1,15 +1,2 @@
@@ -327,7 +327,7 @@ e096,espnet,ctc_align,"def ctc_align(log_level: Union[int, str], asr_train_confi
 -    segments_str = str(segments)
 -    output.write(segments_str)
 +def ctc_align(**kwargs):
-+    align_file(CTCSegmentation, **kwargs)",Provide the scripting interface to align text to audio.,gold,param_removed,gold,16
++    align_file(CTCSegmentation, **kwargs)",Provide the scripting interface to align text to audio.,param_removed,16
 e098,ipython,VerboseTB.format_exception_as_a_whole,"def format_exception_as_a_whole(self, etype: type, evalue: Optional[BaseException], etb: Optional[TracebackType], number_of_lines_of_context, tb_offset: Optional[int]):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -365,7 +365,7 @@ e098,ipython,VerboseTB.format_exception_as_a_whole,"def format_exception_as_a_wh
          frame_info = records[-1]","Formats the header, traceback and exception message for a single exception.
 
 This may be called multiple times by Python 3 exception chaining
-(PEP 3134).",gold,param_renamed,gold,39
+(PEP 3134).",param_renamed,39
 e104,MMdnn,CoreMLEmitter.emit_Flatten,"def emit_Flatten(self, IR_node):","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,7 @@
@@ -386,7 +386,7 @@ e104,MMdnn,CoreMLEmitter.emit_Flatten,"def emit_Flatten(self, IR_node):","--- a/
             A keras layer object.
 
         builder: NeuralNetworkBuilder
-            A neural network builder object.",gold,none,gold,13
+            A neural network builder object.",none,13
 e107,espnet,AudioKind.check,"def check(self, value, field, model, *, output):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,7 @@
@@ -398,7 +398,7 @@ e107,espnet,AudioKind.check,"def check(self, value, field, model, *, output):","
 +        if rate is None:
 +            raise TypeError(f'{field.name!r} returned as a bare array by a model that fixes no sample_rate; return an Audio with its rate')
 +        return Audio(value, rate)
-+    return Audio.coerce(value, rate)",Coerce what a caller holds; a hook's bare array is at the model's rate.,gold,exception_changed,gold,5
++    return Audio.coerce(value, rate)",Coerce what a caller holds; a hook's bare array is at the model's rate.,exception_changed,5
 e111,AzurLaneAutoScript,IslandRecipe.run_recipe,"def run_recipe(self, recipe_id, batch_count=float('inf')):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -430,7 +430,7 @@ e111,AzurLaneAutoScript,IslandRecipe.run_recipe,"def run_recipe(self, recipe_id,
          logger.warning(f""Failed to set recipe batch count to {('max' if real_count == float('inf') else real_count)}, cannot run recipe"")
          return None","Returns:
     tuple[timedelta, int | float]: remain time and actual batch count after starting,
-        or None if failed to start recipe",gold,param_added,gold,36
+        or None if failed to start recipe",param_added,36
 e119,manim,test_deprecate_class_since_and_until,def test_deprecate_class_since_and_until(warn_caplog_manim):,"--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,6 @@
@@ -442,7 +442,7 @@ e119,manim,test_deprecate_class_since_and_until,def test_deprecate_class_since_a
 +    assert len(manim_caplog.record_tuples) == 1
 +    msg = _get_caplog_record_msg(manim_caplog)
      assert msg == 'The class Qux has been deprecated since 0.7.0 and is expected to be removed after 0.9.0-rc2.'
-     assert qx.__doc__ == f'{doc_admonition}{msg}'",Test the deprecation of a class (decorator with since and until arguments).,gold,param_renamed,gold,7
+     assert qx.__doc__ == f'{doc_admonition}{msg}'",Test the deprecation of a class (decorator with since and until arguments).,param_renamed,7
 e122,AzurLaneAutoScript,StorageHandler.storage_disassemble_equipment,"def storage_disassemble_equipment(self, rarity=1, amount=40):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -463,7 +463,7 @@ Returns:
 
 Pages:
     in: Any
-    out: page_storage, equipment, DISASSEMBLE",gold,default_changed,gold,31
+    out: page_storage, equipment, DISASSEMBLE",default_changed,31
 e132,ipython,InteractiveShell.var_expand,"def var_expand(self, cmd, depth=0, formatter=DollarFormatter()):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -477,7 +477,7 @@ The depth argument indicates how many frames above the caller should
 be walked to look for the local namespace where to expand variables.
 
 The global namespace for expansion is always the user's interactive
-namespace.",gold,default_changed,gold,20
+namespace.",default_changed,20
 e149,AzurLaneAutoScript,EmulatorManager.adb_replace,def adb_replace(self):,"--- a/code.py
 +++ b/code.py
 @@ -7,7 +7,10 @@
@@ -495,7 +495,7 @@ e149,AzurLaneAutoScript,EmulatorManager.adb_replace,def adb_replace(self):,"--- 
 +            shutil.copy(self.adb, adb)
 +        except OSError as e:
 +            logger.warning(f'Failed to replace {adb}, {e}')","Backup the adb in emulator folder to xxx.bak, replace it with your adb.
-`adb kill-server` must be called before replacing.",gold,none,gold,15
+`adb kill-server` must be called before replacing.",none,15
 e094,rasa,DIETClassifier.process,"def process(self, message: Message, **kwargs: Any) -> Optional[Dict[Text, Any]]:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -510,7 +510,7 @@ e094,rasa,DIETClassifier.process,"def process(self, message: Message, **kwargs: 
          message.set(ENTITIES, entities, add_to_output=True)
 -    return values_to_numpy(out.get(DIAGNOSTIC_DATA)) if out else None
 +    if out:
-+        message.set(DIAGNOSTIC_DATA, values_to_numpy(out.get(DIAGNOSTIC_DATA)))",Augment the message with intents and entities and return diagnostic data.,test_real,return_changed,codocbench,11
++        message.set(DIAGNOSTIC_DATA, values_to_numpy(out.get(DIAGNOSTIC_DATA)))",Augment the message with intents and entities and return diagnostic data.,return_changed,11
 e109,pytorch_geometric,is_undirected,"def is_undirected(edge_index: Tensor, edge_attr: Union[OptTensor, List[Tensor]]=None, num_nodes: Optional[int]=None) -> bool:","--- a/code.py
 +++ b/code.py
 @@ -11,6 +11,7 @@
@@ -544,7 +544,7 @@ e109,pytorch_geometric,is_undirected,"def is_undirected(edge_index: Tensor, edge
 
         >>> weight = torch.tensor([0, 1, 1])
         >>> is_undirected(edge_index, weight)
-        False",test_real,none,codocbench,42
+        False",none,42
 e115,django-rest-framework,Issue1386Tests.test_issue_1386,def test_issue_1386(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,11 +1,11 @@
@@ -561,7 +561,7 @@ e115,django-rest-framework,Issue1386Tests.test_issue_1386,def test_issue_1386(se
 +        res = urlize(i)
          self.assertEqual(i, res)
 -    urlize_quoted_links('asdf:[/p]zxcv.com')
-+    urlize('asdf:[/p]zxcv.com')",Test function urlize_quoted_links with different args,test_real,none,codocbench,12
++    urlize('asdf:[/p]zxcv.com')",Test function urlize_quoted_links with different args,none,12
 e121,pytorch,numpy_to_tensor,def numpy_to_tensor(value):,"--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,7 @@
@@ -572,7 +572,7 @@ e121,pytorch,numpy_to_tensor,def numpy_to_tensor(value):,"--- a/code.py
 +    if isinstance(value, tnp.ndarray):
          return value.tensor
      elif isinstance(value, (tuple, list)):
-         return type(value)((numpy_to_tensor(obj) for obj in value))","Convert torch_np.ndarray to tensor, leave other types intact. If a list/tuple, loop through it to convert.",test_real,none,codocbench,8
+         return type(value)((numpy_to_tensor(obj) for obj in value))","Convert torch_np.ndarray to tensor, leave other types intact. If a list/tuple, loop through it to convert.",none,8
 e129,matplotlib,ToolViewsPositions.push_current,def push_current(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,8 +1,8 @@
@@ -587,7 +587,7 @@ e129,matplotlib,ToolViewsPositions.push_current,def push_current(self):,"--- a/c
 +        views.append(a._get_view())
 +        pos.append((a.get_position(True).frozen(), a.get_position().frozen()))
      self.views[self.figure].push(views)
-     self.positions[self.figure].push(pos)",Push the current view limits and position onto their respective stacks,test_real,none,codocbench,9
+     self.positions[self.figure].push(pos)",Push the current view limits and position onto their respective stacks,none,9
 e139,pytorch,HeuristicInterface.get_prediction_confidence,"def get_prediction_confidence(self, tests: List[str]) -> Dict[str, float]:","--- a/code.py
 +++ b/code.py
 @@ -1,2 +1,2 @@
@@ -596,7 +596,7 @@ e139,pytorch,HeuristicInterface.get_prediction_confidence,"def get_prediction_co
      pass","Like get_test_priorities, but instead returns a float ranking ranging
         from -1 to 1, where negative means skip, positive means run, 0 means no
         idea, and magnitude = how confident the heuristic is. Used by
-        AggregatedHeuristicsRankings.",test_real,return_changed,codocbench,6
+        AggregatedHeuristicsRankings.",return_changed,6
 e147,ipython,test_get_xdg_dir_3,def test_get_xdg_dir_3():,"--- a/code.py
 +++ b/code.py
 @@ -1,8 +1,8 @@
@@ -609,7 +609,7 @@ e147,ipython,test_get_xdg_dir_3,def test_get_xdg_dir_3():,"--- a/code.py
 +    sys.platform = 'win32'
      env.pop('IPYTHON_DIR', None)
      env.pop('IPYTHONDIR', None)
-     env.pop('XDG_CONFIG_HOME', None)","test_get_xdg_dir_3, check xdg_dir not used on OS X",test_real,none,codocbench,12
+     env.pop('XDG_CONFIG_HOME', None)","test_get_xdg_dir_3, check xdg_dir not used on OS X",none,12
 e159,matplotlib,concatenate_paths,def concatenate_paths(paths):,"--- a/code.py
 +++ b/code.py
 @@ -1,9 +1,4 @@
@@ -624,7 +624,7 @@ e159,matplotlib,concatenate_paths,def concatenate_paths(paths):,"--- a/code.py
 -    return _path
 +    vertices = np.concatenate([p.vertices for p in paths])
 +    codes = np.concatenate([make_path_regular(p).codes for p in paths])
-+    return Path(vertices, codes)",concatenate list of paths into a single path.,test_real,none,codocbench,10
++    return Path(vertices, codes)",concatenate list of paths into a single path.,none,10
 e172,rasa,DynamoTrackerStore.serialise_tracker,"def serialise_tracker(self, tracker: 'DialogueStateTracker') -> Dict:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,2 @@
@@ -633,7 +633,7 @@ e172,rasa,DynamoTrackerStore.serialise_tracker,"def serialise_tracker(self, trac
 -    d.update({'sender_id': tracker.sender_id})
 -    return core_utils.replace_floats_with_decimals(d)
 +def serialise_tracker(tracker: 'DialogueStateTracker') -> Dict:
-+    return core_utils.replace_floats_with_decimals(SerializedTrackerAsDict.serialise_tracker(tracker))","Serializes the tracker, returns object with decimal types.",test_real,param_removed,codocbench,5
++    return core_utils.replace_floats_with_decimals(SerializedTrackerAsDict.serialise_tracker(tracker))","Serializes the tracker, returns object with decimal types.",param_removed,5
 e183,scrapy,add_http_if_no_scheme,def add_http_if_no_scheme(url):,"--- a/code.py
 +++ b/code.py
 @@ -1,7 +1,8 @@
@@ -646,7 +646,7 @@ e183,scrapy,add_http_if_no_scheme,def add_http_if_no_scheme(url):,"--- a/code.py
 +    parser = parse_url(url)
 +    if not parser.scheme or not parser.netloc:
          url = 'http://' + url
-     return url",Adds http as the default scheme if it is missing from the url,test_real,none,codocbench,8
+     return url",Adds http as the default scheme if it is missing from the url,none,8
 e197,matplotlib,ToolLineHandles.closest,"def closest(self, x, y):","--- a/code.py
 +++ b/code.py
 @@ -5,5 +5,5 @@
@@ -656,7 +656,7 @@ e197,matplotlib,ToolLineHandles.closest,"def closest(self, x, y):","--- a/code.p
 -    min_index = np.argmin(dist)
 -    return (min_index, dist[min_index])
 +    index = np.argmin(dist)
-+    return (index, dist[index])",Return index and pixel distance to closest handle.,test_real,none,codocbench,10
++    return (index, dist[index])",Return index and pixel distance to closest handle.,none,10
 e205,pandas,extract_pandas_array,"def extract_pandas_array(values: ArrayLike, dtype: DtypeObj | None, ndim: int) -> tuple[ArrayLike, DtypeObj | None]:","--- a/code.py
 +++ b/code.py
 @@ -1,8 +1,8 @@
@@ -669,4 +669,4 @@ e205,pandas,extract_pandas_array,"def extract_pandas_array(values: ArrayLike, dt
 -    if isinstance(dtype, PandasDtype):
 +    if isinstance(dtype, NumpyEADtype):
          dtype = dtype.numpy_dtype
-     return (values, dtype)",Ensure that we don't allow PandasArray / PandasDtype in internals.,test_real,none,codocbench,9
+     return (values, dtype)",Ensure that we don't allow PandasArray / PandasDtype in internals.,none,9

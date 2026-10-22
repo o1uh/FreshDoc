@@ -1,0 +1,36 @@
+err_id,label,stale_statement,why
+e005,C,,all listed examples remain true; Any support is new but not proven required for doc
+e091,B,,new CalledProcessError on nonzero exit when flag set is important and undocumented
+e008,C,,one-line purpose still holds; implementation change preserves observable behavior at documented level
+e017,C,,high-level URL conversion claims still hold; IDNA and quoting changes do not falsify any statement
+e019,C,,default None to {} preserves documented args; no doc claim becomes false
+e028,C,,doc never names the first argument so rename from path to name does not falsify it
+e032,C,,universa case still passes so plural claim is not proven false from diff alone
+e037,B,,automatic .py extension handling is new user-visible behavior missing from doc
+e043,C,,doc never states the default so change from wav22 to wav48_silence_trimmed does not falsify it
+e054,B,,custom messages and silent ticks are important new behavior not covered by generic tone description
+e060,B,,ordered string conversion for dicts is important new behavior not described
+e078,C,,type hints only; documented arg and return still hold
+e086,C,,generic path cleanup description still holds; rename and robustness handling do not falsify it
+e089,B,,parameter changed from type to prefix with new defaults and fallback; doc should mention prefix
+e096,C,,generic align interface description still holds; signature delegation does not falsify it
+e098,C,,header and traceback description still holds; param rename is not in doc
+e104,C,,keras to coreml conversion purpose still holds; diff does not introduce new false claim
+e107,A,a hook's bare array is at the model's rate,bare array now raises TypeError when model rate is None instead of coercing
+e111,B,,new mode argument and early None on zero stock are important and undocumented
+e119,C,,class deprecation purpose still holds; fixture rename is not in doc
+e122,C,,doc never states the default so change from 40 to 15 does not falsify it
+e132,C,,doc never mentions formatter default so singleton change does not falsify it
+e149,C,,backup and replace purpose still holds; OSError tolerance does not falsify it
+e094,A,Augment the message with intents and entities and return diagnostic data.,no longer returns diagnostic data; sets it on message instead and returns None
+e109,C,,undirected check purpose and List handling still hold; assert does not prove doc false
+e115,A,Test function urlize_quoted_links with different args,test now calls urlize instead of urlize_quoted_links
+e121,B,,new plain ndarray to tensor conversion is important and undocumented
+e129,C,,push view limits and position purpose still holds; list storage is internal
+e139,C,,float ranking description still plausible; annotation change alone with pass body does not prove false
+e147,A,"test_get_xdg_dir_3, check xdg_dir not used on OS X",test now uses nt and win32 so it checks Windows not OS X
+e159,C,,concatenate purpose still holds; vertex regularization detail does not falsify it
+e172,C,,serialize with decimals purpose still holds; delegation preserves it
+e183,C,,default http scheme purpose still holds; early return preserves behavior
+e197,C,,index and distance purpose still holds; variable rename is internal
+e205,C,,internal exclusion purpose still holds; class rename alone does not prove doc false without hierarchy

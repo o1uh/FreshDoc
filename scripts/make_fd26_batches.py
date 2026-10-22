@@ -65,20 +65,29 @@ def case_block(r: pd.Series) -> str:
 
 
 def main() -> None:
-    shards = sorted(SHARDS_DIR.glob("fd26_shard_*.csv"))
+    import argparse
+    ap = argparse.ArgumentParser(description="FD-26: self-contained батчи для субагентов.")
+    ap.add_argument("--shards_dir", default=str(SHARDS_DIR))
+    ap.add_argument("--out_dir", default=str(OUT_DIR))
+    args = ap.parse_args()
+    shards = sorted(Path(args.shards_dir).glob("fd26_shard_*.csv"))
     if not shards:
-        raise SystemExit(f"нет шардов в {SHARDS_DIR}: сначала select_fd26_errors.py")
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
-    for old in sorted(OUT_DIR.glob("fd26_batch*.prompt.txt")):
+        raise SystemExit(f"нет шардов в {args.shards_dir}: сначала select_fd26_errors.py")
+    out_dir = Path(args.out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for old in sorted(out_dir.glob("fd26_batch*.prompt.txt")):
         old.unlink()
     for i, sp in enumerate(shards):
-        df = pd.read_csv(sp, dtype=str).fillna("")
-        assert len(df) == 35, f"{sp.name}: {len(df)} != 35"
+        df = pd.read_csv(sp, dtype=str, keep_default_na=False)
+        if len(df) == 0:
+            raise SystemExit(f"{sp.name}: пустой шард")
+        if df["err_id"].duplicated().any():
+            raise SystemExit(f"{sp.name}: дубли err_id")
         body = HEADER + "\n".join(case_block(r) for _, r in df.iterrows())
-        out = OUT_DIR / f"fd26_batch{i:02d}.prompt.txt"
+        out = out_dir / f"fd26_batch{i:02d}.prompt.txt"
         out.write_text(body, encoding="utf-8")
         print(f"{out.name}: {len(df)} кейсов, {out.stat().st_size} bytes")
-    print(f"батчей: {len(shards)} -> {OUT_DIR}")
+    print(f"батчей: {len(shards)} -> {out_dir}")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-err_id,project,symbol,sig_old,diff_code,doc_old,split,sig_type,source,n_src_lines
+err_id,project,symbol,sig_old,diff_code,doc_old,sig_type,n_src_lines
 e002,espnet,DPCLSolver.forward,"def forward(self, ref, inf, others={}):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,6 @@
@@ -19,7 +19,7 @@ Args:
 Returns:
     loss: (torch.Tensor): minimum loss with the best permutation
     stats: (dict), for collecting training status
-    others: reserved",gold,default_changed,gold,18
+    others: reserved",default_changed,18
 e004,ipython,CapturingTee.write,"def write(self, data):","--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,18 @@
@@ -42,7 +42,7 @@ e004,ipython,CapturingTee.write,"def write(self, data):","--- a/code.py
 +    if output_stream is None:
 +        output_stream = HistoryOutput(output_type=output_type, bundle={'stream': ''})
 +        outputs_by_counter[execution_count].append(output_stream)
-+    output_stream.bundle['stream'] += data",Write data to both the original stdout and the capture dictionary.,test_real,none,history_neg,7
++    output_stream.bundle['stream'] += data",Write data to both the original stdout and the capture dictionary.,none,7
 e015,csvkit,CSVStat.print_csv,"def print_csv(self, table, column_ids, stats):","--- a/code.py
 +++ b/code.py
 @@ -1,18 +1,8 @@
@@ -70,7 +70,7 @@ e015,csvkit,CSVStat.print_csv,"def print_csv(self, table, column_ids, stats):","
 +    for row in self._rows(table, column_ids, stats):
 +        if 'freq' in row:
 +            row['freq'] = ', '.join([str(row['value']) for row in row['freq']])
-+        writer.writerow(row)",Print data for all statistics as a csv table.,gold,none,gold,19
++        writer.writerow(row)",Print data for all statistics as a csv table.,none,19
 e030,manim,LogBase.inverse_function,"def inverse_function(self, value: float) -> float:","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,11 @@
@@ -86,7 +86,7 @@ e030,manim,LogBase.inverse_function,"def inverse_function(self, value: float) ->
          raise ValueError('log(0) is undefined. Make sure the value is in the domain of the function')
 -    value = math.log(value, self.base)
 +    value = func(value, self.base)
-     return value",Inverse of ``function``. The value must be greater than 0,test_real,none,history_neg,6
+     return value",Inverse of ``function``. The value must be greater than 0,none,6
 e038,ipython,Completer.global_matches,"def global_matches(self, text):","--- a/code.py
 +++ b/code.py
 @@ -1,15 +1,2 @@
@@ -109,7 +109,7 @@ e038,ipython,Completer.global_matches,"def global_matches(self, text):","--- a/c
 +    return self._global_matches(text)","Compute matches when text is a simple name.
 
 Return a list of all keywords, built-in functions and names currently
-defined in self.namespace or self.global_namespace that match.",test_real,none,history_neg,19
+defined in self.namespace or self.global_namespace that match.",none,19
 e044,manim,Line3D.perpendicular_to,"def perpendicular_to(cls, line: Line3D, point: Vector3D=ORIGIN, length: float=5, **kwargs) -> Line3D:","--- a/code.py
 +++ b/code.py
 @@ -1,9 +1,9 @@
@@ -155,7 +155,7 @@ Examples
             ax = ThreeDAxes((-5, 5), (-5, 5), (-5, 5), 10, 10, 10)
             line1 = Line3D(RIGHT * 2, UP + OUT, color=RED)
             line2 = Line3D.perpendicular_to(line1, color=BLUE)
-            self.add(ax, line1, line2)",test_real,none,history_neg,40
+            self.add(ax, line1, line2)",none,40
 e049,espnet,bert_score,"def bert_score(total_response_arr: List[str], bert_model_name: str='bert-base-uncased') -> str:","--- a/code.py
 +++ b/code.py
 @@ -3,16 +3,17 @@
@@ -211,7 +211,7 @@ e049,espnet,bert_score,"def bert_score(total_response_arr: List[str], bert_model
         >>> result = bert_score(total_responses, bert_model_name=""bert-base-uncased"")
         >>> print(result)
         ""Cosine Similarity: 75.89
-""",test_real,none,history_neg,53
+""",none,53
 e056,manim,find_intersection,"def find_intersection(p0s: Point3DLike_Array, v0s: Vector3D_Array, p1s: Point3DLike_Array, v1s: Vector3D_Array, threshold: float=1e-05) -> list[Point3D]:","--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,6 @@
@@ -226,7 +226,7 @@ e056,manim,find_intersection,"def find_intersection(p0s: Point3DLike_Array, v0s:
 with one passing through p1 in direction v1 (or array of intersections
 from arrays of such points/directions).
 For 3d values, it returns the point on the ray p0 + v0 * t closest to the
-ray p1 + v1 * t",test_real,none,history_neg,12
+ray p1 + v1 * t",none,12
 e065,manim,get_unit_normal,"def get_unit_normal(v1: Vector3D, v2: Vector3D, tol: float=1e-06) -> Vector3D:","--- a/code.py
 +++ b/code.py
 @@ -1,13 +1,15 @@
@@ -263,7 +263,7 @@ tol
 Returns
 -------
 np.ndarray
-    The normal of the two vectors.",test_real,none,history_neg,35
+    The normal of the two vectors.",none,35
 e076,manim,VMobject.generate_rgbas_array,"def generate_rgbas_array(self, color, opacity):","--- a/code.py
 +++ b/code.py
 @@ -1,7 +1,7 @@
@@ -281,7 +281,7 @@ e076,manim,VMobject.generate_rgbas_array,"def generate_rgbas_array(self, color, 
 Likewise, opacity can either be a float, or a tuple of floats.
 If self.sheen_factor is not zero, and only
 one color was passed in, a second slightly light color
-will automatically be added for the gradient",test_real,none,history_neg,16
+will automatically be added for the gradient",none,16
 e092,AzurLaneAutoScript,InfoHandler.story_skip,"def story_skip(self, drop=None):","--- a/code.py
 +++ b/code.py
 @@ -39,8 +39,10 @@
@@ -295,7 +295,7 @@ e092,AzurLaneAutoScript,InfoHandler.story_skip,"def story_skip(self, drop=None):
                  self.device.click(OS_CLICK_SAFE_AREA)
              self._story_confirm.reset()
              self.story_popup_timeout.reset()","2023.09.14 Story options changed with big white options in the middle,
-    Check STORY_SKIP_3 but click the original STORY_SKIP.",test_real,none,history_neg,60
+    Check STORY_SKIP_3 but click the original STORY_SKIP.",none,60
 e102,manim,NumberLine.get_number_mobject,"def get_number_mobject(self, x: float, direction: Vector3D | None=None, buff: float | None=None, font_size: float | None=None, label_constructor: type[MathTex] | None=None, **number_config: dict[str, Any]) -> VMobject:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -333,7 +333,7 @@ label_constructor
 Returns
 -------
 :class:`~.DecimalNumber`
-    The positioned mobject.",test_real,none,history_neg,37
+    The positioned mobject.",none,37
 e118,AzurLaneAutoScript,ActionPointHandler.action_point_quit,"def action_point_quit(self, skip_first_screenshot=True):","--- a/code.py
 +++ b/code.py
 @@ -1,2 +1,12 @@
@@ -351,7 +351,7 @@ e118,AzurLaneAutoScript,ActionPointHandler.action_point_quit,"def action_point_q
 +        if self.handle_map_event():
 +            continue","Pages:
     in: ACTION_POINT_USE
-    out: page_os",test_real,none,history_neg,5
+    out: page_os",none,5
 e128,manim,NumberLine.add_labels,"def add_labels(self, dict_values: dict[float, str | float | VMobject], direction: Point3DLike | None=None, buff: float | None=None, font_size: float | None=None, label_constructor: type[MathTex] | None=None) -> Self:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -404,7 +404,7 @@ label_constructor
 Raises
 ------
 AttributeError
-    If the label does not have a ``font_size`` attribute, an ``AttributeError`` is raised.",test_real,none,history_neg,46
+    If the label does not have a ``font_size`` attribute, an ``AttributeError`` is raised.",none,46
 e135,manim,Scene.compile_animations,"def compile_animations(self, *args: Animation, **kwargs):","--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,7 @@
@@ -429,7 +429,7 @@ Parameters
 Returns
 -------
 Tuple[:class:`Animation`]
-    Animations to be played.",test_real,none,history_neg,28
+    Animations to be played.",none,28
 e146,ipython,test_notebook_export_json_with_output,def test_notebook_export_json_with_output():,"--- a/code.py
 +++ b/code.py
 @@ -1,40 +1,31 @@
@@ -496,7 +496,7 @@ e146,ipython,test_notebook_export_json_with_output,def test_notebook_export_json
 +        if command == '1/0':
 +            actual['outputs'][0].pop('traceback')
 +            expected['outputs'][0].pop('traceback')
-+        assert actual['outputs'] == expected['outputs'], f'Outputs do not match for cell {i + 1} with source {command!r}'","Tests if notebook export correctly captures outputs, errors, display outputs, and stream outputs.",test_real,none,history_neg,41
++        assert actual['outputs'] == expected['outputs'], f'Outputs do not match for cell {i + 1} with source {command!r}'","Tests if notebook export correctly captures outputs, errors, display outputs, and stream outputs.",none,41
 e152,ipython,test_recursive_FileLinks,def test_recursive_FileLinks():,"--- a/code.py
 +++ b/code.py
 @@ -1,13 +1,12 @@
@@ -521,7 +521,7 @@ e152,ipython,test_recursive_FileLinks,def test_recursive_FileLinks():,"--- a/cod
 +        fl = display.FileLinks(td, recursive=False)
 +        actual = str(fl)
 +        actual = actual.split('\n')
-+        assert len(actual) == 2, actual",FileLinks: Does not recurse when recursive=False,test_real,none,history_neg,14
++        assert len(actual) == 2, actual",FileLinks: Does not recurse when recursive=False,none,14
 e160,manim,Mobject.add_updater,"def add_updater(self, update_function: Updater, index: Optional[int]=None, call_updater: bool=False):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -587,7 +587,7 @@ See also
 --------
 :meth:`get_updaters`
 :meth:`remove_updater`
-:class:`~.UpdateFromFunc`",test_real,none,history_neg,67
+:class:`~.UpdateFromFunc`",none,67
 e165,manim,CoordinateSystem.get_graph_label,"def get_graph_label(self, graph: ParametricFunction, label: float | str | Mobject='f(x)', x_val: float | None=None, direction: Sequence[float]=RIGHT, buff: float=MED_SMALL_BUFF, color: Color | None=None, dot: bool=False, dot_config: dict | None=None) -> Mobject:","--- a/code.py
 +++ b/code.py
 @@ -1,7 +1,8 @@
@@ -643,7 +643,7 @@ Examples
                 direction=UR,
             )
 
-            self.add(ax, sin, label)",test_real,none,history_neg,63
+            self.add(ax, sin, label)",none,63
 e174,ipython,get_home_dir,def get_home_dir(require_writable=False) -> str:,"--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -666,7 +666,7 @@ require_writable : bool [default: False]
         guarantees the return value is a writable directory, otherwise
         raises HomeDirError
     if False:
-        The path is resolved, but it is not guaranteed to exist or be writable.",test_real,none,history_neg,31
+        The path is resolved, but it is not guaranteed to exist or be writable.",none,31
 e184,AzurLaneAutoScript,WorkerPool.release_full_lock,def release_full_lock(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,3 +1,6 @@
@@ -686,7 +686,7 @@ Then the pool blocks himself.
 The fastest worker, and also the only worker, receives the message,
 `if self.notify_worker.acquire(blocking=False):`
 Worker tells the pool, new pool slot is ready, you are ready to go.
-`self.notify_pool.release()`",test_real,none,history_neg,14
+`self.notify_pool.release()`",none,14
 e195,AzurLaneAutoScript,PrivateQuarters.run,def run(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,9 @@
@@ -703,7 +703,7 @@ e195,AzurLaneAutoScript,PrivateQuarters.run,def run(self):,"--- a/code.py
 +        logger.info('If want to address, review necessary assets, replace, update above condition, and test')
      self.config.task_delay(server_update=True)","Pages:
     in: Any page
-    out: page_main, may have info_bar",test_real,none,history_neg,8
+    out: page_main, may have info_bar",none,8
 e206,manim,TipableVMobject.create_tip,"def create_tip(self, tip_shape=None, tip_length=None, tip_width=None, at_start=False):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -712,7 +712,7 @@ e206,manim,TipableVMobject.create_tip,"def create_tip(self, tip_shape=None, tip_
      tip = self.get_unpositioned_tip(tip_shape, tip_length, tip_width)
      self.position_tip(tip, at_start)
      return tip","Stylises the tip, positions it spatially, and returns
-the newly instantiated tip to the caller.",test_real,none,history_neg,6
+the newly instantiated tip to the caller.",none,6
 e154,espnet,ctc_only_search,"def ctc_only_search(search_class, n_frames):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -732,7 +732,7 @@ e154,espnet,ctc_only_search,"def ctc_only_search(search_class, n_frames):","--- 
 
 Labels 3, 5 and 2 are spoken at frames 0, 4 and 8, the rest is blank.
 Returns the search, the posteriors to decode, the labels, and their CTC
-log likelihood as `torch.nn.functional.ctc_loss` computes it.",gold,param_added,gold,18
+log likelihood as `torch.nn.functional.ctc_loss` computes it.",param_added,18
 e170,gpt4free,get_orientation,def get_orientation(image: Image.Image) -> int:,"--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -746,7 +746,7 @@ e170,gpt4free,get_orientation,def get_orientation(image: Image.Image) -> int:,"-
         image (Image.Image): The image.
 
     Returns:
-        int: The orientation value.",gold,none,gold,13
+        int: The orientation value.",none,13
 e181,espnet,ConformerConvolution.forward,"def forward(self, x: torch.Tensor, cache: Optional[torch.Tensor]=None, mask: Optional[torch.Tensor]=None) -> Tuple[torch.Tensor, torch.Tensor]:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -762,7 +762,7 @@ e181,espnet,ConformerConvolution.forward,"def forward(self, x: torch.Tensor, cac
 
         Returns:
             x: ConformerConvolution output sequences. (B, T, D_hidden)
-            cache: ConformerConvolution output cache. (1, conv_kernel, D_hidden)",gold,none,gold,24
+            cache: ConformerConvolution output cache. (1, conv_kernel, D_hidden)",none,24
 e190,WechatSogou,WechatSogouRequest.gen_hot_url,"def gen_hot_url(hot_index, page=1):","--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,5 @@
@@ -783,7 +783,7 @@ e190,WechatSogou,WechatSogouRequest.gen_hot_url,"def gen_hot_url(hot_index, page
         Returns
         -------
         str
-            热门文章分类的url",gold,none,gold,19
+            热门文章分类的url",none,19
 e125,transformers,window_reverse,"def window_reverse(windows, window_size, height, width):","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,5 @@
@@ -803,7 +803,7 @@ e125,transformers,window_reverse,"def window_reverse(windows, window_size, heigh
         height (`int`):
             Height of the resized audio
         width (`int`):
-            Width of the resized audio",test_real,none,codocbench,14
+            Width of the resized audio",none,14
 e137,rasa,bert_embeddings_post_processor,"def bert_embeddings_post_processor(sequence_embeddings: np.array) -> Tuple[np.array, np.array]:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -813,7 +813,7 @@ e137,rasa,bert_embeddings_post_processor,"def bert_embeddings_post_processor(seq
      post_processed_embedding = sequence_embeddings[1:-1]
      return (sentence_embedding, post_processed_embedding)","Post process embeddings from BERT by removing CLS and SEP embeddings and returning CLS
 
-    token embedding as sentence representation",test_real,return_changed,codocbench,7
+    token embedding as sentence representation",return_changed,7
 e145,manim,ThreeDScene.add_fixed_in_frame_mobjects,"def add_fixed_in_frame_mobjects(self, *mobjects):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -829,7 +829,7 @@ e145,manim,ThreeDScene.add_fixed_in_frame_mobjects,"def add_fixed_in_frame_mobje
         Parameters
         ----------
         *mobjects : Mobjects
-            The Mobjects whose orientation must be fixed.",test_real,none,codocbench,19
+            The Mobjects whose orientation must be fixed.",none,19
 e158,pytorch,get_labels,def get_labels(pr_number: int) -> Set[str]:,"--- a/code.py
 +++ b/code.py
 @@ -1,10 +1,3 @@
@@ -844,7 +844,7 @@ e158,pytorch,get_labels,def get_labels(pr_number: int) -> Set[str]:,"--- a/code.
 -        return set()
 -    return {label.get('name') for label in json_response if label.get('name')}
 +    pr_info = get_pr_info(pr_number)
-+    return {label.get('name') for label in pr_info.get('labels', []) if label.get('name')}",Dynamical get the latest list of labels from the pull request,test_real,none,codocbench,11
++    return {label.get('name') for label in pr_info.get('labels', []) if label.get('name')}",Dynamical get the latest list of labels from the pull request,none,11
 e168,locust,requests_csv,def requests_csv():,"--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,10 @@
@@ -859,7 +859,7 @@ e168,locust,requests_csv,def requests_csv():,"--- a/code.py
 +        else:
 +            percentile_str = ','.join(['""N/A""'] * len(PERCENTILES_TO_REPORT))
 +        rows.append('""%s"",""%s"",%i,%i,%i,%i,%i,%i,%i,%.2f,%.2f,%s' % (s.method, s.name, s.num_requests, s.num_failures, s.median_response_time, s.avg_response_time, s.min_response_time or 0, s.max_response_time, s.avg_content_length, s.total_rps, s.total_fail_per_sec, percentile_str))
-     return '\n'.join(rows)",Returns the contents of the 'requests' tab as CSV.,test_real,none,codocbench,7
+     return '\n'.join(rows)",Returns the contents of the 'requests' tab as CSV.,none,7
 e182,StratosphereLinuxIPS,test_timewindows,def test_timewindows(database):,"--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,7 @@
@@ -871,7 +871,7 @@ e182,StratosphereLinuxIPS,test_timewindows,def test_timewindows(database):,"--- 
      database.addNewTW(profileid, 0.0)
 +    database.addNewTW(profileid, 5.0)
      assert database.getFirstTWforProfile(profileid) == [('timewindow1', 0.0)]
-+    assert database.getLastTWforProfile(profileid) == [('timewindow2', 5.0)]",unit tests for addNewTW and getFirstTWforProfile,test_real,none,codocbench,7
++    assert database.getLastTWforProfile(profileid) == [('timewindow2', 5.0)]",unit tests for addNewTW and getFirstTWforProfile,none,7
 e194,pytorch,filter,"def filter(test_matrix: Dict[str, List[Any]], labels: Set[str]) -> Dict[str, List[Any]]:","--- a/code.py
 +++ b/code.py
 @@ -6,10 +6,14 @@
@@ -899,7 +899,7 @@ e194,pytorch,filter,"def filter(test_matrix: Dict[str, List[Any]], labels: Set[s
     if a PR has both ciflow/trunk and test-config/functorch, only trunk functorch builds
     and tests will be run
 
-    If the PR has none of the test-config label, all tests are run as usual.",test_real,none,codocbench,24
+    If the PR has none of the test-config label, all tests are run as usual.",none,24
 e204,erpnext,add_permissions,def add_permissions():,"--- a/code.py
 +++ b/code.py
 @@ -5,3 +5,5 @@
@@ -907,4 +907,4 @@ e204,erpnext,add_permissions,def add_permissions():,"--- a/code.py
              update_permission_property(doctype, role, 0, 'write', 1)
              update_permission_property(doctype, role, 0, 'create', 1)
 +    if not frappe.db.get_value('Custom Role', dict(report='VAT Audit Report')):
-+        frappe.get_doc(dict(doctype='Custom Role', report='VAT Audit Report', roles=[dict(role='Accounts User'), dict(role='Accounts Manager'), dict(role='Auditor')])).insert()",Add Permissions for South Africa VAT Settings and South Africa VAT Account,test_real,none,codocbench,8
++        frappe.get_doc(dict(doctype='Custom Role', report='VAT Audit Report', roles=[dict(role='Accounts User'), dict(role='Accounts Manager'), dict(role='Auditor')])).insert()",Add Permissions for South Africa VAT Settings and South Africa VAT Account,none,8

@@ -1,4 +1,4 @@
-err_id,project,symbol,sig_old,diff_code,doc_old,split,sig_type,source,n_src_lines
+err_id,project,symbol,sig_old,diff_code,doc_old,sig_type,n_src_lines
 e033,AzurLaneAutoScript,EventStory.get_event_story_state,def get_event_story_state(self):,"--- a/code.py
 +++ b/code.py
 @@ -9,4 +9,6 @@
@@ -8,7 +8,7 @@ e033,AzurLaneAutoScript,EventStory.get_event_story_state,def get_event_story_sta
 +    if self.get_event_20250724_button():
 +        return 'story_alchemist'
      return 'unknown'","Returns:
-    str: 'finish', 'story', 'unknown'",gold,none,gold,14
+    str: 'finish', 'story', 'unknown'",none,14
 e007,StratosphereLinuxIPS,GoDirector.handle_gopy_data,"def handle_gopy_data(self, data: str):","--- a/code.py
 +++ b/code.py
 @@ -10,6 +10,6 @@
@@ -18,14 +18,14 @@ e007,StratosphereLinuxIPS,GoDirector.handle_gopy_data,"def handle_gopy_data(self
 -        self.print(""Couldn't load message from pigeon - invalid json"")
 +        self.print(f""Couldn't load message from pigeon - invalid Json from the pigeon: {data_dict}"")
      except KeyError:
-         self.print(f""Json from the pigeon: {data_dict} doesn't contain expected values message_type or message_contents"")",Method that receives raw data sent into p2p_gopy redis channel,test_real,none,codocbench,16
+         self.print(f""Json from the pigeon: {data_dict} doesn't contain expected values message_type or message_contents"")",Method that receives raw data sent into p2p_gopy redis channel,none,16
 e188,rasa,get_auth_retry_wrapper,def get_auth_retry_wrapper(tracker_store: 'TrackerStore') -> 'TrackerStore':,"--- a/code.py
 +++ b/code.py
 @@ -1,3 +1,3 @@
  @hookspec(firstresult=True)
 -def get_auth_retry_wrapper(tracker_store: 'TrackerStore') -> 'TrackerStore':
 +def get_auth_retry_wrapper(endpoint_config: Union['TrackerStore', 'EndpointConfig'], domain: 'Domain', event_broker: Optional['EventBroker']=None) -> 'TrackerStore':
-     pass",Hook specification for wrapping with AuthRetryTrackerStore.,gold,param_removed,gold,4
+     pass",Hook specification for wrapping with AuthRetryTrackerStore.,param_removed,4
 e034,manim,SVGMobject.generate_points,def generate_points(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,7 +1,9 @@
@@ -41,7 +41,7 @@ e034,manim,SVGMobject.generate_points,def generate_points(self):,"--- a/code.py
              self.add(*mobjects)
          else:","Called by the Mobject abstract base class. Responsible for generating
 the SVGMobject's points from XML tags, populating self.mobjects, and
-any submobjects within self.mobjects.",test_real,none,history_neg,12
+any submobjects within self.mobjects.",none,12
 e040,manim,ManimColor.parse,"def parse(cls, color: ParsableManimColor | list[ParsableManimColor] | None, alpha: float=1.0) -> Self | list[Self]:","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,12 @@
@@ -72,7 +72,7 @@ alpha
 Returns
 -------
 ManimColor
-    Either a list of colors or a singular color depending on the input",test_real,none,history_neg,18
+    Either a list of colors or a singular color depending on the input",none,18
 e047,TTS,TTSTokenizer.encode,"def encode(self, text: str) -> List[int]:","--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,11 @@
@@ -88,7 +88,7 @@ e047,TTS,TTSTokenizer.encode,"def encode(self, text: str) -> List[int]:","--- a/
 +            if char not in self.not_found_characters:
 +                self.not_found_characters.append(char)
 +                print(f' [!] Character {repr(char)} not found in the vocabulary. Discarding it.')
-     return token_ids",Encodes a string of text as a sequence of IDs.,test_real,none,history_neg,7
+     return token_ids",Encodes a string of text as a sequence of IDs.,none,7
 e051,manim,StreamLines.start_animation,"def start_animation(self, warm_up: bool=True, flow_speed: float=1, time_width: float=0.3, rate_func: Callable[[float], float]=linear, line_animation_class: type[ShowPassingFlash]=ShowPassingFlash, **kwargs) -> Self:","--- a/code.py
 +++ b/code.py
 @@ -1,21 +1,25 @@
@@ -150,7 +150,7 @@ Examples
             stream_lines = StreamLines(func, stroke_width=3, max_anchors_per_line=30)
             self.add(stream_lines)
             stream_lines.start_animation(warm_up=False, flow_speed=1.5)
-            self.wait(stream_lines.virtual_time / stream_lines.flow_speed)",test_real,none,history_neg,50
+            self.wait(stream_lines.virtual_time / stream_lines.flow_speed)",none,50
 e061,manim,ThreeDScene.stop_ambient_camera_rotation,"def stop_ambient_camera_rotation(self, about='theta'):","--- a/code.py
 +++ b/code.py
 @@ -8,5 +8,5 @@
@@ -159,7 +159,7 @@ e061,manim,ThreeDScene.stop_ambient_camera_rotation,"def stop_ambient_camera_rot
              self.camera.clear_updaters()
 -    except:
 +    except Exception:
-         raise ValueError('Invalid ambient rotation angle.')",This method stops all ambient camera rotation.,test_real,none,history_neg,13
+         raise ValueError('Invalid ambient rotation angle.')",This method stops all ambient camera rotation.,none,13
 e068,TTS,korean_text_to_phonemes,"def korean_text_to_phonemes(text, character: str='hangeul') -> str:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,8 @@
@@ -175,7 +175,7 @@ e068,TTS,korean_text_to_phonemes,"def korean_text_to_phonemes(text, character: s
 example :
 
     input = '하늘' (Unicode : 하늘), (하 + 늘)
-    output = '하늘' (Unicode :하늘), (ᄒ + ᅡ + ᄂ + ᅳ + ᆯ)",test_real,none,history_neg,17
+    output = '하늘' (Unicode :하늘), (ᄒ + ᅡ + ᄂ + ᅳ + ᆯ)",none,17
 e087,ipython,test_notebook_export_json_with_output,def test_notebook_export_json_with_output():,"--- a/code.py
 +++ b/code.py
 @@ -6,25 +6,30 @@
@@ -230,7 +230,7 @@ e087,ipython,test_notebook_export_json_with_output,def test_notebook_export_json
 +            assert actual['source'] == expected['source']
 +            assert actual['outputs'] == expected['outputs'], f'Outputs do not match for cell {i + 1} with source {command!r}'
 +    finally:
-+        _ip.colors = 'nocolor'","Tests if notebook export correctly captures outputs, errors, display outputs, and stream outputs.",test_real,none,history_neg,31
++        _ip.colors = 'nocolor'","Tests if notebook export correctly captures outputs, errors, display outputs, and stream outputs.",none,31
 e100,manim,NumberLine.get_number_mobject,"def get_number_mobject(self, x: float, direction: Sequence[float] | None=None, buff: float | None=None, font_size: float | None=None, label_constructor: VMobject | None=None, **number_config) -> VMobject:","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,5 @@
@@ -270,7 +270,7 @@ label_constructor
 Returns
 -------
 :class:`~.DecimalNumber`
-    The positioned mobject.",test_real,none,history_neg,37
+    The positioned mobject.",none,37
 e103,manim,CoordinateSystem.get_line_from_axis_to_point,"def get_line_from_axis_to_point(self, index: int, point: Sequence[float], line_func: Line=DashedLine, line_config: dict | None=None, color: Color | None=None, stroke_width: float=2) -> Line:","--- a/code.py
 +++ b/code.py
 @@ -1,8 +1,8 @@
@@ -308,7 +308,7 @@ Returns
 
 .. seealso::
     :meth:`~.CoordinateSystem.get_vertical_line`
-    :meth:`~.CoordinateSystem.get_horizontal_line`",test_real,none,history_neg,35
+    :meth:`~.CoordinateSystem.get_horizontal_line`",none,35
 e126,manim,NumberLine.add_numbers,"def add_numbers(self, x_values: Iterable[float] | None=None, excluding: Iterable[float] | None=None, font_size: float | None=None, label_constructor: type[MathTex] | None=None, **kwargs: Any) -> Self:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -342,7 +342,7 @@ font_size
 label_constructor
     The :class:`~.VMobject` class that will be used to construct the label.
     Defaults to the ``label_constructor`` attribute of the number line
-    if not specified.",test_real,none,history_neg,35
+    if not specified.",none,35
 e131,ipython,ensure_dir_exists,"def ensure_dir_exists(path, mode=493):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -355,7 +355,7 @@ e131,ipython,ensure_dir_exists,"def ensure_dir_exists(path, mode=493):","--- a/c
 If it doesn't exist, try to create it and protect against a race condition
 if another process is doing the same.
 
-The default permissions are 755, which differ from os.makedirs default of 777.",test_real,none,history_neg,15
+The default permissions are 755, which differ from os.makedirs default of 777.",none,15
 e138,manim,Section.get_dict,"def get_dict(self, sections_dir: str) -> dict[str, Any]:","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,5 @@
@@ -369,7 +369,7 @@ e138,manim,Section.get_dict,"def get_dict(self, sections_dir: str) -> dict[str, 
 
 The output from this function is used from every section to build the sections index file.
 The output video must have been created in the ``sections_dir`` before executing this method.
-This is the main part of the Segmented Video API.",test_real,none,history_neg,10
+This is the main part of the Segmented Video API.",none,10
 e151,manim,CoordinateSystem.get_graph_label,"def get_graph_label(self, graph: ParametricFunction, label: float | str | Mobject='f(x)', x_val: float | None=None, direction: Sequence[float]=RIGHT, buff: float=MED_SMALL_BUFF, color: ParsableManimColor | None=None, dot: bool=False, dot_config: dict[str, Any] | None=None) -> Mobject:","--- a/code.py
 +++ b/code.py
 @@ -1,9 +1,9 @@
@@ -442,7 +442,7 @@ Examples
                 direction=UR,
             )
 
-            self.add(ax, sin, label)",test_real,none,history_neg,64
+            self.add(ax, sin, label)",none,64
 e156,ipython,test_existing_path_FileLinks,def test_existing_path_FileLinks():,"--- a/code.py
 +++ b/code.py
 @@ -1,11 +1,10 @@
@@ -464,7 +464,7 @@ e156,ipython,test_existing_path_FileLinks,def test_existing_path_FileLinks():,"-
 +        actual.sort()
 +        expected = ['%s/<br>' % td, ""&nbsp;&nbsp;<a href='%s' target='_blank'>%s</a><br>"" % (tf2.name.replace('\\', '/'), split(tf2.name)[1]), ""&nbsp;&nbsp;<a href='%s' target='_blank'>%s</a><br>"" % (tf1.name.replace('\\', '/'), split(tf1.name)[1])]
 +        expected.sort()
-+        assert actual == expected",FileLinks: Calling _repr_html_ functions as expected on existing dir,test_real,none,history_neg,12
++        assert actual == expected",FileLinks: Calling _repr_html_ functions as expected on existing dir,none,12
 e161,manim,rotation_matrix,"def rotation_matrix(angle: float, axis: np.ndarray, homogeneous: bool=False) -> np.ndarray:","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,5 @@
@@ -474,7 +474,7 @@ e161,manim,rotation_matrix,"def rotation_matrix(angle: float, axis: np.ndarray, 
 +    inhomogeneous_rotation_matrix = Rotation.from_rotvec(angle * normalize(axis)).as_matrix()
      if not homogeneous:
          return inhomogeneous_rotation_matrix
-     else:",Rotation in R^3 about a specified axis of rotation.,test_real,none,history_neg,9
+     else:",Rotation in R^3 about a specified axis of rotation.,none,9
 e171,manim,Mobject.length_over_dim,"def length_over_dim(self, dim: int) -> float:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,6 @@
@@ -485,7 +485,7 @@ e171,manim,Mobject.length_over_dim,"def length_over_dim(self, dim: int) -> float
 +    min_coord = self.reduce_across_dimension(min, dim)
 +    if max_coord is None or min_coord is None:
 +        return 0
-     return max_coord - min_coord",Measure the length of an :class:`~.Mobject` in a certain direction.,test_real,none,history_neg,5
+     return max_coord - min_coord",Measure the length of an :class:`~.Mobject` in a certain direction.,none,5
 e178,manim,Line3D.parallel_to,"def parallel_to(cls, line: Line3D, point: Vector3D=ORIGIN, length: float=5, **kwargs) -> Line3D:","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,5 @@
@@ -526,7 +526,7 @@ Examples
             ax = ThreeDAxes((-5, 5), (-5, 5), (-5, 5), 10, 10, 10)
             line1 = Line3D(RIGHT * 2, UP + OUT, color=RED)
             line2 = Line3D.parallel_to(line1, color=YELLOW)
-            self.add(ax, line1, line2)",test_real,none,history_neg,36
+            self.add(ax, line1, line2)",none,36
 e193,AzurLaneAutoScript,atomic_rmtree,def atomic_rmtree(folder: str):,"--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,7 @@
@@ -540,7 +540,7 @@ e193,AzurLaneAutoScript,atomic_rmtree,def atomic_rmtree(folder: str):,"--- a/cod
 +        return
 +    folder_rmtree(temp)","Atomic folder rmtree
 Rename folder as temp folder and remove it,
-folder can be removed by atomic_failure_cleanup at next startup if remove gets interrupted",test_real,none,history_neg,7
+folder can be removed by atomic_failure_cleanup at next startup if remove gets interrupted",none,7
 e203,manim,VMobject.set_sheen_direction,"def set_sheen_direction(self, direction: Vector3D, family: bool=True) -> Self:","--- a/code.py
 +++ b/code.py
 @@ -1,8 +1,8 @@
@@ -571,7 +571,7 @@ Normal usage::
 See Also
 --------
 :meth:`~.VMobject.set_sheen`
-:meth:`~.VMobject.rotate_sheen_direction`",test_real,none,history_neg,25
+:meth:`~.VMobject.rotate_sheen_direction`",none,25
 e208,manim,GenericGraph.change_layout,"def change_layout(self, layout: str | dict='spring', layout_scale: float=2, layout_config: dict | None=None, partitions: list[list[Hashable]] | None=None, root_vertex: Hashable | None=None) -> Graph:","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,10 @@
@@ -604,7 +604,7 @@ Examples
                       )
             self.play(Create(G))
             self.play(G.animate.change_layout(""circular""))
-            self.wait()",test_real,none,history_neg,24
+            self.wait()",none,24
 e106,InstaPy,follow_user,"def follow_user(browser, track, login, user_name, button, blacklist, logger, logfolder):","--- a/code.py
 +++ b/code.py
 @@ -5,47 +5,33 @@
@@ -679,7 +679,7 @@ e106,InstaPy,follow_user,"def follow_user(browser, track, login, user_name, butt
 +                return (False, 'unexpected failure')
      elif track == 'dialog':
          click_element(browser, button)
-         sleep(3)","Follows the user from either its 'profile' page, a 'post' page or the users 'dialog' box",test_real,none,codocbench,64
+         sleep(3)","Follows the user from either its 'profile' page, a 'post' page or the users 'dialog' box",none,64
 e112,paperless-ngx,FetchView.render_to_response,"def render_to_response(self, context, **response_kwargs):","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,7 @@
@@ -689,7 +689,7 @@ e112,paperless-ngx,FetchView.render_to_response,"def render_to_response(self, co
 +        return HttpResponse(GnuPG.decrypted(self.object.thumb_file), content_type=content_types[Document.TYPE_JPG])
      response = HttpResponse(GnuPG.decrypted(self.object.source_file), content_type=content_types[self.object.file_type])
      response['Content-Disposition'] = 'attachment; filename=""{}""'.format(self.object.file_name)
-     return response",Override the default to return the unencrypted PDF as raw data.,test_real,none,codocbench,6
+     return response",Override the default to return the unencrypted PDF as raw data.,none,6
 e116,StratosphereLinuxIPS,test_getProfileIdFromIP,def test_getProfileIdFromIP():,"--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -697,7 +697,7 @@ e116,StratosphereLinuxIPS,test_getProfileIdFromIP,def test_getProfileIdFromIP():
      os.system('./slips.py -c slips.conf -cc')
 -    db.addProfile('profile_192.168.1.1', '00:00', '1')
 +    db.add_profile('profile_192.168.1.1', '00:00', '1')
-     assert db.get_profileid_from_ip(test_ip) is not False",unit test for addProfile and getProfileIdFromIP,test_real,none,codocbench,5
+     assert db.get_profileid_from_ip(test_ip) is not False",unit test for addProfile and getProfileIdFromIP,none,5
 e123,StratosphereLinuxIPS,Main.shutdown_gracefully,def shutdown_gracefully(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,5 @@
@@ -714,7 +714,7 @@ e123,StratosphereLinuxIPS,Main.shutdown_gracefully,def shutdown_gracefully(self)
 +                                break
              except KeyboardInterrupt:
                  pass
-         PIDs = self.PIDs.copy()",Wait for all modules to confirm that they're done processing and then shutdown,test_real,none,codocbench,74
+         PIDs = self.PIDs.copy()",Wait for all modules to confirm that they're done processing and then shutdown,none,74
 e133,pyro,ParamStoreDict.set_state,"def set_state(self, state):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -722,7 +722,7 @@ e133,pyro,ParamStoreDict.set_state,"def set_state(self, state):","--- a/code.py
 +def set_state(self, state: dict):
      assert isinstance(state, dict), 'malformed ParamStore state'
      assert set(state.keys()) == set(['params', 'constraints']), 'malformed ParamStore keys {}'.format(state.keys())
-     for param_name, param in state['params'].items():",Set the ParamStore state using state from a previous get_state() call,test_real,none,codocbench,11
+     for param_name, param in state['params'].items():",Set the ParamStore state using state from a previous get_state() call,none,11
 e142,python-telegram-bot,Chat.add_chat_ids,"def add_chat_ids(self, chat_id: SLT[int]) -> None:","--- a/code.py
 +++ b/code.py
 @@ -1,2 +1,2 @@
@@ -732,7 +732,7 @@ e142,python-telegram-bot,Chat.add_chat_ids,"def add_chat_ids(self, chat_id: SLT[
 
         Args:
             chat_id(:obj:`int` | Tuple[:obj:`int`] | List[:obj:`int`]): Which chat ID(s) to allow
-                through.",test_real,none,codocbench,7
+                through.",none,7
 e150,sentry,DIFCache.get_symcaches,"def get_symcaches(self, project, debug_ids, on_dif_referenced=None, with_conversion_errors=False):","--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,6 @@
@@ -743,7 +743,7 @@ e150,sentry,DIFCache.get_symcaches,"def get_symcaches(self, project, debug_ids, 
 +    symcaches = self._load_cachefiles_via_fs(project, cachefiles, SymCache)
      if with_conversion_errors:
          return (symcaches, dict(((k, v) for k, v in conversion_errors.items())))
-     return symcaches",Given some debug ids returns the symcaches loaded for these debug ids.,test_real,none,codocbench,7
+     return symcaches",Given some debug ids returns the symcaches loaded for these debug ids.,none,7
 e163,AzurLaneAutoScript,Item.name,"def name(self, value):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,6 @@
@@ -755,7 +755,7 @@ e163,AzurLaneAutoScript,Item.name,"def name(self, value):","--- a/code.py
 +            value = pre
      self._name = value","Args:
             value (str): Item name, Camel-Case, such as 'PlateGeneralT3'. Suffix in name will be ignore.
-                For example, 'Javelin' and 'Javelin_2' are different templates, but have same output name 'Javelin'.",test_real,none,codocbench,7
+                For example, 'Javelin' and 'Javelin_2' are different templates, but have same output name 'Javelin'.",none,7
 e176,rasa,FormAction.extract_requested_slot,"def extract_requested_slot(self, tracker: 'DialogueStateTracker', domain: Domain) -> Dict[Text, Any]:","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,4 @@
@@ -764,14 +764,14 @@ e176,rasa,FormAction.extract_requested_slot,"def extract_requested_slot(self, tr
 +def extract_requested_slot(self, tracker: 'DialogueStateTracker', domain: Domain, slot_to_fill: Text) -> Dict[Text, Any]:
      logger.debug(f""Trying to extract requested slot '{slot_to_fill}' ..."")
      requested_slot_mappings = self.get_mappings_for_slot(slot_to_fill, domain)
-     for requested_slot_mapping in requested_slot_mappings:",Extracts the value of requested slot from a user input else return `None`.,test_real,param_added,codocbench,24
+     for requested_slot_mapping in requested_slot_mappings:",Extracts the value of requested slot from a user input else return `None`.,param_added,24
 e187,matplotlib,Affine2DBase.to_values,def to_values(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,3 +1,3 @@
  def to_values(self):
      mtx = self.get_matrix()
 -    return tuple(mtx[:2].swapaxes(0, 1).flatten())
-+    return tuple(mtx[:2].swapaxes(0, 1).flat)","Return the values of the matrix as a sequence (a,b,c,d,e,f)",test_real,none,codocbench,4
++    return tuple(mtx[:2].swapaxes(0, 1).flat)","Return the values of the matrix as a sequence (a,b,c,d,e,f)",none,4
 e199,pytorch_geometric,SAGEConv.forward,"def forward(self, x, edge_index, edge_weight=None, size=None, res_n_id=None):","--- a/code.py
 +++ b/code.py
 @@ -1,11 +1,4 @@
@@ -791,7 +791,7 @@ e199,pytorch_geometric,SAGEConv.forward,"def forward(self, x, edge_index, edge_w
             :obj:`DataFlow`, which is generated by :obj:`NeighborSampler`.
             Are used to select current node features in :obj:`x`, asuming self
             loops are present. Required if :obj:`concatenate` is :obj:`True`.
-            (default: :obj:`None`)",test_real,none,codocbench,17
+            (default: :obj:`None`)",none,17
 e209,pandas,Block.delete,"def delete(self, loc) -> None:","--- a/code.py
 +++ b/code.py
 @@ -1,7 +1,4 @@
@@ -805,4 +805,4 @@ e209,pandas,Block.delete,"def delete(self, loc) -> None:","--- a/code.py
 +def delete(self, loc) -> Block:
 +    values = np.delete(self.values, loc, 0)
 +    mgr_locs = self._mgr_locs.delete(loc)
-+    return type(self)(values, placement=mgr_locs, ndim=self.ndim)",Delete given loc(-s) from block in-place.,test_real,return_changed,codocbench,8
++    return type(self)(values, placement=mgr_locs, ndim=self.ndim)",Delete given loc(-s) from block in-place.,return_changed,8

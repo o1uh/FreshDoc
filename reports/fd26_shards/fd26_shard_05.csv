@@ -1,4 +1,4 @@
-err_id,project,symbol,sig_old,diff_code,doc_old,split,sig_type,source,n_src_lines
+err_id,project,symbol,sig_old,diff_code,doc_old,sig_type,n_src_lines
 e003,ipython,arg_split,"def arg_split(s, posix=False, strict=True):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -15,7 +15,7 @@ in inputs are respected.
 if strict=False, then any errors shlex.split would raise will result in the
 unparsed remainder being the last element of the list, rather than raising.
 This is because we sometimes use arg_split to parse things other than
-command-line args.",gold,param_renamed,gold,26
+command-line args.",param_renamed,26
 e014,ipython,test_existing_path_FileLinks_alt_formatter,def test_existing_path_FileLinks_alt_formatter():,"--- a/code.py
 +++ b/code.py
 @@ -1,14 +1,13 @@
@@ -42,7 +42,7 @@ e014,ipython,test_existing_path_FileLinks_alt_formatter,def test_existing_path_F
 +        actual.sort()
 +        expected = ['hello', 'world']
 +        expected.sort()
-+        assert actual == expected",FileLinks: Calling _repr_html_ functions as expected w/ an alt formatter,test_real,none,history_neg,15
++        assert actual == expected",FileLinks: Calling _repr_html_ functions as expected w/ an alt formatter,none,15
 e016,DeepFaceLive,Faceset.add_UImage,"def add_UImage(self, uimage_or_list: UImage, format: str='webp', quality: int=100):","--- a/code.py
 +++ b/code.py
 @@ -5,11 +5,8 @@
@@ -86,7 +86,7 @@ e016,DeepFaceLive,Faceset.add_UImage,"def add_UImage(self, uimage_or_list: UImag
                         jpg
                         jp2 ( jpeg2000 )
 
-         quality(100)   0-100 for formats jpg,jp2,webp",gold,none,gold,38
+         quality(100)   0-100 for formats jpg,jp2,webp",none,38
 e018,akshare,macro_uk_bank_rate,def macro_uk_bank_rate():,"--- a/code.py
 +++ b/code.py
 @@ -1,11 +1,3 @@
@@ -105,7 +105,7 @@ e018,akshare,macro_uk_bank_rate,def macro_uk_bank_rate():,"--- a/code.py
      return temp_df","东方财富-经济数据-英国-央行公布利率决议
     http://data.eastmoney.com/cjsj/foreign_4_3.html
     :return: 央行公布利率决议
-    :rtype: pandas.DataFrame",gold,return_changed,gold,15
+    :rtype: pandas.DataFrame",return_changed,15
 e020,TTS,VitsGeneratorLoss.forward,"def forward(self, waveform, waveform_hat, z_p, logs_q, m_p, logs_p, z_len, scores_disc_fake, feats_disc_fake, feats_disc_real, loss_duration, fine_tuning_mode=False, use_speaker_encoder_as_loss=False, gt_spk_emb=None, syn_spk_emb=None):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -123,7 +123,7 @@ e020,TTS,VitsGeneratorLoss.forward,"def forward(self, waveform, waveform_hat, z_
     - z_len: :math:`[B]`
     - scores_disc_fake[i]: :math:`[B, C]`
     - feats_disc_fake[i][j]: :math:`[B, C, T', P]`
-    - feats_disc_real[i][j]: :math:`[B, C, T', P]`",gold,default_changed,gold,37
+    - feats_disc_real[i][j]: :math:`[B, C, T', P]`",default_changed,37
 e029,AzurLaneAutoScript,MissionHandler.os_mission_enter,"def os_mission_enter(self, skip_first_screenshot=True):","--- a/code.py
 +++ b/code.py
 @@ -1,11 +1,7 @@
@@ -143,7 +143,7 @@ e029,AzurLaneAutoScript,MissionHandler.os_mission_enter,"def os_mission_enter(se
 
 Pages:
     in: MISSION_ENTER
-    out: MISSION_CHECK",gold,param_removed,gold,40
+    out: MISSION_CHECK",param_removed,40
 e036,frappe,EmailAccount.get_inbound_mails,"def get_inbound_mails(self, test_mails=None):","--- a/code.py
 +++ b/code.py
 @@ -9,12 +9,10 @@
@@ -160,7 +160,7 @@ e036,frappe,EmailAccount.get_inbound_mails,"def get_inbound_mails(self, test_mai
          seen_status = 1 if messages['seen_status'][uid] == 'SEEN' else 0
          mails.append(InboundMail(message, self, uid, seen_status))","retrive and return inbound mails.
 
-		TODO: Handle for tests",gold,none,gold,24
+		TODO: Handle for tests",none,24
 e041,flask,htmlsafe_dumps,"def htmlsafe_dumps(obj, **kwargs):","--- a/code.py
 +++ b/code.py
 @@ -1,2 +1,2 @@
@@ -181,7 +181,7 @@ e041,flask,htmlsafe_dumps,"def htmlsafe_dumps(obj, **kwargs):","--- a/code.py
     .. versionchanged:: 0.10
         Single quotes are escaped, making this safe to use in HTML,
         ``<script>`` tags, and single-quoted attributes without further
-        escaping.",gold,none,gold,18
+        escaping.",none,18
 e045,celery,BaseAsyncResult.status,def status(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,2 +1,2 @@
@@ -212,7 +212,7 @@ e045,celery,BaseAsyncResult.status,def status(self):,"--- a/code.py
             *SUCCESS*
 
                 The task executed successfully. The :attr:`result` attribute
-                contains the resulting value.",gold,none,gold,28
+                contains the resulting value.",none,28
 e058,QUANTAXIS,QA_fetch_ctp_tick,"def QA_fetch_ctp_tick(code, format='pd', collections=DATABASE.ctp_tick):","--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,6 @@
@@ -232,7 +232,7 @@ e058,QUANTAXIS,QA_fetch_ctp_tick,"def QA_fetch_ctp_tick(code, format='pd', colle
         collections {[type]} -- [description] (default: {DATABASE.ctp_tick})
     
     Returns:
-        [type] -- [description]",gold,none,gold,19
+        [type] -- [description]",none,19
 e074,diffusers,StableDiffusionXLControlNetPipeline.get_guidance_scale_embedding,"def get_guidance_scale_embedding(self, w, embedding_dim=512, dtype=torch.float32):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -251,7 +251,7 @@ e074,diffusers,StableDiffusionXLControlNetPipeline.get_guidance_scale_embedding,
                 data type of the generated embeddings
 
         Returns:
-            `torch.FloatTensor`: Embedding vectors with shape `(len(timesteps), embedding_dim)`",gold,return_changed,gold,24
+            `torch.FloatTensor`: Embedding vectors with shape `(len(timesteps), embedding_dim)`",return_changed,24
 e079,manim,straight_path,def straight_path(*args) -> PATH_FUNC_TYPE:,"--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,2 @@
@@ -299,7 +299,7 @@ Examples
                     run_time=2,
                 )
             )
-            self.wait()",gold,param_removed,gold,45
+            self.wait()",param_removed,45
 e088,rasa,read_yaml,"def read_yaml(content: Text, reader_type: Union[Text, List[Text]]='rt') -> Any:","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -314,7 +314,7 @@ Args:
     reader_type: Reader type to use. By default ""safe"" will be used.
 
 Raises:
-    ruamel.yaml.parser.ParserError: If there was an error when parsing the YAML.",gold,default_changed,gold,15
+    ruamel.yaml.parser.ParserError: If there was an error when parsing the YAML.",default_changed,15
 e095,AzurLaneAutoScript,Camera.in_sight,"def in_sight(self, location, sight=(-3, -1, 3, 2)):","--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,8 @@
@@ -330,7 +330,7 @@ e095,AzurLaneAutoScript,Camera.in_sight,"def in_sight(self, location, sight=(-3,
 
         Args:
             location:
-            sight:",gold,default_changed,gold,22
+            sight:",default_changed,22
 e097,erpnext,reconcile_against_document,def reconcile_against_document(args):,"--- a/code.py
 +++ b/code.py
 @@ -1,16 +1,25 @@
@@ -368,7 +368,7 @@ e097,erpnext,reconcile_against_document,def reconcile_against_document(args):,"-
          frappe.flags.ignore_party_validation = False
 -        if d.voucher_type in ('Payment Entry', 'Journal Entry'):
 +        if entry.voucher_type in ('Payment Entry', 'Journal Entry'):
-             doc.update_expense_claim()","Cancel JV, Update aginst document, split if required and resubmit jv",gold,none,gold,17
+             doc.update_expense_claim()","Cancel JV, Update aginst document, split if required and resubmit jv",none,17
 e101,TTS,mailabs,"def mailabs(root_path, meta_files=None, ununsed_speakers=None):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -392,7 +392,7 @@ e101,TTS,mailabs,"def mailabs(root_path, meta_files=None, ununsed_speakers=None)
 Args:
     root_path (str): root folder of the MAILAB language folder.
     meta_files (str):  list of meta files to be used in the training. If None, finds all the csv files
-        recursively. Defaults to None",gold,param_renamed,gold,40
+        recursively. Defaults to None",param_renamed,40
 e105,locust,FastResponse.text,def text(self):,"--- a/code.py
 +++ b/code.py
 @@ -6,4 +6,4 @@
@@ -401,7 +401,7 @@ e105,locust,FastResponse.text,def text(self):,"--- a/code.py
              self.encoding = self.headers.get('content-type', '').partition('charset=')[2] or 'utf-8'
 -    return unicode(self.content, self.encoding, errors='replace')
 +    return str(self.content, self.encoding, errors='replace')","Returns the text content of the response as a decoded string
-        (unicode on python2)",gold,none,gold,11
+        (unicode on python2)",none,11
 e110,TTS,Xtts.full_inference,"def full_inference(self, text, ref_audio_path, language, temperature=0.65, length_penalty=1, repetition_penalty=2.0, top_k=50, top_p=0.85, do_sample=True, gpt_cond_len=6, max_ref_len=10, sound_norm_refs=False, decoder_iterations=100, cond_free=True, cond_free_k=2, diffusion_temperature=1.0, decoder_sampler='ddim', decoder='hifigan', **hf_generate_kwargs):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -442,7 +442,7 @@ Args:
 
 Returns:
     Generated audio clip(s) as a torch tensor. Shape 1,S if k=1 else, (k,1,S) where S is the sample length.
-    Sample rate is 24kHz.",gold,param_removed,gold,38
+    Sample rate is 24kHz.",param_removed,38
 e113,loguru,Logger.patch,"def patch(self, patcher):","--- a/code.py
 +++ b/code.py
 @@ -1,3 +1,3 @@
@@ -490,7 +490,7 @@ e113,loguru,Logger.patch,"def patch(self, patcher):","--- a/code.py
         >>> def recv_record_from_network(pipe):
         ...     record = pickle.loads(pipe.read())
         ...     level, message = record[""level""], record[""message""]
-        ...     logger.patch(lambda r: r.update(record)).log(level, message)",gold,none,gold,44
+        ...     logger.patch(lambda r: r.update(record)).log(level, message)",none,44
 e120,TTS,check_config_and_model_args,"def check_config_and_model_args(config, arg_name, value):","--- a/code.py
 +++ b/code.py
 @@ -4,4 +4,4 @@
@@ -503,7 +503,7 @@ e120,TTS,check_config_and_model_args,"def check_config_and_model_args(config, ar
 
     It is to patch up the compatibility between models with and without `model_args`.
 
-    TODO: Remove this in the future with a unified approach.",gold,exception_changed,gold,13
+    TODO: Remove this in the future with a unified approach.",exception_changed,13
 e127,ipython,catch_corrupt_db,"def catch_corrupt_db(f, self, *a, **kw):","--- a/code.py
 +++ b/code.py
 @@ -1,31 +1,35 @@
@@ -577,7 +577,7 @@ a corrupt SQLite database, move the old database out of the way, and create
 a new one.
 
 We avoid clobbering larger databases because this may be triggered due to filesystem issues,
-not just a corrupt file.",gold,param_removed,gold,37
+not just a corrupt file.",param_removed,37
 e141,manim,LinearTransformationScene.add_title,"def add_title(self, title, scale_factor=1.5, animate=False):","--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,6 @@
@@ -605,7 +605,7 @@ e141,manim,LinearTransformationScene.add_title,"def add_title(self, title, scale
         Returns
         -------
         LinearTransformationScene
-            The scene with the title added to it.",gold,none,gold,29
+            The scene with the title added to it.",none,29
 e153,gpt_academic,predict,"def predict(inputs, llm_kwargs, *args, **kwargs):","--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -619,7 +619,7 @@ e153,gpt_academic,predict,"def predict(inputs, llm_kwargs, *args, **kwargs):","-
     top_p, temperature是LLM的内部调优参数
     history 是之前的对话列表（注意无论是inputs还是history，内容太长了都会触发token数量溢出的错误）
     chatbot 为WebUI中显示的对话列表，修改它，然后yeild出去，可以直接修改对话界面内容
-    additional_fn代表点击的哪个按钮，按钮见functional.py",gold,none,gold,11
+    additional_fn代表点击的哪个按钮，按钮见functional.py",none,11
 e169,matplotlib,ColorbarBase.set_label,"def set_label(self, label, *, loc=None, **kwargs):","--- a/code.py
 +++ b/code.py
 @@ -17,6 +17,8 @@
@@ -650,7 +650,7 @@ e169,matplotlib,ColorbarBase.set_label,"def set_label(self, label, *, loc=None, 
         **kwargs
             Keyword arguments are passed to `~.Axes.set_xlabel` /
             `~.Axes.set_ylabel`.
-            Supported keywords are *labelpad* and `.Text` properties.",gold,none,gold,40
+            Supported keywords are *labelpad* and `.Text` properties.",none,40
 e180,AzurLaneAutoScript,MedalShop2.shop_items,def shop_items(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,2 +1,2 @@
@@ -661,7 +661,7 @@ so to use  @Config must define
 a unique alias as cover
 
 Returns:
-    ShopItemGrid:",gold,return_changed,gold,8
+    ShopItemGrid:",return_changed,8
 e189,manim,test_deprecate_func_param_redirect_lambda,def test_deprecate_func_param_redirect_lambda(warn_caplog_manim):,"--- a/code.py
 +++ b/code.py
 @@ -1,7 +1,7 @@
@@ -674,7 +674,7 @@ e189,manim,test_deprecate_func_param_redirect_lambda,def test_deprecate_func_par
 +    assert len(manim_caplog.record_tuples) == 1
 +    msg = _get_caplog_record_msg(manim_caplog)
      assert msg == 'The parameter runtime_in_ms of method Top.qux has been deprecated and may be removed in a later version.'
-     assert obj == {'run_time': 0.5}",Test the deprecation of a method parameter and redirecting it to a new one using lambda function.,gold,param_renamed,gold,8
+     assert obj == {'run_time': 0.5}",Test the deprecation of a method parameter and redirecting it to a new one using lambda function.,param_renamed,8
 e202,TTS,Xtts.get_gpt_cond_latents,"def get_gpt_cond_latents(self, audio, sr, length: int=3):","--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,15 @@
@@ -699,7 +699,7 @@ e202,TTS,Xtts.get_gpt_cond_latents,"def get_gpt_cond_latents(self, audio, sr, le
 
         Args:
             audio_path (str): Path to the audio file.
-            length (int): Length of the audio in seconds. Defaults to 3.",gold,none,gold,11
+            length (int): Length of the audio in seconds. Defaults to 3.",none,11
 e134,TTS,BaseTTS.on_init_start,"def on_init_start(self, trainer):","--- a/code.py
 +++ b/code.py
 @@ -1,12 +1,12 @@
@@ -716,7 +716,7 @@ e134,TTS,BaseTTS.on_init_start,"def on_init_start(self, trainer):","--- a/code.p
 +        print(f' > `speakers.pth` is saved to {output_path}.')
          print(' > `speakers_file` is updated in the config.json.')
      if hasattr(self, 'language_manager') and self.language_manager is not None:
-         output_path = os.path.join(trainer.output_path, 'language_ids.json')",Save the speaker.json and language_ids.json at the beginning of the training. Also update both paths.,test_real,none,codocbench,20
+         output_path = os.path.join(trainer.output_path, 'language_ids.json')",Save the speaker.json and language_ids.json at the beginning of the training. Also update both paths.,none,20
 e143,frappe,PathResolver.resolve,def resolve(self):,"--- a/code.py
 +++ b/code.py
 @@ -6,8 +6,8 @@
@@ -729,14 +729,14 @@ e143,frappe,PathResolver.resolve,def resolve(self):,"--- a/code.py
 +        return (frappe.flags.redirect_location, RedirectPage(self.path, e.http_status_code))
      if frappe.get_hooks('website_path_resolver'):
          for handler in frappe.get_hooks('website_path_resolver'):
-             endpoint = frappe.get_attr(handler)(self.path)",Returns endpoint and a renderer instance that can render the endpoint,test_real,none,codocbench,25
+             endpoint = frappe.get_attr(handler)(self.path)",Returns endpoint and a renderer instance that can render the endpoint,none,25
 e155,rasa,set_markers_sample_arguments,def set_markers_sample_arguments(parser: argparse.ArgumentParser) -> None:,"--- a/code.py
 +++ b/code.py
 @@ -1,3 +1,3 @@
  def set_markers_sample_arguments(parser: argparse.ArgumentParser) -> None:
 -    parser.add_argument('--seed', type=int, help=""Seed to use if selecting trackers by 'sample'"")
 +    parser.add_argument('--seed', type=int, help=""Seed to use if selecting trackers by 'sample_n'"")
-     parser.add_argument('count', type=int, help='The number of trackers to extract markers from')",Specifies arguments for `rasa evaluate markers by_sample`.,test_real,none,codocbench,4
+     parser.add_argument('count', type=int, help='The number of trackers to extract markers from')",Specifies arguments for `rasa evaluate markers by_sample`.,none,4
 e164,CrackMapExec,database.add_computer,"def add_computer(self, ip, hostname, domain, os, smbv1, signing, spooler=None, zerologon=None, petitpotam=None, dc=None):","--- a/code.py
 +++ b/code.py
 @@ -30,7 +30,8 @@
@@ -748,7 +748,7 @@ e164,CrackMapExec,database.add_computer,"def add_computer(self, ip, hostname, do
 +                hosts.append(computer_data)
      logging.debug(f'Update Hosts: {hosts}')
      q = Insert(self.ComputersTable)
-     q = q.on_conflict_do_update(index_elements=self.ComputersTable.primary_key, set_=self.ComputersTable.columns)","Check if this host has already been added to the database, if not, add it in.",test_real,none,codocbench,38
+     q = q.on_conflict_do_update(index_elements=self.ComputersTable.primary_key, set_=self.ComputersTable.columns)","Check if this host has already been added to the database, if not, add it in.",none,38
 e177,python3-saml,OneLogin_Saml2_Logout_Request_Test.testGetNameId,def testGetNameId(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,14 +1,14 @@
@@ -768,7 +768,7 @@ e177,python3-saml,OneLogin_Saml2_Logout_Request_Test.testGetNameId,def testGetNa
      key = settings.get_sp_key()
 -    name_id_3 = OneLogin_Saml2_Logout_Request.get_name_id(request_2, key)
 +    name_id_3 = OneLogin_Saml2_Logout_Request.get_nameid(request_2, key)
-     self.assertEqual('ONELOGIN_9c86c4542ab9d6fce07f2f7fd335287b9b3cdf69', name_id_3)",Tests the get_name_id of the OneLogin_Saml2_LogoutRequest,test_real,none,codocbench,15
+     self.assertEqual('ONELOGIN_9c86c4542ab9d6fce07f2f7fd335287b9b3cdf69', name_id_3)",Tests the get_name_id of the OneLogin_Saml2_LogoutRequest,none,15
 e191,pysc2,RendererHuman.get_mouse_pos,"def get_mouse_pos(self, window_pos=None):","--- a/code.py
 +++ b/code.py
 @@ -5,4 +5,4 @@
@@ -776,7 +776,7 @@ e191,pysc2,RendererHuman.get_mouse_pos,"def get_mouse_pos(self, window_pos=None)
              surf_rel_pt = window_pt - surf.surf_rect.tl
              world_pt = surf.world_to_surf.back_pt(surf_rel_pt)
 -            return MousePos(world_pt, surf.surf_type)
-+            return MousePos(world_pt, surf)",Return a MousePos filled with the world and screen/minimap positions.,test_real,none,codocbench,9
++            return MousePos(world_pt, surf)",Return a MousePos filled with the world and screen/minimap positions.,none,9
 e200,zulip,GetSubscribersTest.test_gather_subscriptions,def test_gather_subscriptions(self):,"--- a/code.py
 +++ b/code.py
 @@ -5,8 +5,14 @@
@@ -793,7 +793,7 @@ e200,zulip,GetSubscribersTest.test_gather_subscriptions,def test_gather_subscrip
 +    self.assert_user_got_subscription_notification(msg)
      with queries_captured() as queries:
          subscriptions = gather_subscriptions(self.user_profile)
-     self.assertTrue(len(subscriptions[0]) >= 11)",gather_subscriptions returns correct results with only 3 queries,test_real,none,codocbench,18
+     self.assertTrue(len(subscriptions[0]) >= 11)",gather_subscriptions returns correct results with only 3 queries,none,18
 e210,public-apis,check_duplicate_links,def check_duplicate_links(links: List[str]) -> bool:,"--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,4 @@
@@ -814,4 +814,4 @@ e210,public-apis,check_duplicate_links,def check_duplicate_links(links: List[str
 +    if duplicates:
          has_duplicate = True
 -    return has_duplicate
-+    return (has_duplicate, duplicates)",Check for duplicated links and return True or False.,test_real,return_changed,codocbench,17
++    return (has_duplicate, duplicates)",Check for duplicated links and return True or False.,return_changed,17

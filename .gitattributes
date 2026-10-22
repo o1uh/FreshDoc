@@ -1,0 +1,9 @@
+# FD-26: байт-детерминизм артефактов (ключи sha1 в манифесте, hexdigest-цитаты,
+# побайтовые response-файлы) — всегда LF, независимо от core.autocrlf.
+# Без этого checkout на Windows превращает \n в \r\n внутри многострочных
+# полей CSV и ключи перестают сходиться (поймано проверкой combine --check).
+reports/fd26*.csv text eol=lf
+reports/fd26_batches/** text eol=lf
+reports/fd26_shards/** text eol=lf
+reports/tables/fd26*.json text eol=lf
+prompts/fd26*.txt text eol=lf

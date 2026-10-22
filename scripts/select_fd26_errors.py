@@ -14,9 +14,11 @@
 Выходы (всё детерминировано, повторный прогон байт-идентичен по manifest-ключам):
 - reports/fd26_errors_full.csv — с метками, скором M2 и флагами усечения (НЕ показывать LLM);
 - reports/fd26_for_annotation.csv — слепая (err_id, project, symbol, sig_old, diff_code,
-  doc_old, split, sig_type, source, n_src_lines);
+  doc_old, sig_type, n_src_lines); split/source исключены: в test_real source
+  детерминирует метку (codocbench→1/FN, history_neg→0/FP); sig_type оставлен —
+  смена сигнатуры видна прямо в диффе;
 - reports/fd26_shards/fd26_shard_00..05.csv — та же слепая, по 35 строк для параллельных агентов;
-- reports/tables/fd26_manifest.json — tau/T, счётчики, ключи sha1(diff+doc), доли усечения.
+- reports/tables/fd26_manifest.json — tau/T, счётчики, ключи sha1(diff+\\x00+doc), доли усечения.
 
 Ожидаемо (калибровка FD-25, tau=0.874...): gold 62 (57 FP + 5 FN),
 test_real 148 (44 FP + 104 FN), итого 210.
@@ -25,7 +27,6 @@ test_real 148 (44 FP + 104 FN), итого 210.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import sys
 from datetime import datetime, timezone
@@ -36,6 +37,8 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 import pandas as pd
+
+from src.fd26util import key_of
 
 IN_DATASET = PROJECT_ROOT / "data" / "processed" / "dataset_v1.parquet"
 IN_PRED = PROJECT_ROOT / "reports" / "preds" / "m2_calibrated.csv"
@@ -49,10 +52,6 @@ MODEL_NAME = "microsoft/unixcoder-base"
 MAX_LEN = 1024
 DOC_BUDGET = 384
 N_SHARDS_DEFAULT = 6
-
-
-def key_of(diff_code: str, doc_old: str) -> str:
-    return hashlib.sha1((str(diff_code or "") + str(doc_old or "")).encode("utf-8")).hexdigest()
 
 
 def main() -> None:
@@ -141,7 +140,7 @@ def main() -> None:
     full.to_csv(out_full, index=False)
 
     anno_cols = ["err_id", "project", "symbol", "sig_old", "diff_code", "doc_old",
-                 "split", "sig_type", "source", "n_src_lines"]
+                 "sig_type", "n_src_lines"]
     anno = err[anno_cols].copy()
     out_anno = Path(args.out_anno)
     anno.to_csv(out_anno, index=False)
@@ -200,7 +199,7 @@ def main() -> None:
         "keys": {str(r["err_id"]): key_of(r["diff_code"], r["doc_old"])
                  for _, r in err.iterrows()},
         "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "note": ("Слепая разметка LLM (Spark + Gemini) — только anno/shards, без "
+        "note": ("Слепая разметка LLM — только anno/shards, без split/source, "
                  "label_stale/m2_p/error_type/truncated. Full — для сведения споров и репорта."),
     }
     out_manifest = Path(args.manifest)

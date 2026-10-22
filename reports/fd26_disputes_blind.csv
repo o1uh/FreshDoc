@@ -1,0 +1,516 @@
+err_id,project,symbol,sig_old,diff_code,doc_old,sig_type,n_src_lines,label,stale_statement,why
+e010,pytorch,GetGPUMemoryUsageStats,def GetGPUMemoryUsageStats():,"--- a/code.py
++++ b/code.py
+@@ -1,5 +1,5 @@
+ def GetGPUMemoryUsageStats():
+     from caffe2.python import workspace, core
+-    workspace.RunOperatorOnce(core.CreateOperator('GetGPUMemoryUsage', [], ['____mem____'], device_option=core.DeviceOption(caffe2_pb2.CUDA, 0)))
++    workspace.RunOperatorOnce(core.CreateOperator('GetGPUMemoryUsage', [], ['____mem____'], device_option=core.DeviceOption(workspace.GpuDeviceType, 0)))
+     b = workspace.FetchBlob('____mem____')
+     return {'total_by_gpu': b[0, :], 'max_by_gpu': b[1, :], 'total': np.sum(b[0, :]), 'max_total': np.sum(b[1, :])}","Get GPU memory usage stats from CUDAContext. This requires flag
+       --caffe2_gpu_memory_tracking to be enabled",none,7,,,
+e017,django-rest-framework,urlize_quoted_links,"def urlize_quoted_links(text, trim_url_limit=None, nofollow=True, autoescape=True):","--- a/code.py
++++ b/code.py
+@@ -2,20 +2,34 @@
+     trim_url = lambda x, limit=trim_url_limit: limit is not None and (len(x) > limit and '%s...' % x[:max(0, limit - 3)]) or x
+     safe_input = isinstance(text, SafeData)
+     words = word_split_re.split(force_text(text))
+-    nofollow_attr = nofollow and ' rel=""nofollow""' or ''
+     for i, word in enumerate(words):
+         match = None
+         if '.' in word or '@' in word or ':' in word:
+-            match = punctuation_re.match(word)
+-        if match:
+-            lead, middle, trail = match.groups()
++            lead, middle, trail = ('', word, '')
++            for punctuation in TRAILING_PUNCTUATION:
++                if middle.endswith(punctuation):
++                    middle = middle[:-len(punctuation)]
++                    trail = punctuation + trail
++            for opening, closing in WRAPPING_PUNCTUATION:
++                if middle.startswith(opening):
++                    middle = middle[len(opening):]
++                    lead = lead + opening
++                if middle.endswith(closing) and middle.count(closing) == middle.count(opening) + 1:
++                    middle = middle[:-len(closing)]
++                    trail = closing + trail
+             url = None
+-            if middle.startswith('http://') or middle.startswith('https://'):
+-                url = middle
+-            elif middle.startswith('www.') or ('@' not in middle and middle and (middle[0] in string.ascii_letters + string.digits) and (middle.endswith('.org') or middle.endswith('.net') or middle.endswith('.com'))):
+-                url = 'http://%s' % middle
+-            elif '@' in middle and (not ':' in middle) and simple_email_re.match(middle):
+-                url = 'mailto:%s' % middle
++            nofollow_attr = ' rel=""nofollow""' if nofollow else ''
++            if simple_url_re.match(middle):
++                url = smart_urlquote(middle)
++            elif simple_url_2_re.match(middle):
++                url = smart_urlquote('http://%s' % middle)
++            elif not ':' in middle and simple_email_re.match(middle):
++                local, domain = middle.rsplit('@', 1)
++                try:
++                    domain = domain.encode('idna').decode('ascii')
++                except UnicodeError:
++                    continue
++                url = 'mailto:%s@%s' % (local, domain)
+                 nofollow_attr = ''
+             if url:
+                 trimmed = trim_url(middle)
+@@ -32,4 +46,4 @@
+             words[i] = mark_safe(word)
+         elif autoescape:
+             words[i] = escape(word)
+-    return mark_safe(''.join(words))
++    return ''.join(words)","Converts any URLs in text into clickable links.
+
+    Works on http://, https://, www. links and links ending in .org, .net or
+    .com. Links can have trailing punctuation (periods, commas, close-parens)
+    and leading punctuation (opening parens) and it'll still do the right
+    thing.
+
+    If trim_url_limit is not None, the URLs in link text longer than this limit
+    will truncated to trim_url_limit-3 characters and appended with an elipsis.
+
+    If nofollow is True, the URLs in link text will get a rel=""nofollow""
+    attribute.
+
+    If autoescape is True, the link text and URLs will get autoescaped.",none,49,,,
+e021,StratosphereLinuxIPS,Daemon.setup_std_streams,def setup_std_streams(self):,"--- a/code.py
++++ b/code.py
+@@ -1,8 +1,10 @@
+ def setup_std_streams(self):
+     std_streams = [self.stderr, self.stdout, self.logsfile]
+     for file in std_streams:
++        if '-S' in sys.argv and file == self.stdout:
++            continue
+         try:
+             open(file, 'w').close()
+-        except FileNotFoundError:
++        except (FileNotFoundError, NotADirectoryError):
+             os.mkdir(os.path.dirname(file))
+             open(file, 'w').close()",Create standard steam files and dirs and clear logs file,none,9,,,
+e027,python3-saml,OneLogin_Saml2_Response.validate_signed_elements,"def validate_signed_elements(self, signed_elements):","--- a/code.py
++++ b/code.py
+@@ -8,9 +8,9 @@
+     if response_tag in signed_elements:
+         expected_signature_nodes = OneLogin_Saml2_XML.query(self.document, OneLogin_Saml2_Utils.RESPONSE_SIGNATURE_XPATH)
+         if len(expected_signature_nodes) != 1:
+-            raise Exception('Unexpected number of Response signatures found. SAML Response rejected.')
++            raise OneLogin_Saml2_ValidationError('Unexpected number of Response signatures found. SAML Response rejected.', OneLogin_Saml2_ValidationError.WRONG_NUMBER_OF_SIGNATURES_IN_RESPONSE)
+     if assertion_tag in signed_elements:
+         expected_signature_nodes = self.__query(OneLogin_Saml2_Utils.ASSERTION_SIGNATURE_XPATH)
+         if len(expected_signature_nodes) != 1:
+-            raise Exception('Unexpected number of Assertion signatures found. SAML Response rejected.')
++            raise OneLogin_Saml2_ValidationError('Unexpected number of Assertion signatures found. SAML Response rejected.', OneLogin_Saml2_ValidationError.WRONG_NUMBER_OF_SIGNATURES_IN_ASSERTION)
+     return True",Verifies that the document has the expected signed nodes.,exception_changed,17,,,
+e033,AzurLaneAutoScript,EventStory.get_event_story_state,def get_event_story_state(self):,"--- a/code.py
++++ b/code.py
+@@ -9,4 +9,6 @@
+         return 'story'
+     if self.appear_then_click(BATTLE_MIDDLE, offset=(20, 200)):
+         return 'story'
++    if self.get_event_20250724_button():
++        return 'story_alchemist'
+     return 'unknown'","Returns:
+    str: 'finish', 'story', 'unknown'",none,14,,,
+e035,StratosphereLinuxIPS,Module.check_unknown_port,"def check_unknown_port(self, dport, proto, daddr, profileid, twid, uid, timestamp):","--- a/code.py
++++ b/code.py
+@@ -7,3 +7,4 @@
+         return False
+     if not 'icmp' in proto and (not self.is_p2p(dport, proto, daddr)) and (not __database__.is_ftp_port(dport)):
+         self.helper.set_evidence_unknown_port(daddr, dport, proto, timestamp, profileid, twid, uid)
++        return True",Checks dports that are not in our slips_files/ports_info/ files,none,10,,,
+e037,manim,scene,def scene(**args):,"--- a/code.py
++++ b/code.py
+@@ -1,12 +1,12 @@
+ @cloup.command(context_settings=CONTEXT_SETTINGS, no_args_is_help=True, epilog=EPILOG)
+ @cloup.argument('scene_name', type=str, required=True)
+ @cloup.argument('file_name', type=str, required=False)
+-def scene(**args):
+-    template_name = click.prompt('template', type=click.Choice(get_template_names(), False), default='Default')
++def scene(**kwargs: Any) -> None:
++    template_name: str = click.prompt('template', type=click.Choice(get_template_names(), False), default='Default')
+     scene = (get_template_path() / f'{template_name}.mtp').resolve().read_text()
+-    scene = scene.replace(template_name + 'Template', args['scene_name'], 1)
+-    if args['file_name']:
+-        file_name = Path(args['file_name'])
++    scene = scene.replace(template_name + 'Template', kwargs['scene_name'], 1)
++    if kwargs['file_name']:
++        file_name = Path(kwargs['file_name'])
+         if file_name.suffix != '.py':
+             file_name = file_name.with_suffix(file_name.suffix + '.py')
+         if file_name.is_file():","Inserts a SCENE to an existing FILE or creates a new FILE.
+
+SCENE is the name of the scene that will be inserted.
+
+FILE is the name of file in which the SCENE will be inserted.",param_renamed,25,,,
+e047,TTS,TTSTokenizer.encode,"def encode(self, text: str) -> List[int]:","--- a/code.py
++++ b/code.py
+@@ -1,6 +1,11 @@
+ def encode(self, text: str) -> List[int]:
+     token_ids = []
+     for char in text:
+-        idx = self.characters.char_to_id(char)
+-        token_ids.append(idx)
++        try:
++            idx = self.characters.char_to_id(char)
++            token_ids.append(idx)
++        except KeyError:
++            if char not in self.not_found_characters:
++                self.not_found_characters.append(char)
++                print(f' [!] Character {repr(char)} not found in the vocabulary. Discarding it.')
+     return token_ids",Encodes a string of text as a sequence of IDs.,none,7,,,
+e048,python-telegram-bot,InlineKeyboardMarkup.from_column,"def from_column(cls, button_column: List[InlineKeyboardButton], **kwargs: object) -> 'InlineKeyboardMarkup':","--- a/code.py
++++ b/code.py
+@@ -1,3 +1,3 @@
+-def from_column(cls, button_column: List[InlineKeyboardButton], **kwargs: object) -> 'InlineKeyboardMarkup':
++def from_column(cls, button_column: Sequence[InlineKeyboardButton], **kwargs: object) -> 'InlineKeyboardMarkup':
+     button_grid = [[button] for button in button_column]
+     return cls(button_grid, **kwargs)","Shortcut for::
+
+            InlineKeyboardMarkup([[button] for button in button_column], **kwargs)
+
+        Return an InlineKeyboardMarkup from a single column of InlineKeyboardButtons
+
+        Args:
+            button_column (List[:class:`telegram.InlineKeyboardButton`]): The button to use in the
+                markup",none,12,,,
+e054,magenta,Metronome.run,def run(self):,"--- a/code.py
++++ b/code.py
+@@ -7,7 +7,13 @@
+         if self._stop_time is not None and self._stop_time < tick_time:
+             break
+         sleeper.sleep_until(tick_time)
+-        metric_position = tick_number % len(self._pitches)
+-        self._outport.send(mido.Message(type='note_on', note=self._pitches[metric_position], channel=_METRONOME_CHANNEL, velocity=self._velocity))
+-        sleeper.sleep(self._duration)
+-        self._outport.send(mido.Message(type='note_off', note=self._pitches[metric_position], channel=_METRONOME_CHANNEL))
++        metric_position = tick_number % len(self._messages)
++        tick_message = self._messages[metric_position]
++        if tick_message is None:
++            continue
++        tick_message.channel = self._channel
++        self._outport.send(tick_message)
++        if tick_message.type == 'note_on':
++            sleeper.sleep(self._duration)
++            end_tick_message = mido.Message('note_off', note=tick_message.note, channel=self._channel)
++            self._outport.send(end_tick_message)",Outputs metronome tone on the qpm interval until stop signal received.,none,14,,,
+e060,celery-once,force_string,def force_string(kwargs):,"--- a/code.py
++++ b/code.py
+@@ -1,6 +1,6 @@
+ def force_string(kwargs):
+     if isinstance(kwargs, dict):
+-        return {force_string(key): force_string(value) for key, value in six.iteritems(kwargs)}
++        return order_dict_to_string(OrderedDict(((force_string(key), force_string(value)) for key, value in items_sorted_by_key(kwargs))))
+     elif isinstance(kwargs, list):
+         return [force_string(element) for element in kwargs]
+     elif six.PY2 and isinstance(kwargs, unicode):","Force key in dict or list to a string.
+    Fixes: https://github.com/TrackMaven/celery-once/issues/11",none,10,,,
+e066,AzurLaneAutoScript,Level.lv_get,"def lv_get(self, after_battle=False):","--- a/code.py
++++ b/code.py
+@@ -1,10 +1,10 @@
+ def lv_get(self, after_battle=False):
+-    self.lv_before_battle = self.lv if after_battle else ['-1'] * 6
+-    colors = [tuple(get_color(self.device.image, button.area).astype(int)) for button in STATUS_GRID.buttons()]
+-    self.has_ship = [color == COLOR_WHITE or color == COLOR_MASKED for color in colors]
+-    self.low_hp = [color == COLOR_MASKED for color in colors]
+-    self._lv_ocr()
+-    logger.attr('LEVEL', ',  '.join((data for data in self.lv)))
++    if not self.config.STOP_IF_REACH_LV120:
++        return [-1] * 6
++    self._lv_before_battle = self.lv if after_battle else [-1] * 6
++    ocr = LevelOcr(LV_GRID.buttons())
++    self.lv = ocr.ocr(self.device.image)
++    logger.attr('LEVEL', ', '.join((str(data) for data in self.lv)))
+     if after_battle:
+         self.lv120_triggered()
+     return self.lv","Args:
+            after_battle (bool): True if called after battle else False.",none,12,,,
+e075,pytorch_geometric,Batch.index_select,"def index_select(self, idx: IndexType) -> List[Data]:","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def index_select(self, idx: IndexType) -> List[Data]:
++def index_select(self, idx: IndexType) -> Union[List[Data], List[HeteroData]]:
+     if isinstance(idx, slice):
+         idx = list(range(self.num_graphs)[idx])
+     elif isinstance(idx, Tensor) and idx.dtype == torch.long:
+@@ -13,4 +13,4 @@
+         pass
+     else:
+         raise IndexError(f""Only slices (':'), list, tuples, torch.tensor and np.ndarray of dtype long or bool are valid indices (got '{type(idx).__name__}')"")
+-    return [self.get_example(i) for i in idx]
++    return [self.get(i) for i in idx]","r""""""Returns a list of :class:`torch_geometric.data.Data` objects
+        from specified indices :obj:`idx`.
+        Indices can be slices, lists, tuples, and a :obj:`torch.Tensor` or
+        :obj:`np.ndarray` of type long or bool.
+        The batch object must have been created via :meth:`from_data_list` in
+        order to be able to reconstruct the initial objects.",return_changed,22,,,
+e089,Bottles,Manager.get_latest_runner,"def get_latest_runner(self, runner_type: str='wine') -> list:","--- a/code.py
++++ b/code.py
+@@ -1,7 +1,5 @@
+-def get_latest_runner(self, runner_type: str='wine') -> list:
+-    try:
+-        if runner_type in ['', 'wine']:
+-            return self.__sort_runners('soda')
+-        return self.__sort_runners('proton')
+-    except IndexError:
+-        return []
++def get_latest_runner(self, runner_prefix: str='soda') -> list:
++    runners = self.__sort_runners(self.runners_available, runner_prefix)
++    if not runners:
++        runners = self.__sort_runners(self.runners_available, '')
++    return runners[0] if runners else []",Return the latest available runner for a given type.,param_renamed,8,,,
+e105,locust,FastResponse.text,def text(self):,"--- a/code.py
++++ b/code.py
+@@ -6,4 +6,4 @@
+             self.encoding = 'utf-8'
+         else:
+             self.encoding = self.headers.get('content-type', '').partition('charset=')[2] or 'utf-8'
+-    return unicode(self.content, self.encoding, errors='replace')
++    return str(self.content, self.encoding, errors='replace')","Returns the text content of the response as a decoded string
+        (unicode on python2)",none,11,,,
+e107,espnet,AudioKind.check,"def check(self, value, field, model, *, output):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,7 @@
+ def check(self, value, field, model, *, output):
++    rate = model.sample_rate
+     if output and isinstance(value, np.ndarray):
+-        return Audio(value, model.sample_rate)
+-    return Audio.coerce(value, model.sample_rate)
++        if rate is None:
++            raise TypeError(f'{field.name!r} returned as a bare array by a model that fixes no sample_rate; return an Audio with its rate')
++        return Audio(value, rate)
++    return Audio.coerce(value, rate)",Coerce what a caller holds; a hook's bare array is at the model's rate.,exception_changed,5,,,
+e111,AzurLaneAutoScript,IslandRecipe.run_recipe,"def run_recipe(self, recipe_id, batch_count=float('inf')):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def run_recipe(self, recipe_id, batch_count=float('inf')):
++def run_recipe(self, recipe_id, batch_count=float('inf'), mode=None):
+     self.last_unavailable_product = None
+     if not self.is_in_recipe_menu():
+         logger.warning('Not in recipe menu, cannot run recipe')
+@@ -6,15 +6,14 @@
+     if not self.set_recipe(recipe_id):
+         logger.warning(f'Failed to set recipe to {recipe_id}, cannot run recipe')
+         return None
+-    success, real_count = self.prepare_ingredients(recipe_id, batch_count=batch_count)
++    success, real_count = self.prepare_ingredients(recipe_id, batch_count=batch_count, mode=mode)
++    if real_count <= 0:
++        logger.warning('No batch can be produced with current ingredient stock, cannot run recipe')
++        self.last_unavailable_product = get_recipe_product_id(recipe_id)
++        return None
+     if not success:
+         logger.warning(f'Failed to prepare enough ingredient for {batch_count} batch(es) production')
+-        if real_count == 0:
+-            logger.warning('No batch can be produced with current ingredient stock, cannot run recipe')
+-            self.last_unavailable_product = get_recipe_product_id(recipe_id)
+-            return None
+-        else:
+-            logger.info(f'Can only produce {real_count} batch(es) with current ingredient stock, will try to run with this amount')
++        logger.info(f'Can only produce {real_count} batch(es) with current ingredient stock, will try to run with this amount')
+     if not self.set_recipe_batch_count(real_count):
+         logger.warning(f""Failed to set recipe batch count to {('max' if real_count == float('inf') else real_count)}, cannot run recipe"")
+         return None","Returns:
+    tuple[timedelta, int | float]: remain time and actual batch count after starting,
+        or None if failed to start recipe",param_added,36,,,
+e112,paperless-ngx,FetchView.render_to_response,"def render_to_response(self, context, **response_kwargs):","--- a/code.py
++++ b/code.py
+@@ -1,5 +1,7 @@
+ def render_to_response(self, context, **response_kwargs):
+     content_types = {Document.TYPE_PDF: 'application/pdf', Document.TYPE_PNG: 'image/png', Document.TYPE_JPG: 'image/jpeg', Document.TYPE_GIF: 'image/gif', Document.TYPE_TIF: 'image/tiff'}
++    if self.kwargs['kind'] == 'thumb':
++        return HttpResponse(GnuPG.decrypted(self.object.thumb_file), content_type=content_types[Document.TYPE_JPG])
+     response = HttpResponse(GnuPG.decrypted(self.object.source_file), content_type=content_types[self.object.file_type])
+     response['Content-Disposition'] = 'attachment; filename=""{}""'.format(self.object.file_name)
+     return response",Override the default to return the unencrypted PDF as raw data.,none,6,,,
+e113,loguru,Logger.patch,"def patch(self, patcher):","--- a/code.py
++++ b/code.py
+@@ -1,3 +1,3 @@
+ def patch(self, patcher):
+-    *options, _, extra = self._options
+-    return Logger(self._core, *options, patcher, extra)
++    *options, patchers, extra = self._options
++    return Logger(self._core, *options, patchers + [patcher], extra)","Attach a function to modify the record dict created by each logging call.
+
+        The ``patcher`` may be used to update the record on-the-fly before it's propagated to the
+        handlers. This allows the ""extra"" dict to be populated with dynamic values and also permits
+        advanced modifications of the record emitted while logging a message. The function is called
+        once before sending the log message to the different handlers.
+
+        It is recommended to apply modification on the ``record[""extra""]`` dict rather than on the
+        ``record`` dict itself, as some values are used internally by `Loguru`, and modify them may
+        produce unexpected results.
+
+        Parameters
+        ----------
+        patcher: |callable|_
+            The function to which the record dict will be passed as the sole argument. This function
+            is in charge of updating the record in-place, the function does not need to return any
+            value, the modified record object will be re-used.
+
+        Returns
+        -------
+        :class:`~Logger`
+            A logger wrapping the core logger, but which records are passed through the ``patcher``
+            function before being sent to the added handlers.
+
+        Examples
+        --------
+        >>> logger.add(sys.stderr, format=""{extra[utc]} {message}"")
+        >>> logger = logger.patch(lambda record: record[""extra""].update(utc=datetime.utcnow())
+        >>> logger.info(""That's way, you can log messages with time displayed in UTC"")
+
+        >>> def wrapper(func):
+        ...     @functools.wraps(func)
+        ...     def wrapped(*args, **kwargs):
+        ...         logger.patch(lambda r: r.update(function=func.__name__)).info(""Wrapped!"")
+        ...         return func(*args, **kwargs)
+        ...     return wrapped
+
+        >>> def recv_record_from_network(pipe):
+        ...     record = pickle.loads(pipe.read())
+        ...     level, message = record[""level""], record[""message""]
+        ...     logger.patch(lambda r: r.update(record)).log(level, message)",none,44,,,
+e121,pytorch,numpy_to_tensor,def numpy_to_tensor(value):,"--- a/code.py
++++ b/code.py
+@@ -1,5 +1,7 @@
+ def numpy_to_tensor(value):
+-    if isinstance(value, torch_np.ndarray):
++    if isinstance(value, np.ndarray):
++        return torch.as_tensor(value)
++    if isinstance(value, tnp.ndarray):
+         return value.tensor
+     elif isinstance(value, (tuple, list)):
+         return type(value)((numpy_to_tensor(obj) for obj in value))","Convert torch_np.ndarray to tensor, leave other types intact. If a list/tuple, loop through it to convert.",none,8,,,
+e123,StratosphereLinuxIPS,Main.shutdown_gracefully,def shutdown_gracefully(self):,"--- a/code.py
++++ b/code.py
+@@ -1,4 +1,5 @@
+ def shutdown_gracefully(self):
++    function_start_time = datetime.now()
+     try:
+         if not self.args.stopdaemon:
+             print('\n' + '-' * 27)
+@@ -46,6 +47,8 @@
+                             warning_printed = True
+                         if not self.args.port:
+                             max_loops += 1
++                            if self.kill_all_modules(function_start_time):
++                                break
+             except KeyboardInterrupt:
+                 pass
+         PIDs = self.PIDs.copy()",Wait for all modules to confirm that they're done processing and then shutdown,none,74,,,
+e124,frappe,TestPermissions.test_ignore_user_permissions_if_missing,def test_ignore_user_permissions_if_missing(self):,"--- a/code.py
++++ b/code.py
+@@ -1,10 +1,9 @@
+ def test_ignore_user_permissions_if_missing(self):
+-    self.set_user_permission_doctypes(['Blog Category', 'Blog Post', 'Blogger'])
+-    frappe.set_user('Administrator')
++    add_user_permission('Blog Category', '_Test Blog Category', 'test2@example.com')
+     frappe.set_user('test2@example.com')
+-    doc = frappe.get_doc({'doctype': 'Blog Post', 'blog_category': '_Test Blog Category', 'blogger': '_Test Blogger 1', 'title': '_Test Blog Post Title', 'content': '_Test Blog Post Content'})
++    doc = frappe.get_doc({'doctype': 'Blog Post', 'blog_category': '_Test Blog Category 2', 'blogger': '_Test Blogger 1', 'title': '_Test Blog Post Title', 'content': '_Test Blog Post Content'})
+     self.assertFalse(doc.has_permission('write'))
+     frappe.set_user('Administrator')
+-    self.set_ignore_user_permissions_if_missing(1)
++    remove_user_permission('Blog Category', '_Test Blog Category', 'test2@example.com')
+     frappe.set_user('test2@example.com')
+     self.assertTrue(doc.has_permission('write'))","If `Ignore User Permissions If Missing` is checked in System Settings, show records even if User Permissions are missing for a linked doctype",none,11,,,
+e135,manim,Scene.compile_animations,"def compile_animations(self, *args: Animation, **kwargs):","--- a/code.py
++++ b/code.py
+@@ -1,6 +1,7 @@
+-def compile_animations(self, *args: Animation, **kwargs):
++def compile_animations(self, *args: Animation | Iterable[Animation] | types.GeneratorType[Animation], **kwargs):
+     animations = []
+-    for arg in args:
++    arg_anims = flatten_iterable_parameters(args)
++    for arg in arg_anims:
+         try:
+             animations.append(prepare_animation(arg))
+         except TypeError:","Creates _MethodAnimations from any _AnimationBuilders and updates animation
+kwargs with kwargs passed to play().
+
+Parameters
+----------
+*args
+    Animations to be played.
+**kwargs
+    Configuration for the call to play().
+
+Returns
+-------
+Tuple[:class:`Animation`]
+    Animations to be played.",none,28,,,
+e142,python-telegram-bot,Chat.add_chat_ids,"def add_chat_ids(self, chat_id: SLT[int]) -> None:","--- a/code.py
++++ b/code.py
+@@ -1,2 +1,2 @@
+-def add_chat_ids(self, chat_id: SLT[int]) -> None:
++def add_chat_ids(self, chat_id: SCT[int]) -> None:
+     return super()._add_chat_ids(chat_id)","Add one or more chats to the allowed chat ids.
+
+        Args:
+            chat_id(:obj:`int` | Tuple[:obj:`int`] | List[:obj:`int`]): Which chat ID(s) to allow
+                through.",none,7,,,
+e182,StratosphereLinuxIPS,test_timewindows,def test_timewindows(database):,"--- a/code.py
++++ b/code.py
+@@ -1,6 +1,7 @@
+ def test_timewindows(database):
+-    os.system('./slips.py -c slips.conf -cc')
+-    profileid = 'profile_8.8.8.8'
++    profileid = 'profile_192.168.1.1'
+     database.addProfile(profileid, '00:00', '1')
+     database.addNewTW(profileid, 0.0)
++    database.addNewTW(profileid, 5.0)
+     assert database.getFirstTWforProfile(profileid) == [('timewindow1', 0.0)]
++    assert database.getLastTWforProfile(profileid) == [('timewindow2', 5.0)]",unit tests for addNewTW and getFirstTWforProfile,none,7,,,
+e195,AzurLaneAutoScript,PrivateQuarters.run,def run(self):,"--- a/code.py
++++ b/code.py
+@@ -1,5 +1,9 @@
+ def run(self):
+-    self.ui_goto(page_private_quarters, get_ship=False)
+-    self.handle_info_bar()
+-    self.pq_run(buy_roses=self.config.PrivateQuarters_BuyRoses, target_interact=self.config.PrivateQuarters_TargetInteract, target_ship=self.config.PrivateQuarters_TargetShip)
++    if server.server == 'en':
++        self.ui_goto(page_private_quarters, get_ship=False)
++        self.handle_info_bar()
++        self.pq_run(buy_roses=self.config.PrivateQuarters_BuyRoses, target_interact=self.config.PrivateQuarters_TargetInteract, target_ship=self.config.PrivateQuarters_TargetShip)
++    else:
++        logger.info(f'Private Quarters task not presently supported for {server.server} server.')
++        logger.info('If want to address, review necessary assets, replace, update above condition, and test')
+     self.config.task_delay(server_update=True)","Pages:
+    in: Any page
+    out: page_main, may have info_bar",none,8,,,
+e196,InstaPy,verify_liking,"def verify_liking(browser, max, min, logger):","--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+-def verify_liking(browser, max, min, logger):
++def verify_liking(browser, maximum, minimum, logger):
+     try:
+         likes_count = browser.execute_script('return window._sharedData.entry_data.PostPage[0].graphql.shortcode_media.edge_media_preview_like.count')
+     except WebDriverException:
+@@ -17,10 +17,10 @@
+             except NoSuchElementException:
+                 logger.info(""Failed to check likes' count\n"")
+                 return True
+-    if max is not None and likes_count > max:
++    if maximum is not None and likes_count > maximum:
+         logger.info('Not liked this post! ~more likes exist off maximum limit at {}'.format(likes_count))
+         return False
+-    elif min is not None and likes_count < min:
++    elif min is not None and likes_count < minimum:
+         logger.info('Not liked this post! ~less likes exist off minumum limit at {}'.format(likes_count))
+         return False
+     return True","Get the amount of existing existing likes and compare it against max
+    & min values defined by user",param_renamed,28,,,
+e205,pandas,extract_pandas_array,"def extract_pandas_array(values: ArrayLike, dtype: DtypeObj | None, ndim: int) -> tuple[ArrayLike, DtypeObj | None]:","--- a/code.py
++++ b/code.py
+@@ -1,8 +1,8 @@
+ def extract_pandas_array(values: ArrayLike, dtype: DtypeObj | None, ndim: int) -> tuple[ArrayLike, DtypeObj | None]:
+-    if isinstance(values, ABCPandasArray):
++    if isinstance(values, ABCNumpyExtensionArray):
+         values = values.to_numpy()
+         if ndim and ndim > 1:
+             values = np.atleast_2d(values)
+-    if isinstance(dtype, PandasDtype):
++    if isinstance(dtype, NumpyEADtype):
+         dtype = dtype.numpy_dtype
+     return (values, dtype)",Ensure that we don't allow PandasArray / PandasDtype in internals.,none,9,,,

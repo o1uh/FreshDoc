@@ -1,4 +1,4 @@
-err_id,project,symbol,sig_old,diff_code,doc_old,split,sig_type,source,n_src_lines
+err_id,project,symbol,sig_old,diff_code,doc_old,sig_type,n_src_lines
 e024,CrackMapExec,CMEModule.options,"def options(self, context, module_options):","--- a/code.py
 +++ b/code.py
 @@ -2,5 +2,8 @@
@@ -9,7 +9,7 @@ e024,CrackMapExec,CMEModule.options,"def options(self, context, module_options):
      if module_options and 'SERVER' in module_options:
          self.server = module_options['SERVER']
 +    if module_options and 'BASE_DN' in module_options:
-+        self.base_dn = module_options['BASE_DN']","SERVER             PKI Enrollment Server to enumerate templates for. Default is None, use CN name",gold,none,gold,7
++        self.base_dn = module_options['BASE_DN']","SERVER             PKI Enrollment Server to enumerate templates for. Default is None, use CN name",none,7
 e006,matplotlib,move_from_center,"def move_from_center(coord, centers, deltas, axmask=(True, True, True)):","--- a/code.py
 +++ b/code.py
 @@ -1,10 +1,3 @@
@@ -24,14 +24,14 @@ e006,matplotlib,move_from_center,"def move_from_center(coord, centers, deltas, a
 -            coord[i] += deltas[i]
 -    return coord
 +    coord = np.asarray(coord)
-+    return coord + axmask * np.copysign(1, coord - centers) * deltas","Return a coordinate that is moved by ""deltas"" away from the center.",test_real,none,codocbench,11
++    return coord + axmask * np.copysign(1, coord - centers) * deltas","Return a coordinate that is moved by ""deltas"" away from the center.",none,11
 e099,d2l-en,try_all_gpus,def try_all_gpus():,"--- a/code.py
 +++ b/code.py
 @@ -1,3 +1,2 @@
  def try_all_gpus():
 -    devices = [npx.gpu(i) for i in range(npx.num_gpus())]
 -    return devices if devices else [npx.cpu()]
-+    return [gpu(i) for i in range(num_gpus())]","Return all available GPUs, or [cpu()] if no GPU exists.",gold,none,gold,4
++    return [gpu(i) for i in range(num_gpus())]","Return all available GPUs, or [cpu()] if no GPU exists.",none,4
 e009,InstaPy,log_record_all_followed,"def log_record_all_followed(login, followed, logger, logfolder):","--- a/code.py
 +++ b/code.py
 @@ -3,4 +3,4 @@
@@ -39,7 +39,7 @@ e009,InstaPy,log_record_all_followed,"def log_record_all_followed(login, followe
              followPool.write(followed + ',\n')
      except BaseException as e:
 -        logger.error('log_followed_pool error {}'.format(str(e)))
-+        logger.error('log__record_all_followed_pool error {}'.format(str(e)))",We save all followed to a pool that will never be erase,test_real,none,codocbench,7
++        logger.error('log__record_all_followed_pool error {}'.format(str(e)))",We save all followed to a pool that will never be erase,none,7
 e011,matplotlib,OSXInstalledFonts,"def OSXInstalledFonts(directories=None, fontext='ttf'):","--- a/code.py
 +++ b/code.py
 @@ -1,11 +1,4 @@
@@ -54,7 +54,7 @@ e011,matplotlib,OSXInstalledFonts,"def OSXInstalledFonts(directories=None, fonte
 -        else:
 -            files.extend(list_fonts(path, fontext))
 -    return files
-+    return [path for directory in directories for ext in get_fontext_synonyms(fontext) for path in list_fonts(directory, ext)]",Get list of font files on OS X - ignores font suffix by default.,test_real,none,codocbench,12
++    return [path for directory in directories for ext in get_fontext_synonyms(fontext) for path in list_fonts(directory, ext)]",Get list of font files on OS X - ignores font suffix by default.,none,12
 e021,StratosphereLinuxIPS,Daemon.setup_std_streams,def setup_std_streams(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,8 +1,10 @@
@@ -68,7 +68,7 @@ e021,StratosphereLinuxIPS,Daemon.setup_std_streams,def setup_std_streams(self):,
 -        except FileNotFoundError:
 +        except (FileNotFoundError, NotADirectoryError):
              os.mkdir(os.path.dirname(file))
-             open(file, 'w').close()",Create standard steam files and dirs and clear logs file,test_real,none,codocbench,9
+             open(file, 'w').close()",Create standard steam files and dirs and clear logs file,none,9
 e025,posthog,retrieve_entity_from,"def retrieve_entity_from(entity_id: Union[str, int], events: List[Dict], actions: List[Dict]) -> Optional[Dict]:","--- a/code.py
 +++ b/code.py
 @@ -1,8 +1,8 @@
@@ -81,7 +81,7 @@ e025,posthog,retrieve_entity_from,"def retrieve_entity_from(entity_id: Union[str
 -        if action.get('id') == entity_id:
 +        if str(action.get('id')) == entity_id:
              return action
-     return None",Retrieves the entity from the events and actions.,test_real,none,codocbench,9
+     return None",Retrieves the entity from the events and actions.,none,9
 e027,python3-saml,OneLogin_Saml2_Response.validate_signed_elements,"def validate_signed_elements(self, signed_elements):","--- a/code.py
 +++ b/code.py
 @@ -8,9 +8,9 @@
@@ -95,14 +95,14 @@ e027,python3-saml,OneLogin_Saml2_Response.validate_signed_elements,"def validate
          if len(expected_signature_nodes) != 1:
 -            raise Exception('Unexpected number of Assertion signatures found. SAML Response rejected.')
 +            raise OneLogin_Saml2_ValidationError('Unexpected number of Assertion signatures found. SAML Response rejected.', OneLogin_Saml2_ValidationError.WRONG_NUMBER_OF_SIGNATURES_IN_ASSERTION)
-     return True",Verifies that the document has the expected signed nodes.,test_real,exception_changed,codocbench,17
+     return True",Verifies that the document has the expected signed nodes.,exception_changed,17
 e035,StratosphereLinuxIPS,Module.check_unknown_port,"def check_unknown_port(self, dport, proto, daddr, profileid, twid, uid, timestamp):","--- a/code.py
 +++ b/code.py
 @@ -7,3 +7,4 @@
          return False
      if not 'icmp' in proto and (not self.is_p2p(dport, proto, daddr)) and (not __database__.is_ftp_port(dport)):
          self.helper.set_evidence_unknown_port(daddr, dport, proto, timestamp, profileid, twid, uid)
-+        return True",Checks dports that are not in our slips_files/ports_info/ files,test_real,none,codocbench,10
++        return True",Checks dports that are not in our slips_files/ports_info/ files,none,10
 e042,reflex,serialize_primitive,"def serialize_primitive(value: Union[bool, int, float, Base, None]) -> str:","--- a/code.py
 +++ b/code.py
 @@ -1,2 +1,2 @@
@@ -114,7 +114,7 @@ e042,reflex,serialize_primitive,"def serialize_primitive(value: Union[bool, int,
         value: The number to serialize.
 
     Returns:
-        The serialized number.",test_real,none,codocbench,9
+        The serialized number.",none,9
 e048,python-telegram-bot,InlineKeyboardMarkup.from_column,"def from_column(cls, button_column: List[InlineKeyboardButton], **kwargs: object) -> 'InlineKeyboardMarkup':","--- a/code.py
 +++ b/code.py
 @@ -1,3 +1,3 @@
@@ -129,7 +129,7 @@ e048,python-telegram-bot,InlineKeyboardMarkup.from_column,"def from_column(cls, 
 
         Args:
             button_column (List[:class:`telegram.InlineKeyboardButton`]): The button to use in the
-                markup",test_real,none,codocbench,12
+                markup",none,12
 e052,zipline,get_benchmark_returns,"def get_benchmark_returns(symbol, start_date, end_date):","--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,2 @@
@@ -139,7 +139,7 @@ e052,zipline,get_benchmark_returns,"def get_benchmark_returns(symbol, start_date
 -    first_open, first_close = data.ix[0, ['Open', 'Close']]
 -    returns.iloc[0] = (first_close - first_open) / first_open
 -    return returns
-+    return pd.read_csv(format_yahoo_index_url(symbol, start_date, end_date), parse_dates=['Date'], index_col='Date', usecols=['Adj Close', 'Date'], squeeze=True).sort_index().tz_localize('UTC').pct_change(1).iloc[1:]",Get a Series of benchmark returns from Yahoo.,test_real,none,codocbench,7
++    return pd.read_csv(format_yahoo_index_url(symbol, start_date, end_date), parse_dates=['Date'], index_col='Date', usecols=['Adj Close', 'Date'], squeeze=True).sort_index().tz_localize('UTC').pct_change(1).iloc[1:]",Get a Series of benchmark returns from Yahoo.,none,7
 e055,manim,PMobject.add_points,"def add_points(self, points, rgbas=None, color=None, alpha=1):","--- a/code.py
 +++ b/code.py
 @@ -7,6 +7,6 @@
@@ -149,7 +149,7 @@ e055,manim,PMobject.add_points,"def add_points(self, points, rgbas=None, color=N
 -        raise ValueError('points and rgbas must have same shape')
 +        raise ValueError('points and rgbas must have same length')
      self.rgbas = np.append(self.rgbas, rgbas, axis=0)
-     return self","Points must be a Nx3 numpy array, as must rgbas if it is not None",test_real,none,codocbench,13
+     return self","Points must be a Nx3 numpy array, as must rgbas if it is not None",none,13
 e059,monkey,Authenticate.post,def post(self):,"--- a/code.py
 +++ b/code.py
 @@ -2,8 +2,7 @@
@@ -165,7 +165,7 @@ e059,monkey,Authenticate.post,def post(self):,"--- a/code.py
         {
             ""username"": ""my_user"",
             ""password"": ""mypassword....""
-        }",test_real,none,codocbench,16
+        }",none,16
 e063,zulip,GetSubscribersTest.test_nonsubscriber_private_stream,def test_nonsubscriber_private_stream(self) -> None:,"--- a/code.py
 +++ b/code.py
 @@ -6,3 +6,5 @@
@@ -173,7 +173,7 @@ e063,zulip,GetSubscribersTest.test_nonsubscriber_private_stream,def test_nonsubs
      result = self.make_subscriber_request(stream_id, email=other_email)
      self.assert_json_error(result, 'Invalid stream id')
 +    self.login(self.example_email('iago'))
-+    self.make_successful_subscriber_request(stream_name)",A non-subscriber to a private stream can't query that stream's membership.,test_real,none,codocbench,9
++    self.make_successful_subscriber_request(stream_name)",A non-subscriber to a private stream can't query that stream's membership.,none,9
 e066,AzurLaneAutoScript,Level.lv_get,"def lv_get(self, after_battle=False):","--- a/code.py
 +++ b/code.py
 @@ -1,10 +1,10 @@
@@ -193,7 +193,7 @@ e066,AzurLaneAutoScript,Level.lv_get,"def lv_get(self, after_battle=False):","--
      if after_battle:
          self.lv120_triggered()
      return self.lv","Args:
-            after_battle (bool): True if called after battle else False.",test_real,none,codocbench,12
+            after_battle (bool): True if called after battle else False.",none,12
 e069,pytorch,FullyShardedDataParallel.module,def module(self) -> FlattenParamsWrapper:,"--- a/code.py
 +++ b/code.py
 @@ -1,3 +1,3 @@
@@ -201,7 +201,7 @@ e069,pytorch,FullyShardedDataParallel.module,def module(self) -> FlattenParamsWr
 +def module(self) -> nn.Module:
      assert isinstance(self._fsdp_wrapped_module, FlattenParamsWrapper)
 -    return self._fsdp_wrapped_module
-+    return self._fsdp_wrapped_module.module","make model.module accessible, just like DDP.",test_real,return_changed,codocbench,4
++    return self._fsdp_wrapped_module.module","make model.module accessible, just like DDP.",return_changed,4
 e071,matplotlib,ContourLabeler.add_label,"def add_label(self, x, y, rotation, lev, cvalue):","--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,9 @@
@@ -213,7 +213,7 @@ e071,matplotlib,ContourLabeler.add_label,"def add_label(self, x, y, rotation, le
 +        t.set(rotation=data_rotation, transform_rotates_text=True)
      self.labelTexts.append(t)
      self.labelCValues.append(cvalue)
-     self.labelXYs.append((x, y))",Add contour label without `.Text.set_transform_rotates_text`.,test_real,none,codocbench,8
+     self.labelXYs.append((x, y))",Add contour label without `.Text.set_transform_rotates_text`.,none,8
 e073,zulip,SubscriptionAPITest.test_can_subscribe_other_users,def test_can_subscribe_other_users(self) -> None:,"--- a/code.py
 +++ b/code.py
 @@ -1,12 +1,13 @@
@@ -234,7 +234,7 @@ e073,zulip,SubscriptionAPITest.test_can_subscribe_other_users,def test_can_subsc
 +    do_set_realm_property(othello.realm, 'invite_to_stream_policy', Realm.INVITE_TO_STREAM_POLICY_WAITING_PERIOD)
      othello.date_joined = timezone_now() - timedelta(days=othello.realm.waiting_period_threshold - 1)
      self.assertFalse(othello.can_subscribe_other_users())
-     othello.date_joined = timezone_now() - timedelta(days=othello.realm.waiting_period_threshold + 1)",You can't subscribe other people to streams if you are a guest or your waiting period is not over.,test_real,none,codocbench,14
+     othello.date_joined = timezone_now() - timedelta(days=othello.realm.waiting_period_threshold + 1)",You can't subscribe other people to streams if you are a guest or your waiting period is not over.,none,14
 e077,ipython,test_get_home_dir_3,def test_get_home_dir_3():,"--- a/code.py
 +++ b/code.py
 @@ -1,4 +1,4 @@
@@ -243,7 +243,7 @@ e077,ipython,test_get_home_dir_3,def test_get_home_dir_3():,"--- a/code.py
 -    home_dir = path.get_home_dir()
 -    nt.assert_equal(home_dir, env['HOME'])
 +    home_dir = path.get_home_dir(True)
-+    nt.assert_equal(home_dir, os.path.realpath(env['HOME']))","Testcase $HOME is set, then use its value as home directory.",test_real,none,codocbench,5
++    nt.assert_equal(home_dir, os.path.realpath(env['HOME']))","Testcase $HOME is set, then use its value as home directory.",none,5
 e081,cupy,Backend.all_gather,"def all_gather(self, in_array, out_array, count, stream=None):","--- a/code.py
 +++ b/code.py
 @@ -1,2 +1,2 @@
@@ -255,7 +255,7 @@ e081,cupy,Backend.all_gather,"def all_gather(self, in_array, out_array, count, s
             in_array (cupy.ndarray):
             out_array (cupy.ndarray):
             op (str):
-            stream (cupy.cuda.Stream):",test_real,none,codocbench,9
+            stream (cupy.cuda.Stream):",none,9
 e083,scrapy,get_base_url,def get_base_url(response):,"--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,5 @@
@@ -265,7 +265,7 @@ e083,scrapy,get_base_url,def get_base_url(response):,"--- a/code.py
 -        _baseurl_cache[response] = urljoin_rfc(response.url, match.group(1)) if match else response.url
 +        text = response.body_as_unicode()[0:4096]
 +        _baseurl_cache[response] = html.get_base_url(text, response.url, response.encoding)
-     return _baseurl_cache[response]",Return the base url of the given response used to resolve relative links.,test_real,none,codocbench,6
+     return _baseurl_cache[response]",Return the base url of the given response used to resolve relative links.,none,6
 e085,pytorch,is_deterministic,def is_deterministic():,"--- a/code.py
 +++ b/code.py
 @@ -1,2 +1,3 @@
@@ -273,7 +273,7 @@ e085,pytorch,is_deterministic,def is_deterministic():,"--- a/code.py
 -    return _C._get_deterministic()
 +    warnings.warn('torch.is_deterministic is deprecated and will be removed in a future release. Please use torch.are_deterministic_algorithms_enabled instead')
 +    return are_deterministic_algorithms_enabled()","r""""""Returns True if the global deterministic flag is turned on. Refer to
-    :func:`torch.set_deterministic` documentation for more details.",test_real,none,codocbench,4
+    :func:`torch.set_deterministic` documentation for more details.",none,4
 e093,mindsdb,FileHandler.get_tables,def get_tables(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,4 @@
@@ -284,7 +284,7 @@ e093,mindsdb,FileHandler.get_tables,def get_tables(self):,"--- a/code.py
 -        response['data'].append(TablesRow(TABLE_NAME=file_meta['name'], TABLE_ROWS=file_meta['row_count']))
 -    return response
 +    data = [{'TABLE_NAME': x['name'], 'TABLE_ROWS': x['row_count']} for x in files_meta]
-+    return HandlerResponse(RESPONSE_TYPE.TABLE, data_frame=pd.DataFrame(data))",List all tabels in PostgreSQL without the system tables information_schema and pg_catalog,test_real,none,codocbench,7
++    return HandlerResponse(RESPONSE_TYPE.TABLE, data_frame=pd.DataFrame(data))",List all tabels in PostgreSQL without the system tables information_schema and pg_catalog,none,7
 e108,zulip,parse_gcm_options,"def parse_gcm_options(options: Dict[str, Any], data: Dict[str, Any]) -> None:","--- a/code.py
 +++ b/code.py
 @@ -1,3 +1,7 @@
@@ -295,7 +295,7 @@ e108,zulip,parse_gcm_options,"def parse_gcm_options(options: Dict[str, Any], dat
 +        raise JsonableError(_('Invalid GCM option to bouncer: priority %r') % (priority,))
      if options:
          raise JsonableError(_('Invalid GCM options to bouncer: %s') % (ujson.dumps(options),))
-+    return priority","Parse GCM options, raising an error if invalid.",test_real,return_changed,codocbench,4
++    return priority","Parse GCM options, raising an error if invalid.",return_changed,4
 e114,ipython,test_get_ipython_dir_7,def test_get_ipython_dir_7():,"--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,6 @@
@@ -305,7 +305,7 @@ e114,ipython,test_get_ipython_dir_7,def test_get_ipython_dir_7():,"--- a/code.py
 -    env['IPYTHON_DIR'] = os.path.join('~', 'somewhere')
 +    env['IPYTHONDIR'] = os.path.join('~', 'somewhere')
      ipdir = path.get_ipython_dir()
-     nt.assert_equal(ipdir, os.path.join(home_dir, 'somewhere'))","test_get_ipython_dir_7, test home directory expansion on IPYTHON_DIR",test_real,none,codocbench,7
+     nt.assert_equal(ipdir, os.path.join(home_dir, 'somewhere'))","test_get_ipython_dir_7, test home directory expansion on IPYTHON_DIR",none,7
 e117,d2l-en,train_2d,"def train_2d(trainer, steps=20, f_grad=None):","--- a/code.py
 +++ b/code.py
 @@ -7,4 +7,5 @@
@@ -313,7 +313,7 @@ e117,d2l-en,train_2d,"def train_2d(trainer, steps=20, f_grad=None):","--- a/code
              x1, x2, s1, s2 = trainer(x1, x2, s1, s2)
          results.append((x1, x2))
 +    print(f'epoch {i + 1:d}, x1: {x1:f}, x2: {x2:f}')
-     return results",Optimize a 2-dim objective function with a customized trainer.,test_real,none,codocbench,11
+     return results",Optimize a 2-dim objective function with a customized trainer.,none,11
 e124,frappe,TestPermissions.test_ignore_user_permissions_if_missing,def test_ignore_user_permissions_if_missing(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,10 +1,9 @@
@@ -329,7 +329,7 @@ e124,frappe,TestPermissions.test_ignore_user_permissions_if_missing,def test_ign
 -    self.set_ignore_user_permissions_if_missing(1)
 +    remove_user_permission('Blog Category', '_Test Blog Category', 'test2@example.com')
      frappe.set_user('test2@example.com')
-     self.assertTrue(doc.has_permission('write'))","If `Ignore User Permissions If Missing` is checked in System Settings, show records even if User Permissions are missing for a linked doctype",test_real,none,codocbench,11
+     self.assertTrue(doc.has_permission('write'))","If `Ignore User Permissions If Missing` is checked in System Settings, show records even if User Permissions are missing for a linked doctype",none,11
 e136,pytorch,TestFxGraphCacheHashing.test_tensor_constants,def test_tensor_constants(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,3 @@
@@ -337,7 +337,7 @@ e136,pytorch,TestFxGraphCacheHashing.test_tensor_constants,def test_tensor_const
      data = FxGraphCachePickler.dumps(torch.tensor(list(range(9))))
 -    self.assertIsInstance(pickle.loads(data), TensorMetadata)
 -    data = FxGraphCachePickler.dumps(torch.tensor(list(range(8))))
-     self.assertIsInstance(pickle.loads(data), TensorMetadataAndValues)",Test the handling of small vs. large tensor constants.,test_real,none,codocbench,6
+     self.assertIsInstance(pickle.loads(data), TensorMetadataAndValues)",Test the handling of small vs. large tensor constants.,none,6
 e144,StratosphereLinuxIPS,test_download_malicious_file,"def test_download_malicious_file(outputQueue, database, url):","--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,6 @@
@@ -347,7 +347,7 @@ e144,StratosphereLinuxIPS,test_download_malicious_file,"def test_download_malici
 +    old_etag = '*' + old_etag[1:]
      database.set_TI_file_info(url.split('/')[-1], {'e-tag': old_etag})
 -    assert update_manager.update_TI_file(url) == True
-+    assert update_manager._UpdateFileManager__check_if_update(url) == True",we're tetsing this condition old_e_tag == new_e_tag,test_real,none,codocbench,6
++    assert update_manager._UpdateFileManager__check_if_update(url) == True",we're tetsing this condition old_e_tag == new_e_tag,none,6
 e157,transformers,check_onnx_model_list,def check_onnx_model_list(overwrite=False):,"--- a/code.py
 +++ b/code.py
 @@ -1,5 +1,5 @@
@@ -356,7 +356,7 @@ e157,transformers,check_onnx_model_list,def check_onnx_model_list(overwrite=Fals
 +    current_list, start_index, end_index, lines = _find_text_in_file(filename=os.path.join(PATH_TO_DOCS, 'serialization.mdx'), start_prompt='<!--This table is automatically generated by make style, do not fill manually!-->', end_prompt='The ONNX conversion is supported for the PyTorch versions of the models.')
      new_list = get_onnx_model_list()
      if current_list != new_list:
-         if overwrite:",Check the model list in the serialization.rst is consistent with the state of the lib and maybe `overwrite`.,test_real,none,codocbench,10
+         if overwrite:",Check the model list in the serialization.rst is consistent with the state of the lib and maybe `overwrite`.,none,10
 e167,transformers,eval_data_collator,"def eval_data_collator(dataset: Dataset, batch_size: int):","--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,8 @@
@@ -370,7 +370,7 @@ e167,transformers,eval_data_collator,"def eval_data_collator(dataset: Dataset, b
 +        batch = dataset[idx]
          batch = {k: np.array(v) for k, v in batch.items()}
 -        batch = shard(batch)
-         yield batch","Returns batches of size `batch_size` from `eval dataset`, sharded over all local devices.",test_real,none,codocbench,7
+         yield batch","Returns batches of size `batch_size` from `eval dataset`, sharded over all local devices.",none,7
 e179,frappe,EmailAccount.autoname,def autoname(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,4 @@
@@ -379,7 +379,7 @@ e179,frappe,EmailAccount.autoname,def autoname(self):,"--- a/code.py
          self.email_account_name = self.email_id.split('@', 1)[0].replace('_', ' ').replace('.', ' ').replace('-', ' ').title()
 -        if self.service:
 -            self.email_account_name = self.email_account_name + ' ' + self.service
-     self.name = self.email_account_name",Set name as `email_account_name` or make title from email id.,test_real,none,codocbench,7
+     self.name = self.email_account_name",Set name as `email_account_name` or make title from email id.,none,7
 e192,frappe,Page.is_permitted,def is_permitted(self):,"--- a/code.py
 +++ b/code.py
 @@ -1,6 +1,6 @@
@@ -389,7 +389,7 @@ e192,frappe,Page.is_permitted,def is_permitted(self):,"--- a/code.py
 +    allowed = [d.role for d in frappe.get_all('Has Role', fields=['role'], filters={'parent': self.name})]
      if not allowed:
          return True
-     roles = frappe.get_roles()",Returns true if Page Role is not set or the user is allowed.,test_real,none,codocbench,9
+     roles = frappe.get_roles()",Returns true if Page Role is not set or the user is allowed.,none,9
 e201,zulip,find_ldap_users_by_email,def find_ldap_users_by_email(email: str) -> Optional[List[_LDAPUser]]:,"--- a/code.py
 +++ b/code.py
 @@ -1,3 +1,2 @@
@@ -398,4 +398,4 @@ e201,zulip,find_ldap_users_by_email,def find_ldap_users_by_email(email: str) -> 
 -    return email_search.search_for_users(should_populate=False)
 +def find_ldap_users_by_email(email: str) -> List[_LDAPUser]:
 +    return LDAPReverseEmailSearch().search_for_users(email)","Returns list of _LDAPUsers matching the email search,
-    or None if no matches are found.",test_real,return_changed,codocbench,5
+    or None if no matches are found.",return_changed,5
