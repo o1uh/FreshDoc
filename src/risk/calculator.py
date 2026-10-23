@@ -95,6 +95,11 @@ def compute_urgency(
     Formula:
       urgency = R * type_weight * (1 + age_gain * min(days, age_cap) / age_cap)
 
+    CONTRACT FOR FD-30: urgency is intentionally NOT clamped to [0, 1] — at
+    R=1 it reaches up to (1 + age_gain), i.e. 1.5 with defaults. Dashboard
+    progress bars / heatmaps must scale by (1 + age_gain) or cap with
+    min(1.0, urgency); do NOT renormalize here (FD-28 tests pin this).
+
     Note: per R12 urgency is intentionally NOT clamped to [0, 1] — at R=1
     it reaches up to 1 + age_gain (1.5 with defaults). FD-30 dashboard
     must handle values > 1 (normalize or cap for the color map).
