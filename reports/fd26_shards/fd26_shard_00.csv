@@ -1,0 +1,401 @@
+err_id,project,symbol,sig_old,diff_code,doc_old,sig_type,n_src_lines
+e024,CrackMapExec,CMEModule.options,"def options(self, context, module_options):","--- a/code.py
++++ b/code.py
+@@ -2,5 +2,8 @@
+     self.context = context
+     self.regex = re.compile('(https?://.+)')
+     self.server = None
++    self.base_dn = None
+     if module_options and 'SERVER' in module_options:
+         self.server = module_options['SERVER']
++    if module_options and 'BASE_DN' in module_options:
++        self.base_dn = module_options['BASE_DN']","SERVER             PKI Enrollment Server to enumerate templates for. Default is None, use CN name",none,7
+e006,matplotlib,move_from_center,"def move_from_center(coord, centers, deltas, axmask=(True, True, True)):","--- a/code.py
++++ b/code.py
+@@ -1,10 +1,3 @@
+ def move_from_center(coord, centers, deltas, axmask=(True, True, True)):
+-    coord = copy.copy(coord)
+-    for i in range(3):
+-        if not axmask[i]:
+-            continue
+-        if coord[i] < centers[i]:
+-            coord[i] -= deltas[i]
+-        else:
+-            coord[i] += deltas[i]
+-    return coord
++    coord = np.asarray(coord)
++    return coord + axmask * np.copysign(1, coord - centers) * deltas","Return a coordinate that is moved by ""deltas"" away from the center.",none,11
+e099,d2l-en,try_all_gpus,def try_all_gpus():,"--- a/code.py
++++ b/code.py
+@@ -1,3 +1,2 @@
+ def try_all_gpus():
+-    devices = [npx.gpu(i) for i in range(npx.num_gpus())]
+-    return devices if devices else [npx.cpu()]
++    return [gpu(i) for i in range(num_gpus())]","Return all available GPUs, or [cpu()] if no GPU exists.",none,4
+e009,InstaPy,log_record_all_followed,"def log_record_all_followed(login, followed, logger, logfolder):","--- a/code.py
++++ b/code.py
+@@ -3,4 +3,4 @@
+         with open('{0}{1}_record_all_followed.csv'.format(logfolder, login), 'a+') as followPool:
+             followPool.write(followed + ',\n')
+     except BaseException as e:
+-        logger.error('log_followed_pool error {}'.format(str(e)))
++        logger.error('log__record_all_followed_pool error {}'.format(str(e)))",We save all followed to a pool that will never be erase,none,7
+e011,matplotlib,OSXInstalledFonts,"def OSXInstalledFonts(directories=None, fontext='ttf'):","--- a/code.py
++++ b/code.py
+@@ -1,11 +1,4 @@
+ def OSXInstalledFonts(directories=None, fontext='ttf'):
+     if directories is None:
+         directories = OSXFontDirectories
+-    fontext = get_fontext_synonyms(fontext)
+-    files = []
+-    for path in directories:
+-        if fontext is None:
+-            files.extend(cbook.listFiles(path, '*'))
+-        else:
+-            files.extend(list_fonts(path, fontext))
+-    return files
++    return [path for directory in directories for ext in get_fontext_synonyms(fontext) for path in list_fonts(directory, ext)]",Get list of font files on OS X - ignores font suffix by default.,none,12
+e021,StratosphereLinuxIPS,Daemon.setup_std_streams,def setup_std_streams(self):,"--- a/code.py
++++ b/code.py
+@@ -1,8 +1,10 @@
+ def setup_std_streams(self):
+     std_streams = [self.stderr, self.stdout, self.logsfile]
+     for file in std_streams:
++        if '-S' in sys.argv and file == self.stdout:
++            continue
+         try:
+             open(file, 'w').close()
+-        except FileNotFoundError:
++        except (FileNotFoundError, NotADirectoryError):
+             os.mkdir(os.path.dirname(file))
+             open(file, 'w').close()",Create standard steam files and dirs and clear logs file,none,9
+e025,posthog,retrieve_entity_from,"def retrieve_entity_from(entity_id: Union[str, int], events: List[Dict], actions: List[Dict]) -> Optional[Dict]:","--- a/code.py
++++ b/code.py
+@@ -1,8 +1,8 @@
+-def retrieve_entity_from(entity_id: Union[str, int], events: List[Dict], actions: List[Dict]) -> Optional[Dict]:
++def retrieve_entity_from(entity_id: str, events: List[Dict], actions: List[Dict]) -> Optional[Dict]:
+     for event in events:
+         if event.get('id') == entity_id:
+             return event
+     for action in actions:
+-        if action.get('id') == entity_id:
++        if str(action.get('id')) == entity_id:
+             return action
+     return None",Retrieves the entity from the events and actions.,none,9
+e027,python3-saml,OneLogin_Saml2_Response.validate_signed_elements,"def validate_signed_elements(self, signed_elements):","--- a/code.py
++++ b/code.py
+@@ -8,9 +8,9 @@
+     if response_tag in signed_elements:
+         expected_signature_nodes = OneLogin_Saml2_XML.query(self.document, OneLogin_Saml2_Utils.RESPONSE_SIGNATURE_XPATH)
+         if len(expected_signature_nodes) != 1:
+-            raise Exception('Unexpected number of Response signatures found. SAML Response rejected.')
++            raise OneLogin_Saml2_ValidationError('Unexpected number of Response signatures found. SAML Response rejected.', OneLogin_Saml2_ValidationError.WRONG_NUMBER_OF_SIGNATURES_IN_RESPONSE)
+     if assertion_tag in signed_elements:
+         expected_signature_nodes = self.__query(OneLogin_Saml2_Utils.ASSERTION_SIGNATURE_XPATH)
+         if len(expected_signature_nodes) != 1:
+-            raise Exception('Unexpected number of Assertion signatures found. SAML Response rejected.')
++            raise OneLogin_Saml2_ValidationError('Unexpected number of Assertion signatures found. SAML Response rejected.', OneLogin_Saml2_ValidationError.WRONG_NUMBER_OF_SIGNATURES_IN_ASSERTION)
+     return True",Verifies that the document has the expected signed nodes.,exception_changed,17
+e035,StratosphereLinuxIPS,Module.check_unknown_port,"def check_unknown_port(self, dport, proto, daddr, profileid, twid, uid, timestamp):","--- a/code.py
++++ b/code.py
+@@ -7,3 +7,4 @@
+         return False
+     if not 'icmp' in proto and (not self.is_p2p(dport, proto, daddr)) and (not __database__.is_ftp_port(dport)):
+         self.helper.set_evidence_unknown_port(daddr, dport, proto, timestamp, profileid, twid, uid)
++        return True",Checks dports that are not in our slips_files/ports_info/ files,none,10
+e042,reflex,serialize_primitive,"def serialize_primitive(value: Union[bool, int, float, Base, None]) -> str:","--- a/code.py
++++ b/code.py
+@@ -1,2 +1,2 @@
+-def serialize_primitive(value: Union[bool, int, float, Base, None]) -> str:
++def serialize_primitive(value: Union[bool, int, float, None]) -> str:
+     return format.json_dumps(value)","Serialize a primitive type.
+
+    Args:
+        value: The number to serialize.
+
+    Returns:
+        The serialized number.",none,9
+e048,python-telegram-bot,InlineKeyboardMarkup.from_column,"def from_column(cls, button_column: List[InlineKeyboardButton], **kwargs: object) -> 'InlineKeyboardMarkup':","--- a/code.py
++++ b/code.py
+@@ -1,3 +1,3 @@
+-def from_column(cls, button_column: List[InlineKeyboardButton], **kwargs: object) -> 'InlineKeyboardMarkup':
++def from_column(cls, button_column: Sequence[InlineKeyboardButton], **kwargs: object) -> 'InlineKeyboardMarkup':
+     button_grid = [[button] for button in button_column]
+     return cls(button_grid, **kwargs)","Shortcut for::
+
+            InlineKeyboardMarkup([[button] for button in button_column], **kwargs)
+
+        Return an InlineKeyboardMarkup from a single column of InlineKeyboardButtons
+
+        Args:
+            button_column (List[:class:`telegram.InlineKeyboardButton`]): The button to use in the
+                markup",none,12
+e052,zipline,get_benchmark_returns,"def get_benchmark_returns(symbol, start_date, end_date):","--- a/code.py
++++ b/code.py
+@@ -1,6 +1,2 @@
+ def get_benchmark_returns(symbol, start_date, end_date):
+-    data = pd.read_csv(format_yahoo_index_url(symbol, start_date, end_date), parse_dates=['Date'], index_col='Date', usecols=['Open', 'Close', 'Date']).sort_index().tz_localize('UTC')
+-    returns = data['Close'].pct_change()
+-    first_open, first_close = data.ix[0, ['Open', 'Close']]
+-    returns.iloc[0] = (first_close - first_open) / first_open
+-    return returns
++    return pd.read_csv(format_yahoo_index_url(symbol, start_date, end_date), parse_dates=['Date'], index_col='Date', usecols=['Adj Close', 'Date'], squeeze=True).sort_index().tz_localize('UTC').pct_change(1).iloc[1:]",Get a Series of benchmark returns from Yahoo.,none,7
+e055,manim,PMobject.add_points,"def add_points(self, points, rgbas=None, color=None, alpha=1):","--- a/code.py
++++ b/code.py
+@@ -7,6 +7,6 @@
+         color = Color(color) if color else self.color
+         rgbas = np.repeat([color_to_rgba(color, alpha)], num_new_points, axis=0)
+     elif len(rgbas) != len(points):
+-        raise ValueError('points and rgbas must have same shape')
++        raise ValueError('points and rgbas must have same length')
+     self.rgbas = np.append(self.rgbas, rgbas, axis=0)
+     return self","Points must be a Nx3 numpy array, as must rgbas if it is not None",none,13
+e059,monkey,Authenticate.post,def post(self):,"--- a/code.py
++++ b/code.py
+@@ -2,8 +2,7 @@
+     credentials = json.loads(request.data)
+     username = credentials['username']
+     password = credentials['password']
+-    secret = sha3_512(password.encode('utf-8')).hexdigest()
+-    if self._authenticate(username, secret):
++    if self._authenticate(username, password):
+         access_token = flask_jwt_extended.create_access_token(identity=user_store.UserStore.username_table[username].id)
+         logger.debug(f'Created access token for user {username} that begins with {access_token[:4]}')
+         return make_response({'access_token': access_token, 'error': ''}, 200)","Example request:
+        {
+            ""username"": ""my_user"",
+            ""password"": ""mypassword....""
+        }",none,16
+e063,zulip,GetSubscribersTest.test_nonsubscriber_private_stream,def test_nonsubscriber_private_stream(self) -> None:,"--- a/code.py
++++ b/code.py
+@@ -6,3 +6,5 @@
+     stream_id = get_stream(stream_name, user_profile.realm).id
+     result = self.make_subscriber_request(stream_id, email=other_email)
+     self.assert_json_error(result, 'Invalid stream id')
++    self.login(self.example_email('iago'))
++    self.make_successful_subscriber_request(stream_name)",A non-subscriber to a private stream can't query that stream's membership.,none,9
+e066,AzurLaneAutoScript,Level.lv_get,"def lv_get(self, after_battle=False):","--- a/code.py
++++ b/code.py
+@@ -1,10 +1,10 @@
+ def lv_get(self, after_battle=False):
+-    self.lv_before_battle = self.lv if after_battle else ['-1'] * 6
+-    colors = [tuple(get_color(self.device.image, button.area).astype(int)) for button in STATUS_GRID.buttons()]
+-    self.has_ship = [color == COLOR_WHITE or color == COLOR_MASKED for color in colors]
+-    self.low_hp = [color == COLOR_MASKED for color in colors]
+-    self._lv_ocr()
+-    logger.attr('LEVEL', ',  '.join((data for data in self.lv)))
++    if not self.config.STOP_IF_REACH_LV120:
++        return [-1] * 6
++    self._lv_before_battle = self.lv if after_battle else [-1] * 6
++    ocr = LevelOcr(LV_GRID.buttons())
++    self.lv = ocr.ocr(self.device.image)
++    logger.attr('LEVEL', ', '.join((str(data) for data in self.lv)))
+     if after_battle:
+         self.lv120_triggered()
+     return self.lv","Args:
+            after_battle (bool): True if called after battle else False.",none,12
+e069,pytorch,FullyShardedDataParallel.module,def module(self) -> FlattenParamsWrapper:,"--- a/code.py
++++ b/code.py
+@@ -1,3 +1,3 @@
+-def module(self) -> FlattenParamsWrapper:
++def module(self) -> nn.Module:
+     assert isinstance(self._fsdp_wrapped_module, FlattenParamsWrapper)
+-    return self._fsdp_wrapped_module
++    return self._fsdp_wrapped_module.module","make model.module accessible, just like DDP.",return_changed,4
+e071,matplotlib,ContourLabeler.add_label,"def add_label(self, x, y, rotation, lev, cvalue):","--- a/code.py
++++ b/code.py
+@@ -1,6 +1,9 @@
+ def add_label(self, x, y, rotation, lev, cvalue):
+     data_x, data_y = self.axes.transData.inverted().transform((x, y))
+     t = Text(data_x, data_y, text=self.get_text(lev, self.labelFmt), rotation=rotation, horizontalalignment='center', verticalalignment='center', zorder=self._clabel_zorder, color=self.labelMappable.to_rgba(cvalue, alpha=self.get_alpha()), fontproperties=self._label_font_props, clip_box=self.axes.bbox)
++    if self._use_clabeltext:
++        data_rotation, = self.axes.transData.inverted().transform_angles([rotation], [[x, y]])
++        t.set(rotation=data_rotation, transform_rotates_text=True)
+     self.labelTexts.append(t)
+     self.labelCValues.append(cvalue)
+     self.labelXYs.append((x, y))",Add contour label without `.Text.set_transform_rotates_text`.,none,8
+e073,zulip,SubscriptionAPITest.test_can_subscribe_other_users,def test_can_subscribe_other_users(self) -> None:,"--- a/code.py
++++ b/code.py
+@@ -1,12 +1,13 @@
+ def test_can_subscribe_other_users(self) -> None:
+     othello = self.example_user('othello')
+-    othello.is_realm_admin = True
++    do_change_is_admin(othello, True)
+     self.assertTrue(othello.can_subscribe_other_users())
+-    othello.is_realm_admin = False
+-    othello.is_guest = True
++    do_change_is_admin(othello, False)
++    do_change_is_guest(othello, True)
+     self.assertFalse(othello.can_subscribe_other_users())
+-    othello.is_guest = False
+-    othello.realm.waiting_period_threshold = 1000
++    do_change_is_guest(othello, False)
++    do_set_realm_property(othello.realm, 'waiting_period_threshold', 1000)
++    do_set_realm_property(othello.realm, 'invite_to_stream_policy', Realm.INVITE_TO_STREAM_POLICY_WAITING_PERIOD)
+     othello.date_joined = timezone_now() - timedelta(days=othello.realm.waiting_period_threshold - 1)
+     self.assertFalse(othello.can_subscribe_other_users())
+     othello.date_joined = timezone_now() - timedelta(days=othello.realm.waiting_period_threshold + 1)",You can't subscribe other people to streams if you are a guest or your waiting period is not over.,none,14
+e077,ipython,test_get_home_dir_3,def test_get_home_dir_3():,"--- a/code.py
++++ b/code.py
+@@ -1,4 +1,4 @@
+ def test_get_home_dir_3():
+     env['HOME'] = HOME_TEST_DIR
+-    home_dir = path.get_home_dir()
+-    nt.assert_equal(home_dir, env['HOME'])
++    home_dir = path.get_home_dir(True)
++    nt.assert_equal(home_dir, os.path.realpath(env['HOME']))","Testcase $HOME is set, then use its value as home directory.",none,5
+e081,cupy,Backend.all_gather,"def all_gather(self, in_array, out_array, count, stream=None):","--- a/code.py
++++ b/code.py
+@@ -1,2 +1,2 @@
+ def all_gather(self, in_array, out_array, count, stream=None):
+-    raise NotImplementedError('Current Backend does not implement')
++    raise NotImplementedError('Current Backend does not implement all_gather')","Performs an all gather operation.
+
+        Args:
+            in_array (cupy.ndarray):
+            out_array (cupy.ndarray):
+            op (str):
+            stream (cupy.cuda.Stream):",none,9
+e083,scrapy,get_base_url,def get_base_url(response):,"--- a/code.py
++++ b/code.py
+@@ -1,5 +1,5 @@
+ def get_base_url(response):
+     if response not in _baseurl_cache:
+-        match = BASEURL_RE.search(response.body_as_unicode()[0:4096])
+-        _baseurl_cache[response] = urljoin_rfc(response.url, match.group(1)) if match else response.url
++        text = response.body_as_unicode()[0:4096]
++        _baseurl_cache[response] = html.get_base_url(text, response.url, response.encoding)
+     return _baseurl_cache[response]",Return the base url of the given response used to resolve relative links.,none,6
+e085,pytorch,is_deterministic,def is_deterministic():,"--- a/code.py
++++ b/code.py
+@@ -1,2 +1,3 @@
+ def is_deterministic():
+-    return _C._get_deterministic()
++    warnings.warn('torch.is_deterministic is deprecated and will be removed in a future release. Please use torch.are_deterministic_algorithms_enabled instead')
++    return are_deterministic_algorithms_enabled()","r""""""Returns True if the global deterministic flag is turned on. Refer to
+    :func:`torch.set_deterministic` documentation for more details.",none,4
+e093,mindsdb,FileHandler.get_tables,def get_tables(self):,"--- a/code.py
++++ b/code.py
+@@ -1,6 +1,4 @@
+ def get_tables(self):
+-    response = {'type': RESPONSE_TYPE.TABLE, 'data': []}
+     files_meta = self.file_controller.get_files()
+-    for file_meta in files_meta:
+-        response['data'].append(TablesRow(TABLE_NAME=file_meta['name'], TABLE_ROWS=file_meta['row_count']))
+-    return response
++    data = [{'TABLE_NAME': x['name'], 'TABLE_ROWS': x['row_count']} for x in files_meta]
++    return HandlerResponse(RESPONSE_TYPE.TABLE, data_frame=pd.DataFrame(data))",List all tabels in PostgreSQL without the system tables information_schema and pg_catalog,none,7
+e108,zulip,parse_gcm_options,"def parse_gcm_options(options: Dict[str, Any], data: Dict[str, Any]) -> None:","--- a/code.py
++++ b/code.py
+@@ -1,3 +1,7 @@
+-def parse_gcm_options(options: Dict[str, Any], data: Dict[str, Any]) -> None:
++def parse_gcm_options(options: Dict[str, Any], data: Dict[str, Any]) -> str:
++    priority = options.pop('priority', 'normal')
++    if priority not in ('normal', 'high'):
++        raise JsonableError(_('Invalid GCM option to bouncer: priority %r') % (priority,))
+     if options:
+         raise JsonableError(_('Invalid GCM options to bouncer: %s') % (ujson.dumps(options),))
++    return priority","Parse GCM options, raising an error if invalid.",return_changed,4
+e114,ipython,test_get_ipython_dir_7,def test_get_ipython_dir_7():,"--- a/code.py
++++ b/code.py
+@@ -1,6 +1,6 @@
+ def test_get_ipython_dir_7():
+     path._writable_dir = lambda path: True
+     home_dir = os.path.expanduser('~')
+-    env['IPYTHON_DIR'] = os.path.join('~', 'somewhere')
++    env['IPYTHONDIR'] = os.path.join('~', 'somewhere')
+     ipdir = path.get_ipython_dir()
+     nt.assert_equal(ipdir, os.path.join(home_dir, 'somewhere'))","test_get_ipython_dir_7, test home directory expansion on IPYTHON_DIR",none,7
+e117,d2l-en,train_2d,"def train_2d(trainer, steps=20, f_grad=None):","--- a/code.py
++++ b/code.py
+@@ -7,4 +7,5 @@
+         else:
+             x1, x2, s1, s2 = trainer(x1, x2, s1, s2)
+         results.append((x1, x2))
++    print(f'epoch {i + 1:d}, x1: {x1:f}, x2: {x2:f}')
+     return results",Optimize a 2-dim objective function with a customized trainer.,none,11
+e124,frappe,TestPermissions.test_ignore_user_permissions_if_missing,def test_ignore_user_permissions_if_missing(self):,"--- a/code.py
++++ b/code.py
+@@ -1,10 +1,9 @@
+ def test_ignore_user_permissions_if_missing(self):
+-    self.set_user_permission_doctypes(['Blog Category', 'Blog Post', 'Blogger'])
+-    frappe.set_user('Administrator')
++    add_user_permission('Blog Category', '_Test Blog Category', 'test2@example.com')
+     frappe.set_user('test2@example.com')
+-    doc = frappe.get_doc({'doctype': 'Blog Post', 'blog_category': '_Test Blog Category', 'blogger': '_Test Blogger 1', 'title': '_Test Blog Post Title', 'content': '_Test Blog Post Content'})
++    doc = frappe.get_doc({'doctype': 'Blog Post', 'blog_category': '_Test Blog Category 2', 'blogger': '_Test Blogger 1', 'title': '_Test Blog Post Title', 'content': '_Test Blog Post Content'})
+     self.assertFalse(doc.has_permission('write'))
+     frappe.set_user('Administrator')
+-    self.set_ignore_user_permissions_if_missing(1)
++    remove_user_permission('Blog Category', '_Test Blog Category', 'test2@example.com')
+     frappe.set_user('test2@example.com')
+     self.assertTrue(doc.has_permission('write'))","If `Ignore User Permissions If Missing` is checked in System Settings, show records even if User Permissions are missing for a linked doctype",none,11
+e136,pytorch,TestFxGraphCacheHashing.test_tensor_constants,def test_tensor_constants(self):,"--- a/code.py
++++ b/code.py
+@@ -1,5 +1,3 @@
+ def test_tensor_constants(self):
+     data = FxGraphCachePickler.dumps(torch.tensor(list(range(9))))
+-    self.assertIsInstance(pickle.loads(data), TensorMetadata)
+-    data = FxGraphCachePickler.dumps(torch.tensor(list(range(8))))
+     self.assertIsInstance(pickle.loads(data), TensorMetadataAndValues)",Test the handling of small vs. large tensor constants.,none,6
+e144,StratosphereLinuxIPS,test_download_malicious_file,"def test_download_malicious_file(outputQueue, database, url):","--- a/code.py
++++ b/code.py
+@@ -1,5 +1,6 @@
+ def test_download_malicious_file(outputQueue, database, url):
+     update_manager = create_update_manager_instance(outputQueue)
+     old_etag = update_manager.get_e_tag_from_web(url)
++    old_etag = '*' + old_etag[1:]
+     database.set_TI_file_info(url.split('/')[-1], {'e-tag': old_etag})
+-    assert update_manager.update_TI_file(url) == True
++    assert update_manager._UpdateFileManager__check_if_update(url) == True",we're tetsing this condition old_e_tag == new_e_tag,none,6
+e157,transformers,check_onnx_model_list,def check_onnx_model_list(overwrite=False):,"--- a/code.py
++++ b/code.py
+@@ -1,5 +1,5 @@
+ def check_onnx_model_list(overwrite=False):
+-    current_list, start_index, end_index, lines = _find_text_in_file(filename=os.path.join(PATH_TO_DOCS, 'serialization.mdx'), start_prompt='<!--This table is automatically generated by make style, do not fill manually!-->', end_prompt='This conversion is handled with the PyTorch version of models ')
++    current_list, start_index, end_index, lines = _find_text_in_file(filename=os.path.join(PATH_TO_DOCS, 'serialization.mdx'), start_prompt='<!--This table is automatically generated by make style, do not fill manually!-->', end_prompt='The ONNX conversion is supported for the PyTorch versions of the models.')
+     new_list = get_onnx_model_list()
+     if current_list != new_list:
+         if overwrite:",Check the model list in the serialization.rst is consistent with the state of the lib and maybe `overwrite`.,none,10
+e167,transformers,eval_data_collator,"def eval_data_collator(dataset: Dataset, batch_size: int):","--- a/code.py
++++ b/code.py
+@@ -1,6 +1,8 @@
+ def eval_data_collator(dataset: Dataset, batch_size: int):
+-    for i in range(len(dataset) // batch_size):
+-        batch = dataset[i * batch_size:(i + 1) * batch_size]
++    batch_idx = np.arange(len(dataset))
++    steps_per_epoch = math.ceil(len(dataset) / batch_size)
++    batch_idx = np.array_split(batch_idx, steps_per_epoch)
++    for idx in batch_idx:
++        batch = dataset[idx]
+         batch = {k: np.array(v) for k, v in batch.items()}
+-        batch = shard(batch)
+         yield batch","Returns batches of size `batch_size` from `eval dataset`, sharded over all local devices.",none,7
+e179,frappe,EmailAccount.autoname,def autoname(self):,"--- a/code.py
++++ b/code.py
+@@ -1,6 +1,4 @@
+ def autoname(self):
+     if not self.email_account_name:
+         self.email_account_name = self.email_id.split('@', 1)[0].replace('_', ' ').replace('.', ' ').replace('-', ' ').title()
+-        if self.service:
+-            self.email_account_name = self.email_account_name + ' ' + self.service
+     self.name = self.email_account_name",Set name as `email_account_name` or make title from email id.,none,7
+e192,frappe,Page.is_permitted,def is_permitted(self):,"--- a/code.py
++++ b/code.py
+@@ -1,6 +1,6 @@
+ def is_permitted(self):
+     from frappe.utils import has_common
+-    allowed = [d.role for d in frappe.get_all('Page Role', fields=['role'], filters={'parent': self.name})]
++    allowed = [d.role for d in frappe.get_all('Has Role', fields=['role'], filters={'parent': self.name})]
+     if not allowed:
+         return True
+     roles = frappe.get_roles()",Returns true if Page Role is not set or the user is allowed.,none,9
+e201,zulip,find_ldap_users_by_email,def find_ldap_users_by_email(email: str) -> Optional[List[_LDAPUser]]:,"--- a/code.py
++++ b/code.py
+@@ -1,3 +1,2 @@
+-def find_ldap_users_by_email(email: str) -> Optional[List[_LDAPUser]]:
+-    email_search = LDAPReverseEmailSearch(LDAPBackend(), email)
+-    return email_search.search_for_users(should_populate=False)
++def find_ldap_users_by_email(email: str) -> List[_LDAPUser]:
++    return LDAPReverseEmailSearch().search_for_users(email)","Returns list of _LDAPUsers matching the email search,
+    or None if no matches are found.",return_changed,5

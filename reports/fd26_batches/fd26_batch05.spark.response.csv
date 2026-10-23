@@ -1,0 +1,36 @@
+err_id,label,stale_statement,why
+e003,C,,only type hints added no documented claim changed
+e014,C,,only test cleanup with context manager no behavior change
+e016,C,,internal refactor to batch encode behavior unchanged
+e018,C,,internal delegation still returns DataFrame as documented
+e020,C,,default False to 0 is equal and not documented
+e029,C,,removed param not mentioned in docstring
+e036,C,,removed prints and error swallowing not documented
+e041,C,,internal helper swap preserves documented behavior
+e045,C,,implementation swap preserves documented statuses
+e058,C,,added projection only internal query optimization
+e074,C,,only type hints added documented args unchanged
+e079,C,,new factory form matches documented example
+e088,C,,default now matches documented safe value
+e095,C,,default changed to dynamic source not stated in doc
+e097,C,,batching refactor preserves documented reconciliation
+e101,C,,renamed undocumented param no doc claim affected
+e105,C,,py2 to py3 alias swap preserves decoded string claim
+e110,C,,removed params were never documented
+e113,C,,stacking change not contradicted by single-patch doc
+e120,C,,return False instead of raise not described in doc
+e127,C,,typed wrapper preserves documented corrupt-db behavior
+e141,C,,Tex swap still accepts documented title types
+e153,C,,only type hints added documented behavior unchanged
+e169,C,,direct axes calls preserve documented label behavior
+e180,C,,added return annotation matches documented return
+e189,C,,fixture rename not mentioned in docstring
+e202,C,,mel param expansion preserves documented latents
+e134,A,Save the speaker.json,file now saved as speakers.pth not json
+e143,C,,added status code passthrough not documented
+e155,C,,help word sample to sample_n does not falsify command doc
+e164,C,,added dedupe aligns with documented check-if-added
+e177,A,get_name_id,test now calls get_nameid without underscore
+e191,C,,surf object instead of type not described in doc
+e200,C,,added notification checks preserve query claim
+e210,A,return True or False.,function now returns tuple not bool

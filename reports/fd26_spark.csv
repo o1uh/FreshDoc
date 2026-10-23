@@ -1,0 +1,211 @@
+err_id,label,stale_statement,why
+e001,C,,generic doc still true internal robustness only
+e002,C,,дефолт не назван в docstring поведение сохранено
+e003,C,,only type hints added no documented claim changed
+e004,A,Write data to both the original stdout and the capture dictionary.,docstring утверждает запись в capture dictionary а код пишет в history_manager
+e005,C,,all listed examples remain true; Any support is new but not proven required for doc
+e006,C,,same move-away behavior only reimplemented with numpy
+e007,C,,изменен только текст сообщения об ошибке поведение прежнее
+e008,C,,one-line purpose still holds; implementation change preserves observable behavior at documented level
+e009,C,,only log message text changed behavior still matches doc
+e010,C,,same stats behaviour constant alias only
+e011,C,,same font filtering only refactored to comprehension
+e012,A,"int: Index of current fleet, 1 to 4.",now returns 0 on unknown outside documented range
+e013,C,,param not in doc pages unchanged refactor only
+e014,C,,only test cleanup with context manager no behavior change
+e015,C,,рефакторинг на DictWriter без изменения поведения
+e016,C,,internal refactor to batch encode behavior unchanged
+e017,C,,high-level URL conversion claims still hold; IDNA and quoting changes do not falsify any statement
+e018,C,,internal delegation still returns DataFrame as documented
+e019,C,,default None to {} preserves documented args; no doc claim becomes false
+e020,C,,default False to 0 is equal and not documented
+e021,B,,new -S stdout skip and NotADirectoryError handling undocumented
+e022,C,,still removes oldest robustness guards only
+e023,C,,still updates and saves unconditional stream internal
+e024,B,,new BASE_DN option handled but not documented
+e025,C,,generic retrieval description still true despite str-only change
+e026,C,,same iteration variable rename only
+e027,B,,new specific ValidationError type and codes undocumented
+e028,C,,doc never names the first argument so rename from path to name does not falsify it
+e029,C,,removed param not mentioned in docstring
+e030,C,,требование value больше 0 сохранено поддержка ndarray не противоречит
+e031,C,,same IOU computation variable renames only
+e032,C,,universa case still passes so plural claim is not proven false from diff alone
+e033,B,,добавлено новое значение story_alchemist отсутствующее в перечислении
+e034,C,,внутренний рефакторинг обхода svg поведение прежнее
+e035,B,,new True return on evidence path undocumented
+e036,C,,removed prints and error swallowing not documented
+e037,B,,automatic .py extension handling is new user-visible behavior missing from doc
+e038,C,,делегирование в _global_matches без изменения контракта
+e039,B,,adds failures.csv output not mentioned in doc
+e040,C,,расширение типа до Sequence и внутренняя реализация поведение прежнее
+e041,C,,internal helper swap preserves documented behavior
+e042,C,,Base removal still fits primitive-number description
+e043,C,,doc never states the default so change from wav22 to wav48_silence_trimmed does not falsify it
+e044,C,,расширение типа point не отражено но не опровергает docstring
+e045,C,,implementation swap preserves documented statuses
+e046,A,sharded over all local devices,removed shard call so no longer sharded
+e047,B,,неизвестные символы теперь пропускаются с предупреждением вместо ошибки
+e048,C,,List still accepted Sequence widening is compatible
+e049,C,,замена cuda на to device не меняет описанные входы и выходы
+e050,A,Ensure that get_public_streams successfully returns a list of streams,endpoint changed no longer calls get_public_streams
+e051,C,,рефакторинг и аннотации типов без изменения поведения
+e052,C,,still returns Yahoo benchmark Series with different calc
+e053,A,Test that warning emitted when xlabel too big.,warning assertion removed no longer verifies warning
+e054,B,,custom messages and silent ticks are important new behavior not covered by generic tone description
+e055,C,,only error wording changed shape requirement still true
+e056,C,,типы расширены без изменения описанного поведения
+e057,B,,supports optional third element folder_name not documented
+e058,C,,added projection only internal query optimization
+e059,C,,request example still valid hashing change is server-side only
+e060,B,,ordered string conversion for dicts is important new behavior not described
+e061,C,,сужение except до Exception не меняет назначение метода
+e062,C,,warning text change only doc unaffected
+e063,C,,original non-subscriber assertion still present extra success check is minor
+e064,C,,still raises on unsafe validation details not in doc
+e065,C,,конвертация через asarray сохраняет описанное поведение
+e066,B,,new STOP_IF_REACH_LV120 early return undocumented
+e067,A,Call `matplotlib.backend_bases.NavigationBase.message_event`,now calls toolmanager.message_event instead
+e068,C,,ленивая инициализация g2p внутренняя поведение прежнее
+e069,C,,still exposes module like DDP only unwraps inner module
+e070,C,,still retries refresh detail not in doc
+e071,A,without `.Text.set_transform_rotates_text`,now conditionally sets transform_rotates_text True
+e072,C,,typo fix only behaviour unchanged
+e073,C,,same guest waiting-period check only test helpers changed
+e074,C,,only type hints added documented args unchanged
+e075,B,,adds HeteroData return support not documented
+e076,C,,конвертация в ManimColor сохраняет поддержку цвета или списка
+e077,C,,still uses HOME value realpath is only precision refinement
+e078,C,,type hints only; documented arg and return still hold
+e079,C,,new factory form matches documented example
+e080,C,,error text change only doc unaffected
+e081,C,,only exception message extended with all_gather
+e082,C,,same false conditions refactor to helper only
+e083,C,,still returns base url only resolution delegated
+e084,C,,still converts TIFF once idempotence guard internal
+e085,B,,deprecation and replacement function undocumented
+e086,C,,generic path cleanup description still holds; rename and robustness handling do not falsify it
+e087,C,,рефакторинг теста с сохранением проверяемого поведения
+e088,C,,default now matches documented safe value
+e089,B,,parameter changed from type to prefix with new defaults and fallback; doc should mention prefix
+e090,B,,adds equal case expectation not covered by doc
+e091,B,,new CalledProcessError on nonzero exit when flag set is important and undocumented
+e092,C,,добавлен только лог поведение с STORY_SKIP сохранено
+e093,C,,still lists tables only response container changed
+e094,A,Augment the message with intents and entities and return diagnostic data.,no longer returns diagnostic data; sets it on message instead and returns None
+e095,C,,default changed to dynamic source not stated in doc
+e096,C,,generic align interface description still holds; signature delegation does not falsify it
+e097,C,,batching refactor preserves documented reconciliation
+e098,C,,header and traceback description still holds; param rename is not in doc
+e099,A,or [cpu()] if no GPU exists,empty list returned when no GPU instead of cpu fallback
+e100,C,,изменения только аннотаций типов и имени переменной
+e101,C,,renamed undocumented param no doc claim affected
+e102,C,,сужение до SingleStringMathTex не противоречит классу VMobject
+e103,C,,расширение типа color и парсинг не противоречит описанию
+e104,C,,keras to coreml conversion purpose still holds; diff does not introduce new false claim
+e105,C,,py2 to py3 alias swap preserves decoded string claim
+e106,C,,рефакторинг ветки profile через хелперы назначение прежнее
+e107,A,a hook's bare array is at the model's rate,bare array now raises TypeError when model rate is None instead of coercing
+e108,B,,new priority return and validation undocumented
+e109,C,,undirected check purpose and List handling still hold; assert does not prove doc false
+e110,C,,removed params were never documented
+e111,B,,new mode argument and early None on zero stock are important and undocumented
+e112,A,return the unencrypted PDF as raw data.,для kind thumb теперь возвращается jpg миниатюры а не pdf
+e113,C,,stacking change not contradicted by single-patch doc
+e114,A,IPYTHON_DIR,code now uses IPYTHONDIR without underscore
+e115,A,Test function urlize_quoted_links with different args,test now calls urlize instead of urlize_quoted_links
+e116,A,unit test for addProfile and getProfileIdFromIP,методы переименованы в snake_case старые имена больше не существуют
+e117,C,,print is trivial side effect optimization claim still true
+e118,C,,цикл повтора сохраняет страницы in и out
+e119,C,,class deprecation purpose still holds; fixture rename is not in doc
+e120,C,,return False instead of raise not described in doc
+e121,B,,new plain ndarray to tensor conversion is important and undocumented
+e122,C,,doc never states the default so change from 40 to 15 does not falsify it
+e123,C,,добавлен ранний выход через kill_all_modules назначение ожидания прежнее
+e124,C,,same permission-missing behavior only test setup changed
+e125,C,,переход на view с минус один сохраняет форму из docstring
+e126,C,,уточнение типа до подкласса не делает утверждение о VMobject ложным
+e127,C,,typed wrapper preserves documented corrupt-db behavior
+e128,C,,обобщённое описание construction остаётся истинным при добавлении Typst
+e129,C,,push view limits and position purpose still holds; list storage is internal
+e130,C,,still TreeNode generic parameter only
+e131,C,,добавлены только аннотации типов поведение прежнее
+e132,C,,doc never mentions formatter default so singleton change does not falsify it
+e133,C,,добавлена только аннотация dict поведение прежнее
+e134,A,Save the speaker.json,file now saved as speakers.pth not json
+e135,B,,добавлена поддержка Iterable и Generator отсутствующая в docstring
+e136,A,small vs. large,only one tensor size now asserted
+e137,C,,замена array на ndarray синонимична поведение сохранено
+e138,C,,смена аннотации на Path и способа соединения пути не опровергает описание
+e139,C,,float ranking description still plausible; annotation change alone with pass body does not prove false
+e140,C,,still converts to string order detail not in doc
+e141,C,,Tex swap still accepts documented title types
+e142,C,,смена псевдонима типа SLT на SCT поведение прежнее
+e143,C,,added status code passthrough not documented
+e144,A,old_e_tag == new_e_tag,code now forces mismatch and checks update path
+e145,C,,аннотация Mobject соответствует описанным Mobjects
+e146,C,,переписанный тест по-прежнему проверяет выводы ошибки и стримы
+e147,A,"test_get_xdg_dir_3, check xdg_dir not used on OS X",test now uses nt and win32 so it checks Windows not OS X
+e148,C,,log wording only behaviour unchanged
+e149,C,,backup and replace purpose still holds; OSError tolerance does not falsify it
+e150,C,,смена внутренних вызовов кеша внешний результат прежний
+e151,C,,переименование переменной и уточнение типа метки не меняет описание
+e152,C,,переход на with не меняет проверяемое поведение
+e153,C,,only type hints added documented behavior unchanged
+e154,C,,новый параметр имеет дефолт ctc поведение по умолчанию сохранено
+e155,C,,help word sample to sample_n does not falsify command doc
+e156,C,,контекстный менеджер для временных файлов не меняет назначение теста
+e157,C,,same list-consistency check only prompt string changed
+e158,C,,переход на get_pr_info сохраняет возврат множества меток
+e159,C,,concatenate purpose still holds; vertex regularization detail does not falsify it
+e160,C,,замена Optional на новый синтаксис не меняет контракт
+e161,C,,расширение типа оси и упрощение normalize не меняет назначение
+e162,B,,adds jax types returning True not documented
+e163,A,Suffix in name will be ignore.,теперь игнорируется только числовой суффикс после последнего подчеркивания
+e164,C,,added dedupe aligns with documented check-if-added
+e165,C,,расширение типа color не опровергает описание цвета
+e166,C,,same columns and return internal mapping only
+e167,A,sharded over all local devices,shard call removed no longer sharded
+e168,C,,общее утверждение о CSV остаётся верным при новых колонках
+e169,C,,direct axes calls preserve documented label behavior
+e170,C,,замена Image.Image на Image не делает описание image ложным
+e171,C,,добавлена защита от None с возвратом нуля описание длины верно
+e172,C,,serialize with decimals purpose still holds; delegation preserves it
+e173,C,,still closes by user choice flush details internal
+e174,C,,аннотация bool соответствует описанному require_writable
+e175,C,,same version return internal call change only
+e176,C,,новый аргумент slot_to_fill назначение извлечения прежнее
+e177,A,get_name_id,test now calls get_nameid without underscore
+e178,C,,расширение типа point и замена array на asarray поведение прежнее
+e179,C,,service suffix removal not mentioned in doc so still true
+e180,C,,added return annotation matches documented return
+e181,C,,перестановка mask и cache не делает утверждений docstring ложными
+e182,C,,прежние утверждения остаются верными при добавлении getLastTW
+e183,C,,default http scheme purpose still holds; early return preserves behavior
+e184,C,,подавление RuntimeError не меняет описанный протокол notify
+e185,B,,now returns cleared flag not documented
+e186,C,,default changed but doc never stated default
+e187,C,,замена flatten на flat дает тот же кортеж описание верно
+e188,C,,изменение сигнатуры не противоречит назначению хука
+e189,C,,fixture rename not mentioned in docstring
+e190,C,,тип str соответствует assert порядок не описан в docstring
+e191,C,,surf object instead of type not described in doc
+e192,A,Page Role,code now queries Has Role instead
+e193,C,,терпимость к отсутствующей папке и удаление temp описание верно
+e194,A,as specified in the VALID_TEST_CONFIG_LABELS set,код больше не использует VALID set а фильтрует по префиксу
+e195,A,"out: page_main, may have info_bar",для не-en сервера навигация пропущена и out неверен
+e196,A,Get the amount of existing existing likes and compare it against max,params renamed max min to maximum minimum
+e197,C,,index and distance purpose still holds; variable rename is internal
+e198,C,,same branching plus log only
+e199,A,Required if :obj:`concatenate` is :obj:`True`.,проверка concatenate и требование res_n_id удалены
+e200,C,,added notification checks preserve query claim
+e201,A,or None if no matches are found,return type is now List never None
+e202,C,,mel param expansion preserves documented latents
+e203,C,,копирование направления для защиты от алиасинга поведение прежнее
+e204,B,,добавлена Custom Role для VAT Audit Report отсутствующая в docstring
+e205,C,,internal exclusion purpose still holds; class rename alone does not prove doc false without hierarchy
+e206,C,,добавлены только аннотации типов поведение сохранено
+e207,A,Ensure request.DATA returns content for overloaded POST request.,attribute renamed DATA to data
+e208,C,,перенос partitions в layout_config и расширение типов поведение прежнее
+e209,A,Delete given loc(-s) from block in-place.,метод больше не меняет блок а возвращает новый Block
+e210,A,return True or False.,function now returns tuple not bool
