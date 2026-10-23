@@ -47,8 +47,26 @@ PROJECT_URLS = {
 }
 
 
-def ensure_repo(name: str, url: str, depth: int = 350) -> Path:
-    target = REPOS_DIR / name
+def ensure_repo(
+    name: str,
+    url: str,
+    depth: int = 350,
+    override_path: str | None = None,
+    repos_dir: Path | None = None,
+) -> Path:
+    """Return a local clone of the project, cloning only when needed.
+
+    `override_path` (CLI --tornado-path/--ipython-path) uses an existing
+    local repository as-is — for offline/sandboxed runs without network.
+    """
+    if override_path:
+        target = Path(override_path)
+        if not (target / ".git").exists():
+            raise FileNotFoundError(f"--{name}-path is not a git repo: {target}")
+        print(f"Using existing {name} repo at {target}", flush=True)
+        return target
+    base = repos_dir or REPOS_DIR
+    target = base / name
     if (target / ".git").exists():
         return target
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -108,7 +126,7 @@ def plot_risk_timelines(
             )
             ax.scatter(dates_m2, risks_m2, color="#2980b9", s=35)
 
-            # Mark docstring fixes
+            # Mark docstring fixes and removals
             for e in events_m2:
                 if e["event"] == "doc_updated":
                     fix_dt = datetime.fromisoformat(e["date"])
@@ -118,6 +136,15 @@ def plot_risk_timelines(
                         linestyle=":",
                         alpha=0.7,
                         label="Doc Fix" if "Doc Fix" not in ax.get_legend_handles_labels()[1] else "",
+                    )
+                elif e["event"] in ("doc_removed", "doc_degraded"):
+                    rm_dt = datetime.fromisoformat(e["date"])
+                    ax.axvline(
+                        rm_dt,
+                        color="#c0392b",
+                        linestyle=":",
+                        alpha=0.7,
+                        label="Doc Removed" if "Doc Removed" not in ax.get_legend_handles_labels()[1] else "",
                     )
 
         ax.axhline(
@@ -145,6 +172,10 @@ def main() -> None:
     parser.add_argument("--max-commits", type=int, default=300)
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--ckpt", default="checkpoints/slot4_full/best")
+    # Offline runs: point at existing local clones instead of `git clone`.
+    parser.add_argument("--tornado-path", default=None)
+    parser.add_argument("--ipython-path", default=None)
+    parser.add_argument("--repos-dir", default=None)
     args = parser.parse_args()
 
     risk_cfg = load_risk_config()
@@ -166,9 +197,20 @@ def main() -> None:
     )
 
     all_metrics: dict[str, dict[str, ReplayMetrics]] = {}
+    path_overrides = {
+        "tornado": args.tornado_path,
+        "ipython": args.ipython_path,
+    }
+    repos_dir = Path(args.repos_dir) if args.repos_dir else None
 
     for proj_name, proj_url in PROJECT_URLS.items():
-        repo_dir = ensure_repo(proj_name, proj_url, depth=args.max_commits + 50)
+        repo_dir = ensure_repo(
+            proj_name,
+            proj_url,
+            depth=args.max_commits + 50,
+            override_path=path_overrides.get(proj_name),
+            repos_dir=repos_dir,
+        )
         print(f"\n==========================================")
         print(f"Replaying {proj_name} (commits={args.max_commits})")
         print(f"==========================================")
@@ -220,23 +262,41 @@ def main() -> None:
     cache.save()
     print(f"\nReplay cache saved to {CACHE_PATH} (hits: {cache.hits}, misses: {cache.misses})")
 
-    # Select dynamic top symbols across projects by event count in M2
+    # Select timelines: top-2 per project (fix preferred, then event count),
+    # so both projects are always represented on the risk chart.
+    # Keys are prefixed with the project to avoid collisions when two
+    # projects contain the same qualified symbol name.
     from collections import Counter
 
-    candidate_counts: Counter[str] = Counter()
+    top_symbols: list[str] = []
     for proj_name, m_dict in all_metrics.items():
+        counts: Counter[str] = Counter()
+        has_fix: dict[str, bool] = {}
         for sym, h in m_dict["m2"].section_histories.items():
             if len(h) >= 2:
-                candidate_counts[sym] += len(h)
-
-    top_symbols = [s for s, _ in candidate_counts.most_common(4)]
-    print(f"\nTop 4 dynamic functions for risk timeline plots: {top_symbols}")
+                key = f"{proj_name}::{sym}"
+                counts[key] += len(h)
+                if any(e.get("event") == "doc_updated" for e in h):
+                    has_fix[key] = True
+        with_fix = sorted(
+            [s for s in counts if has_fix.get(s)],
+            key=lambda s: counts[s],
+            reverse=True,
+        )
+        pick = with_fix[:2]
+        if len(pick) < 2:
+            rest = [s for s, _ in counts.most_common() if s not in pick]
+            pick += rest[: 2 - len(pick)]
+        top_symbols.extend(pick[:2])
+    print(f"\nTop functions for risk timeline plots (2 per project): {top_symbols}")
 
     combined_histories_m0: dict[str, list[dict]] = {}
     combined_histories_m2: dict[str, list[dict]] = {}
     for proj_name, m_dict in all_metrics.items():
-        combined_histories_m0.update(m_dict["m0"].section_histories)
-        combined_histories_m2.update(m_dict["m2"].section_histories)
+        for sym, h in m_dict["m0"].section_histories.items():
+            combined_histories_m0[f"{proj_name}::{sym}"] = h
+        for sym, h in m_dict["m2"].section_histories.items():
+            combined_histories_m2[f"{proj_name}::{sym}"] = h
 
     # Plot timelines
     timeline_png = FIGURES_DIR / "replay_risk_timeline.png"
@@ -296,24 +356,97 @@ def generate_report(
         "## 3. Анализ шума и опережения",
         "",
         "1. **Эмпирические результаты по опережению:**",
-        "   - На исследованном окне истории (300 коммитов первого родителя) обе модели дали равное число опережающих предупреждений: 2 опережения на `tornado` (доля 2.4%) и 1 опережение на `ipython` (доля 3.2%). Модель M2 не выявила дополнительных опережающих исправлений по сравнению с бейзлайном M0: все 3 зафиксированных случая сопровождались изменением сигнатуры.",
-        "   - Главное практическое преимущество M2 проявилось в **радикальной фильтрации ложных тревог** благодаря консервативному калиброванному порогу $\\tau = 0.8743$ (FD-25):",
-        "     * В проекте `tornado` число открытых висячих пометок старше 90 дней сократилось с 11 (44.0% шума у M0) до 6 (30.0% шума у M2) — устранено 45% ложных тревог.",
-        "     * В проекте `ipython` число висячих пометок старше 90 дней снизилось с 35 (89.7% шума у M0) до 26 (78.8% шума у M2) — устранено 26% ложных тревог.",
-        "     * Медиана времени опережения на `tornado` у M2 составила 266.4 дней против 526.5 дней у M0. Бейзлайн M0 срабатывал слишком рано на поверхностных изменениях сигнатуры, тогда как M2 отсекла преждевременные срабатывания, выдав предупреждение ближе к реальной правке docstring.",
+    ])
+
+    # Per-project lead summary, generated from the metrics above (not hardcoded).
+    total_pre_m0 = sum(m_dict["m0"].preceded_fixes for m_dict in metrics.values())
+    total_pre_m2 = sum(m_dict["m2"].preceded_fixes for m_dict in metrics.values())
+    for proj, m_dict in metrics.items():
+        m0 = m_dict["m0"]
+        m2 = m_dict["m2"]
+        lines.append(
+            f"   - `{proj}` ({m0.total_commits} коммитов первого родителя): "
+            f"M0 — {m0.preceded_fixes} опережений из {m0.total_fixes} исправлений "
+            f"({m0.preceded_fraction * 100:.1f}%), медиана {m0.median_lead_time_days:.1f} дн.; "
+            f"M2 — {m2.preceded_fixes} из {m2.total_fixes} "
+            f"({m2.preceded_fraction * 100:.1f}%), медиана {m2.median_lead_time_days:.1f} дн."
+        )
+        lines.append(
+            f"     * Разложение исправлений M2: atomic_sync (код+doc в одном коммите) — "
+            f"{m2.atomic_fixes}, delayed_fix (doc-only после флага) — {m2.delayed_fixes}."
+        )
+    if total_pre_m2 == total_pre_m0:
+        lines.append(
+            f"   - Модель M2 не выявила дополнительных опережающих исправлений по сравнению "
+            f"с бейзлайном M0 (всего {total_pre_m0}): зафиксированные случаи сопровождались "
+            f"изменением сигнатуры, где правило M0 уже срабатывает."
+        )
+    elif total_pre_m2 > total_pre_m0:
+        lines.append(
+            f"   - Модель M2 выявила больше опережающих исправлений, чем M0 "
+            f"({total_pre_m2} против {total_pre_m0})."
+        )
+    else:
+        lines.append(
+            f"   - Модель M2 выявила меньше опережающих исправлений, чем M0 "
+            f"({total_pre_m2} против {total_pre_m0}); см. фильтрацию шума ниже."
+        )
+
+    lines.append(
+        f"   - Практическое преимущество M2 — **фильтрация ложных тревог** благодаря "
+        f"консервативному калиброванному порогу $\\tau = {tau_m2:.4f}$ (FD-25, против $\\tau = {tau_m0}$ у M0):"
+    )
+    for proj, m_dict in metrics.items():
+        m0 = m_dict["m0"]
+        m2 = m_dict["m2"]
+        removed = m0.open_flags_older_90d - m2.open_flags_older_90d
+        removed_pct = (removed / m0.open_flags_older_90d * 100) if m0.open_flags_older_90d else 0.0
+        lines.append(
+            f"     * В проекте `{proj}` число висячих пометок старше 90 дней: "
+            f"M0 — {m0.open_flags_older_90d} ({m0.noise_fraction * 100:.1f}% шума), "
+            f"M2 — {m2.open_flags_older_90d} ({m2.noise_fraction * 100:.1f}% шума) — "
+            f"устранено {removed} ({removed_pct:.0f}% ложных тревог)."
+        )
+    # Lead-time comparison on projects where both models flagged at least once.
+    for proj, m_dict in metrics.items():
+        m0 = m_dict["m0"]
+        m2 = m_dict["m2"]
+        if m0.preceded_fixes > 0 and m2.preceded_fixes > 0:
+            lines.append(
+                f"     * Медиана опережения на `{proj}`: M2 — {m2.median_lead_time_days:.1f} дн. "
+                f"против {m0.median_lead_time_days:.1f} дн. у M0. Более позднее срабатывание M2 "
+                f"означает отсечение преждевременных срабатываний на поверхностных изменениях сигнатуры."
+            )
+
+    lines.extend([
         "",
-        "2. **Честная оценка шума (висячие пометки >90 дней):**",
-        "   - Существенная часть функций остаётся помеченной более 90 дней (30% на tornado, 79% на ipython). В реальных open-source библиотеках устаревание второстепенных параметров и внутренних утилит может игнорироваться разработчиками месяцами или годами, пока не возникнет тикет или внешний pull request.",
+        "2. **Оценка шума (висячие пометки >90 дней):**",
+    ])
+    for proj, m_dict in metrics.items():
+        m2 = m_dict["m2"]
+        lines.append(
+            f"   - `{proj}`: {m2.open_flags_older_90d} из {m2.open_flags} открытых пометок M2 "
+            f"висят >90 дней ({m2.noise_fraction * 100:.1f}%)."
+        )
+    lines.extend([
+        "   - В реальных open-source библиотеках устаревание второстепенных параметров и внутренних утилит может игнорироваться разработчиками месяцами или годами, пока не возникнет тикет или внешний pull request.",
         "   - Это доказывает необходимость механизма ручного подтверждения (`POST /verify`) и дашборда приоритетов (FD-30), где функции ранжируются не только по риску, но и по влиянию (`impact`) и срочности (`urgency`).",
         "",
         "3. **Методологические допущения (по R12):**",
-        "   - **Правка docstring без связанного изменения кода** в том же коммите трактуется как исправление накопившегося ранее дрейфа (подтверждение актуальности).",
+        "   - **Правка docstring без связанного изменения кода** в том же коммите трактуется как исправление накопившегося ранее дрейфа (подтверждение актуальности). Удаление docstring (`doc_removed`) и деградация ниже 40 символов (`doc_degraded`) — не исправления: риск доводится до 1.0.",
         "   - История исследовалась строго по первому родителю (`--first-parent`), что отражает реальный ход интеграции веток в основную линию разработки.",
+        "   - `impact` — приближение по R12/FD-28: число вызовов функции по имени на HEAD-чекауте проекта (одинаковые имена склеиваются); переименования файлов (статус R в git) не отслеживаются и теряются как исчезнувшие функции.",
+        "   - Фильтры R1 (публичные имена без `_` во всех частях qualified name, docstring ≥ 40 символов, 4–300 строк) применяются к каждому событию; формула строк повторяет `miner.compare_pair` (нормализованный код + docstring).",
+        "   - Возраст для `urgency` отсчитывается от последнего подтверждения, а при его отсутствии — от первого появления секции в окне (иначе заброшенные docs не набирают срочность).",
         "",
         "4. **Работа кэша:**",
-        f"   - Обращений к кэшу за сессию: {cache.hits} попаданий, {cache.misses} промахов.",
-        "   - Ключ кэша: `sha1(diff_code + doc_old)` per R12 step 5. Повторный запуск полностью исключает повторные вызовы инференса модели.",
+        f"   - Обращений к кэшу за сессию: {cache.hits} попаданий, {cache.misses} промахов; всего записей в файле: {len(cache._data)}.",
+        "   - Ключ кэша: `{scorer}:sha1(sig_old + \"::\" + diff_code + \"::\" + doc_old)` per R12 step 5 (префикс scorer изолирует M0/M2; сигнатура входит в ключ, т.к. M2 принимает sig+diff+doc). Повторный запуск полностью исключает повторные вызовы инференса модели. Запись атомарна (tmp + `os.replace`), повреждённый файл карантинируется в `*.corrupted.bak`.",
     ])
+    if cache.misses == 0 and (cache.hits or 0) > 0:
+        lines.append(
+            "   - 0 промахов означает полностью кэшированный повторный прогон; холодный прогон даёт misses > 0 (число инференсов модели)."
+        )
 
     REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(REPORT_PATH, "w", encoding="utf-8") as f:

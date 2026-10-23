@@ -13,6 +13,7 @@ from src.mining.miner import (
     iter_functions,
     list_commits,
     mine_project,
+    show_blob,
 )
 
 OLD = '''
@@ -51,6 +52,18 @@ def test_iter_functions_qualnames():
     assert set(fns) == {"Store.put", "helper"}
     assert fns["Store.put"][0] == "put"  # short name
     assert fns["helper"][0] == "helper"
+
+
+def test_show_blob_strips_utf8_bom(monkeypatch):
+    """Point 5: Windows BOM files must parse, not be skipped via SyntaxError."""
+    import src.mining.miner as miner
+
+    src = "def f(x):\n    '''Docstring here.'''\n    return x\n"
+    monkeypatch.setattr(miner, "_git", lambda *a, **k: b"\xef\xbb\xbf" + src.encode())
+    blob = show_blob("/fake/repo", "sha", "m.py", before=False)
+    assert blob is not None
+    assert not blob.startswith("\ufeff")
+    ast.parse(blob)  # must not raise
 
 
 def test_cosmetic_rename_local():

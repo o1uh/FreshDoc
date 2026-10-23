@@ -6,6 +6,7 @@ import pytest
 
 from src.registry.storage import (
     DDL_DOC_STATE,
+    commit_known,
     get_connection,
     history,
     init_db,
@@ -13,6 +14,7 @@ from src.registry.storage import (
     insert_batch,
     latest,
     merge_branch,
+    replace_branch_records,
     verify,
 )
 
@@ -93,6 +95,87 @@ def test_insert_batch(db_path: Path) -> None:
 
     res = latest(db_path, repo="owner/repo", branch="main")
     assert len(res) == 5
+
+
+def test_insert_batch_returns_real_ids() -> None:
+    """Point 1: executemany does not set lastrowid — ids must be real (>0)."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as d:
+        db = Path(d) / "ids.db"
+        init_db(db)
+        recs = [
+            {
+                "repo": "o/r",
+                "branch": "main",
+                "commit_sha": f"c{i}",
+                "section_id": f"m.py::f{i}#docstring",
+            }
+            for i in range(3)
+        ]
+        ids = insert_batch(db, recs)
+        assert ids == [1, 2, 3]
+        recs2 = [dict(r, branch="other") for r in recs]
+        ids2 = replace_branch_records(db, "o/r", "other", recs2)
+        assert ids2 == [4, 5, 6]
+
+
+def test_replace_branch_ids_start_at_fresh_seq(tmp_path: Path) -> None:
+    """S1: after DELETE the next seq is 1 without an extra SELECT."""
+    db = tmp_path / "seq.db"
+    init_db(db)
+    recs = [
+        {"repo": "o/r", "branch": "b", "commit_sha": f"c{i}",
+         "section_id": f"m.py::f{i}#docstring"}
+        for i in range(2)
+    ]
+    replace_branch_records(db, "o/r", "b", recs)
+    rows = latest(db, "o/r", "b")
+    assert sorted(r["seq"] for r in rows) == [1, 2]
+
+
+def test_latest_normalizes_windows_path(db_path: Path) -> None:
+    """Point 6: backslash path filters must match git-style doc_path."""
+    insert(
+        db_path,
+        {"repo": "o/r", "branch": "main", "commit_sha": "c1",
+         "section_id": "pkg/mod.py::f#docstring", "doc_path": "pkg/mod.py",
+         "symbol": "f", "risk": 0.5},
+    )
+    assert len(latest(db_path, "o/r", "main", path="pkg/mod.py")) == 1
+    assert len(latest(db_path, "o/r", "main", path="pkg\\mod.py")) == 1
+    assert len(latest(db_path, "o/r", "main", path="pkg\\")) == 1
+    assert len(history(db_path, "pkg\\mod.py::f#docstring")) == 1
+
+
+def test_commit_known_distinguishes_unknown_commit(db_path: Path) -> None:
+    """Point 4: unknown commit vs empty state helper for API/dashboard."""
+    insert(
+        db_path,
+        {"repo": "o/r", "branch": "main", "commit_sha": "c1",
+         "section_id": "m.py::f#docstring", "risk": 0.5},
+    )
+    assert commit_known(db_path, "o/r", "main", "c1") is True
+    assert commit_known(db_path, "o/r", "main", "nope") is False
+    assert latest(db_path, "o/r", "main", commit="nope") == []
+
+
+def test_connections_released_db_file_removable(tmp_path: Path) -> None:
+    """Point 3: no leaked descriptors — the DB file can be moved/deleted."""
+    import os
+
+    db = tmp_path / "lock.db"
+    init_db(db)
+    insert_batch(db, [
+        {"repo": "o/r", "branch": "main", "commit_sha": "c1",
+         "section_id": "m.py::f#docstring"}
+    ])
+    latest(db, "o/r", "main")
+    history(db, "m.py::f#docstring")
+    moved = tmp_path / "moved.db"
+    os.replace(db, moved)  # raises on Windows while handles are open
+    assert moved.exists()
+    os.remove(moved)
 
 
 def test_latest_on_empty_db(db_path: Path) -> None:

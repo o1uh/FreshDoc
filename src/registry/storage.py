@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import closing
 from datetime import datetime, timezone
 import json
 from pathlib import Path
@@ -61,31 +62,46 @@ def _iso_now() -> str:
 
 
 def get_connection(db_path: str | Path) -> sqlite3.Connection:
-    """Open a SQLite connection with row factory enabled."""
+    """Open a SQLite connection with row factory enabled.
+
+    ``timeout=30`` lets concurrent readers (FD-27 API, FD-30 dashboard)
+    wait out the replay writer instead of failing with `database is locked`.
+    """
     if _is_memory(db_path):
         global _memory_keepalive
         if _memory_keepalive is None:
-            _memory_keepalive = sqlite3.connect(_MEMORY_URI, uri=True)
+            _memory_keepalive = sqlite3.connect(_MEMORY_URI, uri=True, timeout=30.0)
             _memory_keepalive.row_factory = sqlite3.Row
-        conn = sqlite3.connect(_MEMORY_URI, uri=True)
+        conn = sqlite3.connect(_MEMORY_URI, uri=True, timeout=30.0)
         conn.row_factory = sqlite3.Row
         return conn
     db_path_obj = Path(db_path)
     db_path_obj.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(db_path_obj))
+    conn = sqlite3.connect(str(db_path_obj), timeout=30.0)
     conn.row_factory = sqlite3.Row
     return conn
 
 
 def init_db(db_path: str | Path) -> None:
     """Initialize SQLite database schema and indices."""
-    with get_connection(db_path) as conn:
+    conn = get_connection(db_path)
+    try:
         cursor = conn.cursor()
         cursor.execute(DDL_DOC_STATE)
         cursor.execute(INDEX_LOOKUP)
         cursor.execute(INDEX_SECTION)
         cursor.execute(INDEX_COMMIT)
+        # WAL lets readers proceed while replay (FD-29) holds a write
+        # transaction. No-op on :memory: databases, applied to file DBs.
+        try:
+            cursor.execute("PRAGMA journal_mode=WAL;")
+        except Exception:
+            pass
         conn.commit()
+    finally:
+        # `with conn:` only commits/rolls back — it never closes. Unclosed
+        # descriptors pin -wal/-shm files and break tmp cleanup on Windows.
+        conn.close()
 
 
 def _serialize_evidence(evidence: Any) -> str | None:
@@ -133,7 +149,7 @@ def insert(db_path: str | Path, record: dict[str, Any]) -> int:
     raises sqlite3.IntegrityError (UNIQUE in the DDL); upsert semantics live
     in verify()/merge_branch().
     """
-    with get_connection(db_path) as conn:
+    with closing(get_connection(db_path)) as conn:
         cursor = conn.cursor()
         repo = record["repo"]
         branch = record["branch"]
@@ -179,56 +195,122 @@ def insert(db_path: str | Path, record: dict[str, Any]) -> int:
         return row_id  # type: ignore[return-value]
 
 
+_INSERT_SQL = """
+INSERT INTO doc_state (
+    seq, repo, branch, commit_sha, build_id, doc_path,
+    section_id, symbol, p_stale, drift_type, risk,
+    urgency, impact, evidence, verified_commit, event, computed_at
+) VALUES (
+    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+)
+"""
+
+
+def _record_to_row(record: dict[str, Any], seq: int) -> tuple:
+    return (
+        seq,
+        record["repo"],
+        record["branch"],
+        record["commit_sha"],
+        record.get("build_id"),
+        record.get("doc_path"),
+        record["section_id"],
+        record.get("symbol"),
+        record.get("p_stale"),
+        record.get("drift_type"),
+        record.get("risk"),
+        record.get("urgency"),
+        record.get("impact"),
+        _serialize_evidence(record.get("evidence")),
+        record.get("verified_commit"),
+        record.get("event"),
+        record.get("computed_at") or _iso_now(),
+    )
+
+
 def insert_batch(db_path: str | Path, records: list[dict[str, Any]]) -> list[int]:
-    """Insert multiple records into doc_state within a single transaction."""
+    """Insert multiple records into doc_state within a single transaction.
+
+    The base sequence is read once and incremented in Python instead of
+    `SELECT MAX(seq)+1` per row (previously O(N) table scans per batch).
+    Rows are executed one by one: `cursor.lastrowid` is only reliable
+    after `execute()`, not after `executemany()`.
+    """
     if not records:
         return []
-    with get_connection(db_path) as conn:
+    with closing(get_connection(db_path)) as conn:
         cursor = conn.cursor()
-        inserted_ids = []
+        first = records[0]
+        cur_seq = _get_next_seq(cursor, first["repo"], first["branch"])
+        inserted_ids: list[int] = []
         for record in records:
-            repo = record["repo"]
-            branch = record["branch"]
             seq = record.get("seq")
             if seq is None:
-                seq = _get_next_seq(cursor, repo, branch)
-
-            evidence_str = _serialize_evidence(record.get("evidence"))
-            computed_at = record.get("computed_at") or _iso_now()
-
-            cursor.execute(
-                """
-                INSERT INTO doc_state (
-                    seq, repo, branch, commit_sha, build_id, doc_path,
-                    section_id, symbol, p_stale, drift_type, risk,
-                    urgency, impact, evidence, verified_commit, event, computed_at
-                ) VALUES (
-                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-                )
-                """,
-                (
-                    seq,
-                    repo,
-                    branch,
-                    record["commit_sha"],
-                    record.get("build_id"),
-                    record.get("doc_path"),
-                    record["section_id"],
-                    record.get("symbol"),
-                    record.get("p_stale"),
-                    record.get("drift_type"),
-                    record.get("risk"),
-                    record.get("urgency"),
-                    record.get("impact"),
-                    evidence_str,
-                    record.get("verified_commit"),
-                    record.get("event"),
-                    computed_at,
-                ),
-            )
+                seq = cur_seq
+                cur_seq += 1
+            else:
+                cur_seq = max(cur_seq, int(seq) + 1)
+            cursor.execute(_INSERT_SQL, _record_to_row(record, int(seq)))
             inserted_ids.append(cursor.lastrowid)
         conn.commit()
         return inserted_ids  # type: ignore[return-value]
+
+
+def replace_branch_records(
+    db_path: str | Path, repo: str, branch: str, records: list[dict[str, Any]]
+) -> list[int]:
+    """Atomically replace all rows of a (repo, branch) with new records.
+
+    DELETE and INSERT run in one transaction on one connection: if the
+    insert fails (locked DB, UNIQUE violation, disk full), the close
+    without commit rolls back and the previous branch state stays intact —
+    the registry is never left empty half-way (FD-29 replay requirement).
+    """
+    with closing(get_connection(db_path)) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM doc_state WHERE repo = ? AND branch = ?",
+            (repo, branch),
+        )
+        inserted_ids: list[int] = []
+        if records:
+            # The DELETE above just cleared this (repo, branch): the next
+            # seq is always 1, no SELECT needed.
+            cur_seq = 1
+            for record in records:
+                seq = record.get("seq")
+                if seq is None:
+                    seq = cur_seq
+                    cur_seq += 1
+                else:
+                    cur_seq = max(cur_seq, int(seq) + 1)
+                cursor.execute(_INSERT_SQL, _record_to_row(record, int(seq)))
+                inserted_ids.append(cursor.lastrowid)
+        conn.commit()
+        return inserted_ids  # type: ignore[return-value]
+
+
+def _normalize_repo_path(value: str | None) -> str | None:
+    """Canonicalize a repo-relative path: git stores `/`, Windows sends `\\`."""
+    return value.replace("\\", "/") if value is not None else None
+
+
+def commit_known(
+    db_path: str | Path, repo: str, branch: str, commit: str
+) -> bool:
+    """Check whether a commit has any rows in the registry.
+
+    Lets API/dashboard layers (FD-27/FD-30) distinguish "unknown commit"
+    (resolve via git ancestry there — the DB layer has no history graph)
+    from "known commit with empty state".
+    """
+    with closing(get_connection(db_path)) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT 1 FROM doc_state WHERE repo = ? AND branch = ? AND commit_sha = ? LIMIT 1",
+            (repo, branch, commit),
+        )
+        return cursor.fetchone() is not None
 
 
 def latest(
@@ -244,8 +326,10 @@ def latest(
     If commit is provided, only states with seq <= max seq of that commit on this branch
     are considered. A commit with no rows in the registry yields [] (unknown cutoff);
     replay (FD-29) must pass either a recorded commit or None for a branch-tip snapshot.
+    Use commit_known() to tell "unknown commit" apart from "empty state".
     """
-    with get_connection(db_path) as conn:
+    path = _normalize_repo_path(path)
+    with closing(get_connection(db_path)) as conn:
         cursor = conn.cursor()
 
         cutoff_seq: int | None = None
@@ -302,7 +386,8 @@ def history(
     branch: str | None = None,
 ) -> list[dict[str, Any]]:
     """Return the full history of a section, ordered chronologically."""
-    with get_connection(db_path) as conn:
+    section_id = _normalize_repo_path(section_id) or ""
+    with closing(get_connection(db_path)) as conn:
         cursor = conn.cursor()
         query = """
         SELECT * FROM doc_state
@@ -335,7 +420,8 @@ def verify(
     inherited from the section's latest row; for a never-seen section_id
     they stay None (dashboard fallback parsing, if needed, belongs to FD-30).
     """
-    with get_connection(db_path) as conn:
+    section_id = _normalize_repo_path(section_id) or ""
+    with closing(get_connection(db_path)) as conn:
         cursor = conn.cursor()
 
         # Find latest known state of this section to inherit static metadata

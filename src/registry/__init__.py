@@ -4,11 +4,13 @@ from src.registry.replay import (
     M2Scorer,
     ReplayCache,
     ReplayMetrics,
+    gate_drift,
     make_cache_key,
     replay_project_history,
 )
 from src.registry.storage import (
     DDL_DOC_STATE,
+    commit_known,
     get_connection,
     history,
     init_db,
@@ -16,6 +18,7 @@ from src.registry.storage import (
     insert_batch,
     latest,
     merge_branch,
+    replace_branch_records,
     verify,
 )
 
@@ -26,6 +29,8 @@ __all__ = [
     "M2Scorer",
     "ReplayCache",
     "ReplayMetrics",
+    "commit_known",
+    "gate_drift",
     "get_connection",
     "history",
     "init_db",
@@ -34,6 +39,7 @@ __all__ = [
     "latest",
     "make_cache_key",
     "merge_branch",
+    "replace_branch_records",
     "replay_project_history",
     "verify",
 ]

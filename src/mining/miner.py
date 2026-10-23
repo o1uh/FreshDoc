@@ -78,7 +78,9 @@ def show_blob(repo_path, sha, path, before):
         return None
     if len(blob) > MAX_FILE_BYTES:
         return None
-    return blob.decode("utf-8", errors="replace")
+    # utf-8-sig strips a BOM when present and behaves like utf-8 otherwise;
+    # a kept BOM char (\ufeff) makes ast.parse fail and drops the file.
+    return blob.decode("utf-8-sig", errors="replace")
 
 
 def iter_functions(tree):
