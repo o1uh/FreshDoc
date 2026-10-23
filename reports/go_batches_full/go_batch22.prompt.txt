@@ -1,0 +1,330 @@
+# FD-39: слепая R9-разметка полного Go-набора (full381, 381 кейс: gin + cobra)
+
+Тебе прислан один шард `go_batchNN.prompt.txt` (10-12 кейсов:
+подмножество `data/processed/go_full381.csv`, всего 381 строка go000…go380,
+репо gin + cobra). Размечай КАЖДУЮ строку независимо. Меток (включая прокси
+`doc_changed` из sidecar) ты не видишь — и не пытайся их угадать: решай только
+по диффу и godoc. Sidecar `go_full381_sidecar.json` тебе НЕ показывают.
+
+Прогон независимый: не смешивай ответы с другим прогоном; один шард —
+один контекст целиком, не размечать по частям в разных сессиях.
+
+## Вход строки
+- `id` — идентификатор пары (go000…go380), его же вернуть в ответе;
+- `file`/`symbol` — файл и функция/метод (вид `Recv.Name` — метод с ресивером);
+- `sig_old` — заголовок `func …` ДО (у методов — с ресивером в скобках);
+- `diff_code` — unified diff полного текста объявления (с телом, БЕЗ godoc);
+- `doc_old` — godoc-комментарий (`//…`) ДО изменения.
+Больше ничего не видно — код вне диффа не додумывать. Go-специфика:
+документируется экспортируемое поведение; однострочный godoc — полноценное утверждение.
+
+## Шкала R9 (вопрос: «нужно ли обновить godoc из-за этого изменения?»)
+- **A. Нужно обновить** — хотя бы одно утверждение godoc стало НЕВЕРНЫМ
+  (имя/назначение параметра, поведение, возвращаемое значение, условие ошибки).
+- **B. Желательно обновить** — ничего неверного нет, но изменение добавило важную
+  возможность/условие, которых нет в godoc.
+- **C. Актуально** — все утверждения остаются верными и полными.
+- **D. Не могу решить** — нужен контекст вне диффа и godoc (указать какой в `why`).
+  Доля D < 10%.
+
+**Жёсткое правило: если в godoc нет утверждения, ставшего ложным, — НЕ A.**
+
+## Как размечать (≤ 2 минут на строку)
+1. Выписать проверяемые утверждения godoc.
+2. Найти для каждого соответствующий фрагмент диффа.
+3. Есть конкретное ложное утверждение → A; неверного нет, но появилось важное → B; иначе → C.
+4. Сомнение A/B → B; B/C → C (и поясни в `why`).
+
+## Формат ответа (строго, CSV)
+ОДИН CSV-блок, заголовок строго:
+id,label,stale_statement,why
+- `label` ∈ {A,B,C,D}; строк столько же, в том же порядке, что кейсы;
+- `stale_statement` — точная подстрока `doc_old`, ставшая ложной (только для A,
+  иначе пусто). Цитируй посимвольно — проверяется автоматически;
+- `why` — одна фраза (для D — какого контекста не хватило).
+
+КЕЙСЫ:
+=== CASE id=go264 ===
+FILE: gin.go | SYMBOL: New
+--- SIG_OLD ---
+func New() *Engine
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,4 +1,4 @@
+-func New() *Engine {
++func New(opts ...OptionFunc) *Engine {
+ 	debugPrintWARNINGNew()
+ 	engine := &Engine{
+ 		RouterGroup: RouterGroup{
+@@ -27,5 +27,5 @@
+ 	engine.pool.New = func() any {
+ 		return engine.allocateContext(engine.maxParams)
+ 	}
+-	return engine
++	return engine.With(opts...)
+ }
+--- DOC_OLD ---
+New returns a new blank Engine instance without any middleware attached.
+By default, the configuration is:
+- RedirectTrailingSlash:  true
+- RedirectFixedPath:      false
+- HandleMethodNotAllowed: false
+- ForwardedByClientIP:    true
+- UseRawPath:             false
+- UnescapePathValues:     true
+=== END CASE ===
+
+=== CASE id=go265 ===
+FILE: command.go | SYMBOL: Command.argsMinusFirstX
+--- SIG_OLD ---
+func (c *Command) argsMinusFirstX(args []string, x string) []string
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -21,7 +21,7 @@
+ 		case !strings.HasPrefix(s, "-"):
+ 
+ 			if s == x {
+-				ret := []string{}
++				ret := make([]string, 0, len(args)-1)
+ 				ret = append(ret, args[:pos]...)
+ 				ret = append(ret, args[pos+1:]...)
+ 				return ret
+--- DOC_OLD ---
+argsMinusFirstX removes only the first x from args.  Otherwise, commands that look like
+openshift admin policy add-role-to-user admin my-user, lose the admin argument (arg[4]).
+Special care needs to be taken not to remove a flag value.
+=== END CASE ===
+
+=== CASE id=go266 ===
+FILE: flag_groups.go | SYMBOL: Command.enforceFlagGroupsForCompletion
+--- SIG_OLD ---
+func (c *Command) enforceFlagGroupsForCompletion()
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -25,15 +25,15 @@
+ 	}
+ 
+ 	for flagList, flagnameAndStatus := range oneRequiredGroupStatus {
+-		set := 0
++		isSet := false
+ 
+-		for _, isSet := range flagnameAndStatus {
++		for _, isSet = range flagnameAndStatus {
+ 			if isSet {
+-				set++
++				break
+ 			}
+ 		}
+ 
+-		if set == 0 {
++		if !isSet {
+ 			for _, fName := range strings.Split(flagList, " ") {
+ 				_ = c.MarkFlagRequired(fName)
+ 			}
+--- DOC_OLD ---
+enforceFlagGroupsForCompletion will do the following:
+- when a flag in a group is present, other flags in the group will be marked required
+- when none of the flags in a one-required group are present, all flags in the group will be marked required
+- when a flag in a mutually exclusive group is present, other flags in the group will be marked as hidden
+This allows the standard completion logic to behave appropriately for flag groups
+=== END CASE ===
+
+=== CASE id=go267 ===
+FILE: completions.go | SYMBOL: Command.initDefaultCompletionCmd
+--- SIG_OLD ---
+func (c *Command) initDefaultCompletionCmd()
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -71,6 +71,10 @@
+ to enable it.  You can execute the following once:
+ 
+ 	echo "autoload -U compinit; compinit" >> ~/.zshrc
++
++To load completions in your current shell session:
++
++	source <(%[1]s completion zsh); compdef _%[1]s %[1]s
+ 
+ To load completions for every new session, execute once:
+--- DOC_OLD ---
+initDefaultCompletionCmd adds a default 'completion' command to c.
+This function will do nothing if any of the following is true:
+1- the feature has been explicitly disabled by the program,
+2- c has no subcommands (to avoid creating one),
+3- c already has a 'completion' command provided by the program.
+=== END CASE ===
+
+=== CASE id=go268 ===
+FILE: powershell_completions.go | SYMBOL: Command.GenPowerShellCompletionFile
+--- SIG_OLD ---
+func (c *Command) GenPowerShellCompletionFile(filename string) error
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,9 +1,3 @@
+ func (c *Command) GenPowerShellCompletionFile(filename string) error {
+-	outFile, err := os.Create(filename)
+-	if err != nil {
+-		return err
+-	}
+-	defer outFile.Close()
+-
+-	return c.GenPowerShellCompletion(outFile)
++	return c.genPowerShellCompletionFile(filename, false)
+ }
+--- DOC_OLD ---
+GenPowerShellCompletionFile generates PowerShell completion file.
+=== END CASE ===
+
+=== CASE id=go269 ===
+FILE: mode.go | SYMBOL: SetMode
+--- SIG_OLD ---
+func SetMode(value string)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -8,15 +8,14 @@
+ 	}
+ 
+ 	switch value {
+-	case DebugMode:
+-		ginMode = debugCode
++	case DebugMode, "":
++		atomic.StoreInt32(&ginMode, debugCode)
+ 	case ReleaseMode:
+-		ginMode = releaseCode
++		atomic.StoreInt32(&ginMode, releaseCode)
+ 	case TestMode:
+-		ginMode = testCode
++		atomic.StoreInt32(&ginMode, testCode)
+ 	default:
+ 		panic("gin mode unknown: " + value + " (available mode: debug release test)")
+ 	}
+-
+-	modeName = value
++	modeName.Store(value)
+ }
+--- DOC_OLD ---
+SetMode sets gin mode according to input string.
+=== END CASE ===
+
+=== CASE id=go270 ===
+FILE: completions.go | SYMBOL: ShellCompDirective.string
+--- SIG_OLD ---
+func (d ShellCompDirective) string() string
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -15,6 +15,9 @@
+ 	if d&ShellCompDirectiveFilterDirs != 0 {
+ 		directives = append(directives, "ShellCompDirectiveFilterDirs")
+ 	}
++	if d&ShellCompDirectiveKeepOrder != 0 {
++		directives = append(directives, "ShellCompDirectiveKeepOrder")
++	}
+ 	if len(directives) == 0 {
+ 		directives = append(directives, "ShellCompDirectiveDefault")
+ 	}
+--- DOC_OLD ---
+Returns a string listing the different directive enabled in the specified parameter
+=== END CASE ===
+
+=== CASE id=go271 ===
+FILE: context.go | SYMBOL: Context.Done
+--- SIG_OLD ---
+func (c *Context) Done() <-chan struct{}
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,5 +1,5 @@
+ func (c *Context) Done() <-chan struct{} {
+-	if !c.engine.ContextWithFallback || c.Request == nil || c.Request.Context() == nil {
++	if !c.hasRequestContext() {
+ 		return nil
+ 	}
+ 	return c.Request.Context().Done()
+--- DOC_OLD ---
+Done returns nil (chan which will wait forever) when c.Request has no Context.
+=== END CASE ===
+
+=== CASE id=go272 ===
+FILE: context.go | SYMBOL: Context.GetUint64Slice
+--- SIG_OLD ---
+func (c *Context) GetUint64Slice(key string) (ui64s []uint64)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+-func (c *Context) GetUint64Slice(key string) (ui64s []uint64) {
++func (c *Context) GetUint64Slice(key any) (ui64s []uint64) {
+ 	return getTyped[[]uint64](c, key)
+ }
+--- DOC_OLD ---
+GetUint64Slice returns the value associated with the key as a slice of uint64 integers.
+=== END CASE ===
+
+=== CASE id=go273 ===
+FILE: recovery.go | SYMBOL: CustomRecoveryWithWriter
+--- SIG_OLD ---
+func CustomRecoveryWithWriter(out io.Writer, handle RecoveryFunc) HandlerFunc
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -24,9 +24,9 @@
+ 					httpRequest, _ := httputil.DumpRequest(c.Request, false)
+ 					headers := strings.Split(string(httpRequest), "\r\n")
+ 					for idx, header := range headers {
+-						current := strings.Split(header, ":")
+-						if current[0] == "Authorization" {
+-							headers[idx] = current[0] + ": *"
++						key, _, _ := strings.Cut(header, ":")
++						if key == "Authorization" {
++							headers[idx] = key + ": *"
+ 						}
+ 					}
+ 					headersToStr := strings.Join(headers, "\r\n")
+--- DOC_OLD ---
+CustomRecoveryWithWriter returns a middleware for a given writer that recovers from any panics and calls the provided handle func to handle it.
+=== END CASE ===
+
+=== CASE id=go274 ===
+FILE: binding/default_validator.go | SYMBOL: defaultValidator.ValidateStruct
+--- SIG_OLD ---
+func (v *defaultValidator) ValidateStruct(obj any) error
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -15,7 +15,7 @@
+ 	case reflect.Slice, reflect.Array:
+ 		count := value.Len()
+ 		validateRet := make(SliceValidationError, 0)
+-		for i := 0; i < count; i++ {
++		for i := range count {
+ 			if err := v.ValidateStruct(value.Index(i).Interface()); err != nil {
+ 				validateRet = append(validateRet, err)
+ 			}
+--- DOC_OLD ---
+ValidateStruct receives any kind of type, but only performed struct or pointer to struct type.
+=== END CASE ===
+
+=== CASE id=go275 ===
+FILE: context.go | SYMBOL: Context.GetUint8
+--- SIG_OLD ---
+func (c *Context) GetUint8(key string) (ui8 uint8)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,6 +1,3 @@
+ func (c *Context) GetUint8(key string) (ui8 uint8) {
+-	if val, ok := c.Get(key); ok && val != nil {
+-		ui8, _ = val.(uint8)
+-	}
+-	return
++	return getTyped[uint8](c, key)
+ }
+--- DOC_OLD ---
+GetUint8 returns the value associated with the key as an unsigned integer 8.
+=== END CASE ===

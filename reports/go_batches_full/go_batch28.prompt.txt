@@ -1,0 +1,348 @@
+# FD-39: слепая R9-разметка полного Go-набора (full381, 381 кейс: gin + cobra)
+
+Тебе прислан один шард `go_batchNN.prompt.txt` (10-12 кейсов:
+подмножество `data/processed/go_full381.csv`, всего 381 строка go000…go380,
+репо gin + cobra). Размечай КАЖДУЮ строку независимо. Меток (включая прокси
+`doc_changed` из sidecar) ты не видишь — и не пытайся их угадать: решай только
+по диффу и godoc. Sidecar `go_full381_sidecar.json` тебе НЕ показывают.
+
+Прогон независимый: не смешивай ответы с другим прогоном; один шард —
+один контекст целиком, не размечать по частям в разных сессиях.
+
+## Вход строки
+- `id` — идентификатор пары (go000…go380), его же вернуть в ответе;
+- `file`/`symbol` — файл и функция/метод (вид `Recv.Name` — метод с ресивером);
+- `sig_old` — заголовок `func …` ДО (у методов — с ресивером в скобках);
+- `diff_code` — unified diff полного текста объявления (с телом, БЕЗ godoc);
+- `doc_old` — godoc-комментарий (`//…`) ДО изменения.
+Больше ничего не видно — код вне диффа не додумывать. Go-специфика:
+документируется экспортируемое поведение; однострочный godoc — полноценное утверждение.
+
+## Шкала R9 (вопрос: «нужно ли обновить godoc из-за этого изменения?»)
+- **A. Нужно обновить** — хотя бы одно утверждение godoc стало НЕВЕРНЫМ
+  (имя/назначение параметра, поведение, возвращаемое значение, условие ошибки).
+- **B. Желательно обновить** — ничего неверного нет, но изменение добавило важную
+  возможность/условие, которых нет в godoc.
+- **C. Актуально** — все утверждения остаются верными и полными.
+- **D. Не могу решить** — нужен контекст вне диффа и godoc (указать какой в `why`).
+  Доля D < 10%.
+
+**Жёсткое правило: если в godoc нет утверждения, ставшего ложным, — НЕ A.**
+
+## Как размечать (≤ 2 минут на строку)
+1. Выписать проверяемые утверждения godoc.
+2. Найти для каждого соответствующий фрагмент диффа.
+3. Есть конкретное ложное утверждение → A; неверного нет, но появилось важное → B; иначе → C.
+4. Сомнение A/B → B; B/C → C (и поясни в `why`).
+
+## Формат ответа (строго, CSV)
+ОДИН CSV-блок, заголовок строго:
+id,label,stale_statement,why
+- `label` ∈ {A,B,C,D}; строк столько же, в том же порядке, что кейсы;
+- `stale_statement` — точная подстрока `doc_old`, ставшая ложной (только для A,
+  иначе пусто). Цитируй посимвольно — проверяется автоматически;
+- `why` — одна фраза (для D — какого контекста не хватило).
+
+КЕЙСЫ:
+=== CASE id=go336 ===
+FILE: flag_groups.go | SYMBOL: Command.enforceFlagGroupsForCompletion
+--- SIG_OLD ---
+func (c *Command) enforceFlagGroupsForCompletion()
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -5,9 +5,11 @@
+ 
+ 	flags := c.Flags()
+ 	groupStatus := map[string]map[string]bool{}
++	oneRequiredGroupStatus := map[string]map[string]bool{}
+ 	mutuallyExclusiveGroupStatus := map[string]map[string]bool{}
+ 	c.Flags().VisitAll(func(pflag *flag.Flag) {
+ 		processFlagForGroupAnnotation(flags, pflag, requiredAsGroup, groupStatus)
++		processFlagForGroupAnnotation(flags, pflag, oneRequired, oneRequiredGroupStatus)
+ 		processFlagForGroupAnnotation(flags, pflag, mutuallyExclusive, mutuallyExclusiveGroupStatus)
+ 	})
+ 
+@@ -18,6 +20,22 @@
+ 				for _, fName := range strings.Split(flagList, " ") {
+ 					_ = c.MarkFlagRequired(fName)
+ 				}
++			}
++		}
++	}
++
++	for flagList, flagnameAndStatus := range oneRequiredGroupStatus {
++		set := 0
++
++		for _, isSet := range flagnameAndStatus {
++			if isSet {
++				set++
++			}
++		}
++
++		if set == 0 {
++			for _, fName := range strings.Split(flagList, " ") {
++				_ = c.MarkFlagRequired(fName)
+ 			}
+ 		}
+ 	}
+--- DOC_OLD ---
+enforceFlagGroupsForCompletion will do the following:
+- when a flag in a group is present, other flags in the group will be marked required
+- when a flag in a mutually exclusive group is present, other flags in the group will be marked as hidden
+This allows the standard completion logic to behave appropriately for flag groups
+=== END CASE ===
+
+=== CASE id=go337 ===
+FILE: context.go | SYMBOL: Context.TOML
+--- SIG_OLD ---
+func (c *Context) TOML(code int, obj interface{})
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+-func (c *Context) TOML(code int, obj interface{}) {
++func (c *Context) TOML(code int, obj any) {
+ 	c.Render(code, render.TOML{Data: obj})
+ }
+--- DOC_OLD ---
+TOML serializes the given struct as TOML into the response body.
+=== END CASE ===
+
+=== CASE id=go338 ===
+FILE: command.go | SYMBOL: Command.SetHelpTemplate
+--- SIG_OLD ---
+func (c *Command) SetHelpTemplate(s string)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,7 @@
+ func (c *Command) SetHelpTemplate(s string) {
++	if s == "" {
++		c.helpTemplate = nil
++		return
++	}
+ 	c.helpTemplate = tmpl(s)
+ }
+--- DOC_OLD ---
+SetHelpTemplate sets help template to be used. Application can use it to set custom template.
+=== END CASE ===
+
+=== CASE id=go339 ===
+FILE: response_writer.go | SYMBOL: responseWriter.CloseNotify
+--- SIG_OLD ---
+func (w *responseWriter) CloseNotify() <-chan bool
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,6 @@
+ func (w *responseWriter) CloseNotify() <-chan bool {
+-	return w.ResponseWriter.(http.CloseNotifier).CloseNotify()
++	if cn, ok := w.ResponseWriter.(http.CloseNotifier); ok {
++		return cn.CloseNotify()
++	}
++	return nil
+ }
+--- DOC_OLD ---
+CloseNotify implements the http.CloseNotifier interface.
+=== END CASE ===
+
+=== CASE id=go340 ===
+FILE: doc/rest_docs.go | SYMBOL: GenReSTCustom
+--- SIG_OLD ---
+func GenReSTCustom(cmd *cobra.Command, w io.Writer, linkHandler func(string, string) string) error
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -21,13 +21,13 @@
+ 	buf.WriteString("\n" + long + "\n\n")
+ 
+ 	if cmd.Runnable() {
+-		buf.WriteString(fmt.Sprintf("::\n\n  %s\n\n", cmd.UseLine()))
++		fmt.Fprintf(buf, "::\n\n  %s\n\n", cmd.UseLine())
+ 	}
+ 
+ 	if len(cmd.Example) > 0 {
+ 		buf.WriteString("Examples\n")
+ 		buf.WriteString("~~~~~~~~\n\n")
+-		buf.WriteString(fmt.Sprintf("::\n\n%s\n\n", indentString(cmd.Example, "  ")))
++		fmt.Fprintf(buf, "::\n\n%s\n\n", indentString(cmd.Example, "  "))
+ 	}
+ 
+ 	if err := printOptionsReST(buf, cmd, name); err != nil {
+@@ -40,7 +40,7 @@
+ 			parent := cmd.Parent()
+ 			pname := parent.CommandPath()
+ 			ref = strings.ReplaceAll(pname, " ", "_")
+-			buf.WriteString(fmt.Sprintf("* %s \t - %s\n", linkHandler(pname, ref), parent.Short))
++			fmt.Fprintf(buf, "* %s \t - %s\n", linkHandler(pname, ref), parent.Short)
+ 			cmd.VisitParents(func(c *cobra.Command) {
+ 				if c.DisableAutoGenTag {
+ 					cmd.DisableAutoGenTag = c.DisableAutoGenTag
+@@ -57,7 +57,7 @@
+ 			}
+ 			cname := name + " " + child.Name()
+ 			ref = strings.ReplaceAll(cname, " ", "_")
+-			buf.WriteString(fmt.Sprintf("* %s \t - %s\n", linkHandler(cname, ref), child.Short))
++			fmt.Fprintf(buf, "* %s \t - %s\n", linkHandler(cname, ref), child.Short)
+ 		}
+ 		buf.WriteString("\n")
+ 	}
+--- DOC_OLD ---
+GenReSTCustom creates custom reStructured Text output.
+=== END CASE ===
+
+=== CASE id=go341 ===
+FILE: command.go | SYMBOL: Command.updateParentsPflags
+--- SIG_OLD ---
+func (c *Command) updateParentsPflags()
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,6 +1,6 @@
+ func (c *Command) updateParentsPflags() {
+ 	if c.parentsPflags == nil {
+-		c.parentsPflags = flag.NewFlagSet(c.Name(), flag.ContinueOnError)
++		c.parentsPflags = flag.NewFlagSet(c.displayName(), flag.ContinueOnError)
+ 		c.parentsPflags.SetOutput(c.flagErrorBuf)
+ 		c.parentsPflags.SortFlags = false
+ 	}
+--- DOC_OLD ---
+updateParentsPflags updates c.parentsPflags by adding
+new persistent flags of all parents.
+If c.parentsPflags == nil, it makes new.
+=== END CASE ===
+
+=== CASE id=go342 ===
+FILE: context.go | SYMBOL: Context.MustGet
+--- SIG_OLD ---
+func (c *Context) MustGet(key string) any
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,6 +1,6 @@
+-func (c *Context) MustGet(key string) any {
++func (c *Context) MustGet(key any) any {
+ 	if value, exists := c.Get(key); exists {
+ 		return value
+ 	}
+-	panic("Key \"" + key + "\" does not exist")
++	panic(fmt.Sprintf("key %v does not exist", key))
+ }
+--- DOC_OLD ---
+MustGet returns the value for the given key if it exists, otherwise it panics.
+=== END CASE ===
+
+=== CASE id=go343 ===
+FILE: custom_completions.go | SYMBOL: ShellCompDirective.string
+--- SIG_OLD ---
+func (d ShellCompDirective) string() string
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -9,11 +9,17 @@
+ 	if d&ShellCompDirectiveNoFileComp != 0 {
+ 		directives = append(directives, "ShellCompDirectiveNoFileComp")
+ 	}
++	if d&ShellCompDirectiveFilterFileExt != 0 {
++		directives = append(directives, "ShellCompDirectiveFilterFileExt")
++	}
++	if d&ShellCompDirectiveFilterDirs != 0 {
++		directives = append(directives, "ShellCompDirectiveFilterDirs")
++	}
+ 	if len(directives) == 0 {
+ 		directives = append(directives, "ShellCompDirectiveDefault")
+ 	}
+ 
+-	if d > ShellCompDirectiveError+ShellCompDirectiveNoSpace+ShellCompDirectiveNoFileComp {
++	if d >= shellCompDirectiveMaxValue {
+ 		return fmt.Sprintf("ERROR: unexpected ShellCompDirective value: %d", d)
+ 	}
+ 	return strings.Join(directives, ", ")
+--- DOC_OLD ---
+Returns a string listing the different directive enabled in the specified parameter
+=== END CASE ===
+
+=== CASE id=go344 ===
+FILE: context.go | SYMBOL: Context.Get
+--- SIG_OLD ---
+func (c *Context) Get(key string) (value any, exists bool)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,4 +1,4 @@
+-func (c *Context) Get(key string) (value any, exists bool) {
++func (c *Context) Get(key any) (value any, exists bool) {
+ 	c.mu.RLock()
+ 	defer c.mu.RUnlock()
+ 	value, exists = c.Keys[key]
+--- DOC_OLD ---
+Get returns the value for the given key, ie: (value, true).
+If the value does not exist it returns (nil, false)
+=== END CASE ===
+
+=== CASE id=go345 ===
+FILE: context.go | SYMBOL: Context.GetInt
+--- SIG_OLD ---
+func (c *Context) GetInt(key string) (i int)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+-func (c *Context) GetInt(key string) (i int) {
++func (c *Context) GetInt(key any) (i int) {
+ 	return getTyped[int](c, key)
+ }
+--- DOC_OLD ---
+GetInt returns the value associated with the key as an integer.
+=== END CASE ===
+
+=== CASE id=go346 ===
+FILE: gin.go | SYMBOL: Engine.RunFd
+--- SIG_OLD ---
+func (engine *Engine) RunFd(fd int) (err error)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -4,7 +4,7 @@
+ 
+ 	if engine.isUnsafeTrustedProxies() {
+ 		debugPrint("[WARNING] You trusted all proxies, this is NOT safe. We recommend you to set a value.\n" +
+-			"Please check https://pkg.go.dev/github.com/gin-gonic/gin#readme-don-t-trust-all-proxies for details.")
++			"Please check https://github.com/gin-gonic/gin/blob/master/docs/doc.md#dont-trust-all-proxies for details.")
+ 	}
+ 
+ 	f := os.NewFile(uintptr(fd), fmt.Sprintf("fd@%d", fd))
+--- DOC_OLD ---
+RunFd attaches the router to a http.Server and starts listening and serving HTTP requests
+through the specified file descriptor.
+Note: this method will block the calling goroutine indefinitely unless an error happens.
+=== END CASE ===
+
+=== CASE id=go347 ===
+FILE: flag_groups.go | SYMBOL: Command.enforceFlagGroupsForCompletion
+--- SIG_OLD ---
+func (c *Command) enforceFlagGroupsForCompletion()
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -8,9 +8,9 @@
+ 	oneRequiredGroupStatus := map[string]map[string]bool{}
+ 	mutuallyExclusiveGroupStatus := map[string]map[string]bool{}
+ 	c.Flags().VisitAll(func(pflag *flag.Flag) {
+-		processFlagForGroupAnnotation(flags, pflag, requiredAsGroup, groupStatus)
+-		processFlagForGroupAnnotation(flags, pflag, oneRequired, oneRequiredGroupStatus)
+-		processFlagForGroupAnnotation(flags, pflag, mutuallyExclusive, mutuallyExclusiveGroupStatus)
++		processFlagForGroupAnnotation(flags, pflag, requiredAsGroupAnnotation, groupStatus)
++		processFlagForGroupAnnotation(flags, pflag, oneRequiredAnnotation, oneRequiredGroupStatus)
++		processFlagForGroupAnnotation(flags, pflag, mutuallyExclusiveAnnotation, mutuallyExclusiveGroupStatus)
+ 	})
+ 
+ 	for flagList, flagnameAndStatus := range groupStatus {
+--- DOC_OLD ---
+enforceFlagGroupsForCompletion will do the following:
+- when a flag in a group is present, other flags in the group will be marked required
+- when none of the flags in a one-required group are present, all flags in the group will be marked required
+- when a flag in a mutually exclusive group is present, other flags in the group will be marked as hidden
+This allows the standard completion logic to behave appropriately for flag groups
+=== END CASE ===

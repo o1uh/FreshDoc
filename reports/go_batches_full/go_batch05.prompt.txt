@@ -1,0 +1,282 @@
+# FD-39: слепая R9-разметка полного Go-набора (full381, 381 кейс: gin + cobra)
+
+Тебе прислан один шард `go_batchNN.prompt.txt` (10-12 кейсов:
+подмножество `data/processed/go_full381.csv`, всего 381 строка go000…go380,
+репо gin + cobra). Размечай КАЖДУЮ строку независимо. Меток (включая прокси
+`doc_changed` из sidecar) ты не видишь — и не пытайся их угадать: решай только
+по диффу и godoc. Sidecar `go_full381_sidecar.json` тебе НЕ показывают.
+
+Прогон независимый: не смешивай ответы с другим прогоном; один шард —
+один контекст целиком, не размечать по частям в разных сессиях.
+
+## Вход строки
+- `id` — идентификатор пары (go000…go380), его же вернуть в ответе;
+- `file`/`symbol` — файл и функция/метод (вид `Recv.Name` — метод с ресивером);
+- `sig_old` — заголовок `func …` ДО (у методов — с ресивером в скобках);
+- `diff_code` — unified diff полного текста объявления (с телом, БЕЗ godoc);
+- `doc_old` — godoc-комментарий (`//…`) ДО изменения.
+Больше ничего не видно — код вне диффа не додумывать. Go-специфика:
+документируется экспортируемое поведение; однострочный godoc — полноценное утверждение.
+
+## Шкала R9 (вопрос: «нужно ли обновить godoc из-за этого изменения?»)
+- **A. Нужно обновить** — хотя бы одно утверждение godoc стало НЕВЕРНЫМ
+  (имя/назначение параметра, поведение, возвращаемое значение, условие ошибки).
+- **B. Желательно обновить** — ничего неверного нет, но изменение добавило важную
+  возможность/условие, которых нет в godoc.
+- **C. Актуально** — все утверждения остаются верными и полными.
+- **D. Не могу решить** — нужен контекст вне диффа и godoc (указать какой в `why`).
+  Доля D < 10%.
+
+**Жёсткое правило: если в godoc нет утверждения, ставшего ложным, — НЕ A.**
+
+## Как размечать (≤ 2 минут на строку)
+1. Выписать проверяемые утверждения godoc.
+2. Найти для каждого соответствующий фрагмент диффа.
+3. Есть конкретное ложное утверждение → A; неверного нет, но появилось важное → B; иначе → C.
+4. Сомнение A/B → B; B/C → C (и поясни в `why`).
+
+## Формат ответа (строго, CSV)
+ОДИН CSV-блок, заголовок строго:
+id,label,stale_statement,why
+- `label` ∈ {A,B,C,D}; строк столько же, в том же порядке, что кейсы;
+- `stale_statement` — точная подстрока `doc_old`, ставшая ложной (только для A,
+  иначе пусто). Цитируй посимвольно — проверяется автоматически;
+- `why` — одна фраза (для D — какого контекста не хватило).
+
+КЕЙСЫ:
+=== CASE id=go060 ===
+FILE: context.go | SYMBOL: Context.GetInt8
+--- SIG_OLD ---
+func (c *Context) GetInt8(key string) (i8 int8)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+-func (c *Context) GetInt8(key string) (i8 int8) {
++func (c *Context) GetInt8(key any) (i8 int8) {
+ 	return getTyped[int8](c, key)
+ }
+--- DOC_OLD ---
+GetInt8 returns the value associated with the key as an integer 8.
+=== END CASE ===
+
+=== CASE id=go061 ===
+FILE: context.go | SYMBOL: Context.GetUint8Slice
+--- SIG_OLD ---
+func (c *Context) GetUint8Slice(key any) (ui8s []uint8)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+-func (c *Context) GetUint8Slice(key any) (ui8s []uint8) {
++func (c *Context) GetUint8Slice(key any) []uint8 {
+ 	return getTyped[[]uint8](c, key)
+ }
+--- DOC_OLD ---
+GetUint8Slice returns the value associated with the key as a slice of uint8 integers.
+=== END CASE ===
+
+=== CASE id=go062 ===
+FILE: context.go | SYMBOL: Context.GetUintSlice
+--- SIG_OLD ---
+func (c *Context) GetUintSlice(key string) (uis []uint)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+-func (c *Context) GetUintSlice(key string) (uis []uint) {
++func (c *Context) GetUintSlice(key any) (uis []uint) {
+ 	return getTyped[[]uint](c, key)
+ }
+--- DOC_OLD ---
+GetUintSlice returns the value associated with the key as a slice of unsigned integers.
+=== END CASE ===
+
+=== CASE id=go063 ===
+FILE: command.go | SYMBOL: Command.AddCommand
+--- SIG_OLD ---
+func (c *Command) AddCommand(cmds ...*Command)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -4,10 +4,6 @@
+ 			panic("Command can't be a child of itself")
+ 		}
+ 		cmds[i].parent = c
+-
+-		if x.GroupID != "" && !c.ContainsGroup(x.GroupID) {
+-			panic(fmt.Sprintf("Group id '%s' is not defined for subcommand '%s'", x.GroupID, cmds[i].CommandPath()))
+-		}
+ 
+ 		usageLen := len(x.Use)
+ 		if usageLen > c.commandsMaxUseLen {
+--- DOC_OLD ---
+AddCommand adds one or more commands to this parent command.
+=== END CASE ===
+
+=== CASE id=go064 ===
+FILE: command.go | SYMBOL: Command.UseLine
+--- SIG_OLD ---
+func (c *Command) UseLine() string
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,9 +1,10 @@
+ func (c *Command) UseLine() string {
+ 	var useline string
++	use := strings.Replace(c.Use, c.Name(), c.displayName(), 1)
+ 	if c.HasParent() {
+-		useline = c.parent.CommandPath() + " " + c.Use
++		useline = c.parent.CommandPath() + " " + use
+ 	} else {
+-		useline = c.Use
++		useline = use
+ 	}
+ 	if c.DisableFlagsInUseLine {
+ 		return useline
+--- DOC_OLD ---
+UseLine puts out the full usage for a given command (including parents).
+=== END CASE ===
+
+=== CASE id=go065 ===
+FILE: context.go | SYMBOL: Context.GetString
+--- SIG_OLD ---
+func (c *Context) GetString(key string) (s string)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+-func (c *Context) GetString(key string) (s string) {
++func (c *Context) GetString(key any) (s string) {
+ 	return getTyped[string](c, key)
+ }
+--- DOC_OLD ---
+GetString returns the value associated with the key as a string.
+=== END CASE ===
+
+=== CASE id=go066 ===
+FILE: context.go | SYMBOL: Context.GetBool
+--- SIG_OLD ---
+func (c *Context) GetBool(key string) (b bool)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+-func (c *Context) GetBool(key string) (b bool) {
++func (c *Context) GetBool(key any) (b bool) {
+ 	return getTyped[bool](c, key)
+ }
+--- DOC_OLD ---
+GetBool returns the value associated with the key as a boolean.
+=== END CASE ===
+
+=== CASE id=go067 ===
+FILE: context.go | SYMBOL: Context.GetBool
+--- SIG_OLD ---
+func (c *Context) GetBool(key any) (b bool)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+-func (c *Context) GetBool(key any) (b bool) {
++func (c *Context) GetBool(key any) bool {
+ 	return getTyped[bool](c, key)
+ }
+--- DOC_OLD ---
+GetBool returns the value associated with the key as a boolean.
+=== END CASE ===
+
+=== CASE id=go068 ===
+FILE: context.go | SYMBOL: Context.GetUintSlice
+--- SIG_OLD ---
+func (c *Context) GetUintSlice(key any) (uis []uint)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+-func (c *Context) GetUintSlice(key any) (uis []uint) {
++func (c *Context) GetUintSlice(key any) []uint {
+ 	return getTyped[[]uint](c, key)
+ }
+--- DOC_OLD ---
+GetUintSlice returns the value associated with the key as a slice of unsigned integers.
+=== END CASE ===
+
+=== CASE id=go069 ===
+FILE: context.go | SYMBOL: Context.GetStringMap
+--- SIG_OLD ---
+func (c *Context) GetStringMap(key string) (sm map[string]any)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+-func (c *Context) GetStringMap(key string) (sm map[string]any) {
++func (c *Context) GetStringMap(key any) (sm map[string]any) {
+ 	return getTyped[map[string]any](c, key)
+ }
+--- DOC_OLD ---
+GetStringMap returns the value associated with the key as a map of interfaces.
+=== END CASE ===
+
+=== CASE id=go070 ===
+FILE: context.go | SYMBOL: Context.GetUint
+--- SIG_OLD ---
+func (c *Context) GetUint(key string) (ui uint)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,6 +1,3 @@
+ func (c *Context) GetUint(key string) (ui uint) {
+-	if val, ok := c.Get(key); ok && val != nil {
+-		ui, _ = val.(uint)
+-	}
+-	return
++	return getTyped[uint](c, key)
+ }
+--- DOC_OLD ---
+GetUint returns the value associated with the key as an unsigned integer.
+=== END CASE ===
+
+=== CASE id=go071 ===
+FILE: context.go | SYMBOL: Context.ClientIP
+--- SIG_OLD ---
+func (c *Context) ClientIP() string
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -14,11 +14,24 @@
+ 		}
+ 	}
+ 
+-	remoteIP := net.ParseIP(c.RemoteIP())
+-	if remoteIP == nil {
+-		return ""
++	var (
++		trusted		bool
++		remoteIP	net.IP
++	)
++
++	localAddr, ok := c.Request.Context().Value(http.LocalAddrContextKey).(net.Addr)
++	if ok && strings.HasPrefix(localAddr.Network(), "unix") {
++		trusted = true
+ 	}
+-	trusted := c.engine.isTrustedProxy(remoteIP)
++
++	if !trusted {
++
++		remoteIP = net.ParseIP(c.RemoteIP())
++		if remoteIP == nil {
++			return ""
++		}
++		trusted = c.engine.isTrustedProxy(remoteIP)
++	}
+ 
+ 	if trusted && c.engine.ForwardedByClientIP && c.engine.RemoteIPHeaders != nil {
+ 		for _, headerName := range c.engine.RemoteIPHeaders {
+--- DOC_OLD ---
+ClientIP implements one best effort algorithm to return the real client IP.
+It calls c.RemoteIP() under the hood, to check if the remote IP is a trusted proxy or not.
+If it is it will then try to parse the headers defined in Engine.RemoteIPHeaders (defaulting to [X-Forwarded-For, X-Real-IP]).
+If the headers are not syntactically valid OR the remote IP does not correspond to a trusted proxy,
+the remote IP (coming from Request.RemoteAddr) is returned.
+=== END CASE ===

@@ -1,0 +1,296 @@
+# FD-39: слепая R9-разметка полного Go-набора (full381, 381 кейс: gin + cobra)
+
+Тебе прислан один шард `go_batchNN.prompt.txt` (10-12 кейсов:
+подмножество `data/processed/go_full381.csv`, всего 381 строка go000…go380,
+репо gin + cobra). Размечай КАЖДУЮ строку независимо. Меток (включая прокси
+`doc_changed` из sidecar) ты не видишь — и не пытайся их угадать: решай только
+по диффу и godoc. Sidecar `go_full381_sidecar.json` тебе НЕ показывают.
+
+Прогон независимый: не смешивай ответы с другим прогоном; один шард —
+один контекст целиком, не размечать по частям в разных сессиях.
+
+## Вход строки
+- `id` — идентификатор пары (go000…go380), его же вернуть в ответе;
+- `file`/`symbol` — файл и функция/метод (вид `Recv.Name` — метод с ресивером);
+- `sig_old` — заголовок `func …` ДО (у методов — с ресивером в скобках);
+- `diff_code` — unified diff полного текста объявления (с телом, БЕЗ godoc);
+- `doc_old` — godoc-комментарий (`//…`) ДО изменения.
+Больше ничего не видно — код вне диффа не додумывать. Go-специфика:
+документируется экспортируемое поведение; однострочный godoc — полноценное утверждение.
+
+## Шкала R9 (вопрос: «нужно ли обновить godoc из-за этого изменения?»)
+- **A. Нужно обновить** — хотя бы одно утверждение godoc стало НЕВЕРНЫМ
+  (имя/назначение параметра, поведение, возвращаемое значение, условие ошибки).
+- **B. Желательно обновить** — ничего неверного нет, но изменение добавило важную
+  возможность/условие, которых нет в godoc.
+- **C. Актуально** — все утверждения остаются верными и полными.
+- **D. Не могу решить** — нужен контекст вне диффа и godoc (указать какой в `why`).
+  Доля D < 10%.
+
+**Жёсткое правило: если в godoc нет утверждения, ставшего ложным, — НЕ A.**
+
+## Как размечать (≤ 2 минут на строку)
+1. Выписать проверяемые утверждения godoc.
+2. Найти для каждого соответствующий фрагмент диффа.
+3. Есть конкретное ложное утверждение → A; неверного нет, но появилось важное → B; иначе → C.
+4. Сомнение A/B → B; B/C → C (и поясни в `why`).
+
+## Формат ответа (строго, CSV)
+ОДИН CSV-блок, заголовок строго:
+id,label,stale_statement,why
+- `label` ∈ {A,B,C,D}; строк столько же, в том же порядке, что кейсы;
+- `stale_statement` — точная подстрока `doc_old`, ставшая ложной (только для A,
+  иначе пусто). Цитируй посимвольно — проверяется автоматически;
+- `why` — одна фраза (для D — какого контекста не хватило).
+
+КЕЙСЫ:
+=== CASE id=go288 ===
+FILE: command.go | SYMBOL: Command.Flags
+--- SIG_OLD ---
+func (c *Command) Flags() *flag.FlagSet
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,6 +1,6 @@
+ func (c *Command) Flags() *flag.FlagSet {
+ 	if c.flags == nil {
+-		c.flags = flag.NewFlagSet(c.Name(), flag.ContinueOnError)
++		c.flags = flag.NewFlagSet(c.displayName(), flag.ContinueOnError)
+ 		if c.flagErrorBuf == nil {
+ 			c.flagErrorBuf = new(bytes.Buffer)
+ 		}
+--- DOC_OLD ---
+Flags returns the complete FlagSet that applies
+to this command (local and persistent declared here and by all parents).
+=== END CASE ===
+
+=== CASE id=go289 ===
+FILE: flag_groups.go | SYMBOL: Command.MarkFlagsRequiredTogether
+--- SIG_OLD ---
+func (c *Command) MarkFlagsRequiredTogether(flagNames ...string)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -5,7 +5,7 @@
+ 		if f == nil {
+ 			panic(fmt.Sprintf("Failed to find flag %q and mark it as being required in a flag group", v))
+ 		}
+-		if err := c.Flags().SetAnnotation(v, requiredAsGroup, append(f.Annotations[requiredAsGroup], strings.Join(flagNames, " "))); err != nil {
++		if err := c.Flags().SetAnnotation(v, requiredAsGroupAnnotation, append(f.Annotations[requiredAsGroupAnnotation], strings.Join(flagNames, " "))); err != nil {
+ 
+ 			panic(err)
+ 		}
+--- DOC_OLD ---
+MarkFlagsRequiredTogether marks the given flags with annotations so that Cobra errors
+if the command is invoked with a subset (but not all) of the given flags.
+=== END CASE ===
+
+=== CASE id=go290 ===
+FILE: tree.go | SYMBOL: node.addRoute
+--- SIG_OLD ---
+func (n *node) addRoute(path string, handlers HandlersChain)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -47,7 +47,7 @@
+ 				continue walk
+ 			}
+ 
+-			for i, max := 0, len(n.indices); i < max; i++ {
++			for i, max_ := 0, len(n.indices); i < max_; i++ {
+ 				if c == n.indices[i] {
+ 					parentFullPathIndex += len(n.path)
+ 					i = n.incrementChildPrio(i)
+--- DOC_OLD ---
+addRoute adds a node with the given handle to the path.
+Not concurrency-safe!
+=== END CASE ===
+
+=== CASE id=go291 ===
+FILE: fs.go | SYMBOL: Dir
+--- SIG_OLD ---
+func Dir(root string, listDirectory bool) http.FileSystem
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,7 +1,9 @@
+ func Dir(root string, listDirectory bool) http.FileSystem {
+ 	fs := http.Dir(root)
++
+ 	if listDirectory {
+ 		return fs
+ 	}
+-	return &onlyFilesFS{fs}
++
++	return &OnlyFilesFS{FileSystem: fs}
+ }
+--- DOC_OLD ---
+Dir returns a http.FileSystem that can be used by http.FileServer(). It is used internally
+in router.Static().
+if listDirectory == true, then it works the same as http.Dir() otherwise it returns
+a filesystem that prevents http.FileServer() to list the directory files.
+=== END CASE ===
+
+=== CASE id=go292 ===
+FILE: binding/binding.go | SYMBOL: Default
+--- SIG_OLD ---
+func Default(method, contentType string) Binding
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -18,6 +18,8 @@
+ 		return TOML
+ 	case MIMEMultipartPOSTForm:
+ 		return FormMultipart
++	case MIMEBSON:
++		return BSON
+ 	default:
+ 		return Form
+ 	}
+--- DOC_OLD ---
+Default returns the appropriate Binding instance based on the HTTP method
+and the content type.
+=== END CASE ===
+
+=== CASE id=go293 ===
+FILE: command.go | SYMBOL: Command.Flags
+--- SIG_OLD ---
+func (c *Command) Flags() *flag.FlagSet
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,6 +1,6 @@
+ func (c *Command) Flags() *flag.FlagSet {
+ 	if c.flags == nil {
+-		c.flags = flag.NewFlagSet(c.displayName(), flag.ContinueOnError)
++		c.flags = flag.NewFlagSet(c.DisplayName(), flag.ContinueOnError)
+ 		if c.flagErrorBuf == nil {
+ 			c.flagErrorBuf = new(bytes.Buffer)
+ 		}
+--- DOC_OLD ---
+Flags returns the complete FlagSet that applies
+to this command (local and persistent declared here and by all parents).
+=== END CASE ===
+
+=== CASE id=go294 ===
+FILE: completions.go | SYMBOL: Command.initCompleteCmd
+--- SIG_OLD ---
+func (c *Command) initCompleteCmd(args []string)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -18,6 +18,12 @@
+ 
+ 			noDescriptions := (cmd.CalledAs() == ShellCompNoDescRequestCmd)
+ 			for _, comp := range completions {
++				if GetActiveHelpConfig(finalCmd) == activeHelpGlobalDisable {
++
++					if strings.HasPrefix(comp, activeHelpMarker) {
++						continue
++					}
++				}
+ 				if noDescriptions {
+ 
+ 					comp = strings.Split(comp, "\t")[0]
+--- DOC_OLD ---
+Adds a special hidden command that can be used to request custom completions.
+=== END CASE ===
+
+=== CASE id=go295 ===
+FILE: render/data.go | SYMBOL: Data.Render
+--- SIG_OLD ---
+func (r Data) Render(w http.ResponseWriter) (err error)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,5 +1,8 @@
+ func (r Data) Render(w http.ResponseWriter) (err error) {
+ 	r.WriteContentType(w)
++	if len(r.Data) > 0 {
++		w.Header().Set("Content-Length", strconv.Itoa(len(r.Data)))
++	}
+ 	_, err = w.Write(r.Data)
+ 	return
+ }
+--- DOC_OLD ---
+Render (Data) writes data with custom ContentType.
+=== END CASE ===
+
+=== CASE id=go296 ===
+FILE: command.go | SYMBOL: Command.LocalNonPersistentFlags
+--- SIG_OLD ---
+func (c *Command) LocalNonPersistentFlags() *flag.FlagSet
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,7 +1,7 @@
+ func (c *Command) LocalNonPersistentFlags() *flag.FlagSet {
+ 	persistentFlags := c.PersistentFlags()
+ 
+-	out := flag.NewFlagSet(c.displayName(), flag.ContinueOnError)
++	out := flag.NewFlagSet(c.DisplayName(), flag.ContinueOnError)
+ 	c.LocalFlags().VisitAll(func(f *flag.Flag) {
+ 		if persistentFlags.Lookup(f.Name) == nil {
+ 			out.AddFlag(f)
+--- DOC_OLD ---
+LocalNonPersistentFlags are flags specific to this command which will NOT persist to subcommands.
+This function does not modify the flags of the current command, it's purpose is to return the current state.
+=== END CASE ===
+
+=== CASE id=go297 ===
+FILE: command.go | SYMBOL: Command.ExecuteC
+--- SIG_OLD ---
+func (c *Command) ExecuteC() (cmd *Command, err error)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -47,7 +47,7 @@
+ 			return cmd, nil
+ 		}
+ 
+-		if err == NotRunnable {
++		if err == ErrSubCommandRequired {
+ 			cmd.HelpFunc()(cmd, args)
+ 			return cmd, err
+ 		}
+--- DOC_OLD ---
+ExecuteC executes the command.
+=== END CASE ===
+
+=== CASE id=go298 ===
+FILE: context.go | SYMBOL: Context.GetStringSlice
+--- SIG_OLD ---
+func (c *Context) GetStringSlice(key any) (ss []string)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+-func (c *Context) GetStringSlice(key any) (ss []string) {
++func (c *Context) GetStringSlice(key any) []string {
+ 	return getTyped[[]string](c, key)
+ }
+--- DOC_OLD ---
+GetStringSlice returns the value associated with the key as a slice of strings.
+=== END CASE ===
+
+=== CASE id=go299 ===
+FILE: zsh_completions.go | SYMBOL: Command.GenZshCompletion
+--- SIG_OLD ---
+func (c *Command) GenZshCompletion(w io.Writer) error
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,7 +1,3 @@
+ func (c *Command) GenZshCompletion(w io.Writer) error {
+-	tmpl, err := template.New("Main").Funcs(zshCompFuncMap).Parse(zshCompletionText)
+-	if err != nil {
+-		return fmt.Errorf("error creating zsh completion template: %v", err)
+-	}
+-	return tmpl.Execute(w, c.Root())
++	return c.genZshCompletion(w, true)
+ }
+--- DOC_OLD ---
+GenZshCompletion generates a zsh completion file and writes to the passed
+writer. The completion always run on the root command regardless of the
+command it was called from.
+=== END CASE ===

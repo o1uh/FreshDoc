@@ -151,6 +151,89 @@ def cmd_export(args: argparse.Namespace) -> None:
     print(f"Список зафиксирован: {SELECT_JSON}")
 
 
+def cmd_export_external(args: argparse.Namespace) -> None:
+    """FD-39: отбор M3 по внешним сплитам (ext_hebcup/ext_jit/ext_python2/ext_go_silver).
+
+    По умолчанию — ВСЕ строки каждого сплита (M3 судит весь external-пакет,
+    включая Go; семплинга нет). Квоты --n_* позволяют урезать при нужде.
+    Экспорт пишет очищенный parquet (только m3_id/pair_id/split/sig_old/
+    diff_code/doc_old, без _leak_*/_aux_*) — его и отдавать run/import-api
+    (--dataset <dir>/m3_ext.parquet --dir <этот dir>).
+    """
+    seed = int(getattr(args, "seed", None) or DEFAULT_SEED)
+    ds_path = Path(args.dataset)
+    if not ds_path.exists():
+        raise SystemExit(f"Датасет отсутствует: {ds_path}")
+    df = pd.read_parquet(ds_path)
+    need = {"pair_id", "split", "diff_code", "doc_old"}
+    missing = need - set(df.columns)
+    if missing:
+        raise SystemExit(f"В датасете нет колонок: {sorted(missing)}")
+
+    quotas = [("ext_hebcup", int(args.n_hebcup)),
+              ("ext_jit", int(args.n_jit)),
+              ("ext_python2", int(args.n_python2)),
+              ("ext_go_silver", int(args.n_go))]
+    for col in ("diff_code", "doc_old"):
+        df[col] = df[col].fillna("").astype(str)
+    bad = df[(df["diff_code"].str.strip() == "") | (df["doc_old"].str.strip() == "")]
+    if len(bad):
+        print(f"FD-39: пропущено {len(bad)} строк с пустыми diff/doc "
+              f"({bad['split'].value_counts().to_dict()}) — судить нечего")
+        df = df.loc[~df.index.isin(bad.index)].copy()
+    rng = random.Random(seed)
+    parts: list[pd.DataFrame] = []
+    for split, n in quotas:
+        sub = df[df["split"] == split]
+        if len(sub) == 0:
+            print(f"WARNING: split {split} empty, skipping")
+            continue
+        take = min(n, len(sub))
+        if take < n:
+            print(f"WARNING: {split} has {len(sub)} rows, taking {take} (asked {n})")
+        idx = list(sub.index)
+        rng.shuffle(idx)
+        parts.append(sub.loc[idx[:take]].copy())
+    if not parts:
+        raise SystemExit("Nothing to select: all quotas empty")
+    sel = pd.concat(parts, ignore_index=True)
+    order = list(range(len(sel)))
+    rng = random.Random(seed + 1)
+    rng.shuffle(order)
+    sel = sel.iloc[order].reset_index(drop=True)
+    sel.insert(0, "m3_id", [f"e{i + 1:05d}" for i in range(len(sel))])
+    assert sel["pair_id"].is_unique, "дубли pair_id в отборе M3-ext"
+
+    out_dir = Path(args.dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    # Судье отдаём только нужные колонки: _leak_* / _aux_* в экспорт не попадают
+    # (run/import-api других колонок не читают — _leak_doc_new в суде не участвует).
+    keep = ["m3_id", "pair_id", "split", "sig_old", "diff_code", "doc_old"]
+    missing_keep = [c for c in keep if c not in sel.columns]
+    if missing_keep:
+        raise SystemExit(f"В датасете нет колонок для M3-экспорта: {missing_keep}")
+    out_pq = Path(args.out_parquet) if getattr(args, "out_parquet", "") else out_dir / "m3_ext.parquet"
+    out_pq.parent.mkdir(parents=True, exist_ok=True)
+    sel[keep].to_parquet(out_pq, index=False)
+    print(f"M3-ext parquet (без _leak_*/_aux_*): {out_pq} ({len(sel)} строк)")
+    manifest = sel[["m3_id", "pair_id", "split"]].copy()
+    manifest.to_csv(out_dir / MANIFEST_NAME, index=False)
+    select = {
+        "task": "FD-39",
+        "seed": seed,
+        "n_total": len(sel),
+        "quotas": {s: n for s, n in quotas},
+        "actual": sel["split"].value_counts().to_dict(),
+        "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    }
+    sel_path = Path(args.select_json)
+    sel_path.parent.mkdir(parents=True, exist_ok=True)
+    sel_path.write_text(json.dumps(select, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"Отбор M3-ext: {len(sel)} строк {select['actual']}, seed={seed}")
+    print(f"Манифест: {out_dir / MANIFEST_NAME}")
+    print(f"Список зафиксирован: {sel_path}")
+
+
 def _write_outputs(
     preds: dict[str, dict[str, Any]],
     raw_rows: list[dict[str, Any]],
@@ -495,6 +578,19 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--dir", default=str(OUT_DIR_DEFAULT))
     p.add_argument("--seed", type=int, default=None)
     p.set_defaults(func=cmd_export)
+    p = sub.add_parser("export-external", help="FD-39: M3 selection over external splits")
+    p.add_argument("--dataset", default="data/processed/external_all.parquet")
+    p.add_argument("--dir", default="data/m3_judge_ext")
+    p.add_argument("--seed", type=int, default=22)
+    p.add_argument("--n_hebcup", type=int, default=10**9)
+    p.add_argument("--n_jit", type=int, default=10**9)
+    p.add_argument("--n_python2", type=int, default=10**9)
+    p.add_argument("--n_go", type=int, default=10**9)
+    p.add_argument("--select_json", default="reports/tables/m3_select_ext.json")
+    p.add_argument("--out_parquet", default="",
+                   help="куда писать очищенный parquet для run/import-api "
+                        "(по умолчанию <dir>/m3_ext.parquet)")
+    p.set_defaults(func=cmd_export_external)
     p = sub.add_parser("estimate", help="смета API-прогона (без сети и ключа)")
     p.set_defaults(func=cmd_estimate)
     p = sub.add_parser("run", help="вызовы API (нужен OPENCODE_API_KEY)")

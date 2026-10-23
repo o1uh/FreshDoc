@@ -1,0 +1,306 @@
+# FD-39: слепая R9-разметка полного Go-набора (full381, 381 кейс: gin + cobra)
+
+Тебе прислан один шард `go_batchNN.prompt.txt` (10-12 кейсов:
+подмножество `data/processed/go_full381.csv`, всего 381 строка go000…go380,
+репо gin + cobra). Размечай КАЖДУЮ строку независимо. Меток (включая прокси
+`doc_changed` из sidecar) ты не видишь — и не пытайся их угадать: решай только
+по диффу и godoc. Sidecar `go_full381_sidecar.json` тебе НЕ показывают.
+
+Прогон независимый: не смешивай ответы с другим прогоном; один шард —
+один контекст целиком, не размечать по частям в разных сессиях.
+
+## Вход строки
+- `id` — идентификатор пары (go000…go380), его же вернуть в ответе;
+- `file`/`symbol` — файл и функция/метод (вид `Recv.Name` — метод с ресивером);
+- `sig_old` — заголовок `func …` ДО (у методов — с ресивером в скобках);
+- `diff_code` — unified diff полного текста объявления (с телом, БЕЗ godoc);
+- `doc_old` — godoc-комментарий (`//…`) ДО изменения.
+Больше ничего не видно — код вне диффа не додумывать. Go-специфика:
+документируется экспортируемое поведение; однострочный godoc — полноценное утверждение.
+
+## Шкала R9 (вопрос: «нужно ли обновить godoc из-за этого изменения?»)
+- **A. Нужно обновить** — хотя бы одно утверждение godoc стало НЕВЕРНЫМ
+  (имя/назначение параметра, поведение, возвращаемое значение, условие ошибки).
+- **B. Желательно обновить** — ничего неверного нет, но изменение добавило важную
+  возможность/условие, которых нет в godoc.
+- **C. Актуально** — все утверждения остаются верными и полными.
+- **D. Не могу решить** — нужен контекст вне диффа и godoc (указать какой в `why`).
+  Доля D < 10%.
+
+**Жёсткое правило: если в godoc нет утверждения, ставшего ложным, — НЕ A.**
+
+## Как размечать (≤ 2 минут на строку)
+1. Выписать проверяемые утверждения godoc.
+2. Найти для каждого соответствующий фрагмент диффа.
+3. Есть конкретное ложное утверждение → A; неверного нет, но появилось важное → B; иначе → C.
+4. Сомнение A/B → B; B/C → C (и поясни в `why`).
+
+## Формат ответа (строго, CSV)
+ОДИН CSV-блок, заголовок строго:
+id,label,stale_statement,why
+- `label` ∈ {A,B,C,D}; строк столько же, в том же порядке, что кейсы;
+- `stale_statement` — точная подстрока `doc_old`, ставшая ложной (только для A,
+  иначе пусто). Цитируй посимвольно — проверяется автоматически;
+- `why` — одна фраза (для D — какого контекста не хватило).
+
+КЕЙСЫ:
+=== CASE id=go168 ===
+FILE: command.go | SYMBOL: Command.SetUsageTemplate
+--- SIG_OLD ---
+func (c *Command) SetUsageTemplate(s string)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,7 @@
+ func (c *Command) SetUsageTemplate(s string) {
++	if s == "" {
++		c.usageTemplate = nil
++		return
++	}
+ 	c.usageTemplate = tmpl(s)
+ }
+--- DOC_OLD ---
+SetUsageTemplate sets usage template. Can be defined by Application.
+=== END CASE ===
+
+=== CASE id=go169 ===
+FILE: context.go | SYMBOL: Context.GetInt32
+--- SIG_OLD ---
+func (c *Context) GetInt32(key string) (i32 int32)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,6 +1,3 @@
+ func (c *Context) GetInt32(key string) (i32 int32) {
+-	if val, ok := c.Get(key); ok && val != nil {
+-		i32, _ = val.(int32)
+-	}
+-	return
++	return getTyped[int32](c, key)
+ }
+--- DOC_OLD ---
+GetInt32 returns the value associated with the key as an integer 32.
+=== END CASE ===
+
+=== CASE id=go170 ===
+FILE: binding/binding_nomsgpack.go | SYMBOL: Default
+--- SIG_OLD ---
+func Default(method, contentType string) Binding
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -10,7 +10,7 @@
+ 		return XML
+ 	case MIMEPROTOBUF:
+ 		return ProtoBuf
+-	case MIMEYAML:
++	case MIMEYAML, MIMEYAML2:
+ 		return YAML
+ 	case MIMEMultipartPOSTForm:
+ 		return FormMultipart
+--- DOC_OLD ---
+Default returns the appropriate Binding instance based on the HTTP method
+and the content type.
+=== END CASE ===
+
+=== CASE id=go171 ===
+FILE: command.go | SYMBOL: Command.InitDefaultHelpCmd
+--- SIG_OLD ---
+func (c *Command) InitDefaultHelpCmd()
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -9,8 +9,8 @@
+ 			Short:	"Help about any command",
+ 			Long: `Help provides help for any command in the application.
+ Simply type ` + c.DisplayName() + ` help [path to command] for full details.`,
+-			ValidArgsFunction: func(c *Command, args []string, toComplete string) ([]string, ShellCompDirective) {
+-				var completions []string
++			ValidArgsFunction: func(c *Command, args []string, toComplete string) ([]Completion, ShellCompDirective) {
++				var completions []Completion
+ 				cmd, _, e := c.Root().Find(args)
+ 				if e != nil {
+ 					return nil, ShellCompDirectiveNoFileComp
+@@ -22,7 +22,7 @@
+ 				for _, subCmd := range cmd.Commands() {
+ 					if subCmd.IsAvailableCommand() || subCmd == cmd.helpCommand {
+ 						if strings.HasPrefix(subCmd.Name(), toComplete) {
+-							completions = append(completions, fmt.Sprintf("%s\t%s", subCmd.Name(), subCmd.Short))
++							completions = append(completions, CompletionWithDesc(subCmd.Name(), subCmd.Short))
+ 						}
+ 					}
+ 				}
+--- DOC_OLD ---
+InitDefaultHelpCmd adds default help command to c.
+It is called automatically by executing the c or by calling help and usage.
+If c already has help command or c has no subcommands, it will do nothing.
+=== END CASE ===
+
+=== CASE id=go172 ===
+FILE: args.go | SYMBOL: OnlyValidArgs
+--- SIG_OLD ---
+func OnlyValidArgs(cmd *Command, args []string) error
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,10 +1,9 @@
+ func OnlyValidArgs(cmd *Command, args []string) error {
+ 	if len(cmd.ValidArgs) > 0 {
+-		// Remove any description that may be included in ValidArgs.
+-		// A description is following a tab character.
+-		var validArgs []string
++
++		validArgs := make([]string, 0, len(cmd.ValidArgs))
+ 		for _, v := range cmd.ValidArgs {
+-			validArgs = append(validArgs, strings.Split(v, "\t")[0])
++			validArgs = append(validArgs, strings.SplitN(v, "\t", 2)[0])
+ 		}
+ 		for _, v := range args {
+ 			if !stringInSlice(v, validArgs) {
+--- DOC_OLD ---
+OnlyValidArgs returns an error if there are any positional args that are not in
+the `ValidArgs` field of `Command`
+=== END CASE ===
+
+=== CASE id=go173 ===
+FILE: command.go | SYMBOL: Command.ExecuteC
+--- SIG_OLD ---
+func (c *Command) ExecuteC() (cmd *Command, err error)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -47,6 +47,11 @@
+ 			return cmd, nil
+ 		}
+ 
++		if err == NotRunnable {
++			cmd.HelpFunc()(cmd, args)
++			return cmd, err
++		}
++
+ 		if !cmd.SilenceErrors && !c.SilenceErrors {
+ 			c.Println("Error:", err.Error())
+ 		}
+--- DOC_OLD ---
+ExecuteC executes the command.
+=== END CASE ===
+
+=== CASE id=go174 ===
+FILE: mode.go | SYMBOL: Mode
+--- SIG_OLD ---
+func Mode() string
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+ func Mode() string {
+-	return modeName
++	return modeName.Load().(string)
+ }
+--- DOC_OLD ---
+Mode returns current gin mode.
+=== END CASE ===
+
+=== CASE id=go175 ===
+FILE: gin.go | SYMBOL: Engine.RunFd
+--- SIG_OLD ---
+func (engine *Engine) RunFd(fd int) (err error)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -8,6 +8,7 @@
+ 	}
+ 
+ 	f := os.NewFile(uintptr(fd), fmt.Sprintf("fd@%d", fd))
++	defer f.Close()
+ 	listener, err := net.FileListener(f)
+ 	if err != nil {
+ 		return
+--- DOC_OLD ---
+RunFd attaches the router to a http.Server and starts listening and serving HTTP requests
+through the specified file descriptor.
+Note: this method will block the calling goroutine indefinitely unless an error happens.
+=== END CASE ===
+
+=== CASE id=go176 ===
+FILE: completions.go | SYMBOL: Command.initDefaultCompletionCmd
+--- SIG_OLD ---
+func (c *Command) initDefaultCompletionCmd()
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -49,7 +49,7 @@
+ 	%[1]s completion bash > /usr/local/etc/bash_completion.d/%[1]s
+ 
+ You will need to start a new shell for this setup to take effect.
+-  `, c.Root().Name()),
++`, c.Root().Name()),
+ 		Args:			NoArgs,
+ 		DisableFlagsInUseLine:	true,
+ 		ValidArgsFunction:	NoFileCompletions,
+--- DOC_OLD ---
+initDefaultCompletionCmd adds a default 'completion' command to c.
+This function will do nothing if any of the following is true:
+1- the feature has been explicitly disabled by the program,
+2- c has no subcommands (to avoid creating one),
+3- c already has a 'completion' command provided by the program.
+=== END CASE ===
+
+=== CASE id=go177 ===
+FILE: context.go | SYMBOL: Context.GetStringMap
+--- SIG_OLD ---
+func (c *Context) GetStringMap(key string) (sm map[string]any)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,6 +1,3 @@
+ func (c *Context) GetStringMap(key string) (sm map[string]any) {
+-	if val, ok := c.Get(key); ok && val != nil {
+-		sm, _ = val.(map[string]any)
+-	}
+-	return
++	return getTyped[map[string]any](c, key)
+ }
+--- DOC_OLD ---
+GetStringMap returns the value associated with the key as a map of interfaces.
+=== END CASE ===
+
+=== CASE id=go178 ===
+FILE: render/json.go | SYMBOL: AsciiJSON.Render
+--- SIG_OLD ---
+func (r AsciiJSON) Render(w http.ResponseWriter) error
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,6 +1,6 @@
+ func (r AsciiJSON) Render(w http.ResponseWriter) error {
+ 	r.WriteContentType(w)
+-	ret, err := json.Marshal(r.Data)
++	ret, err := json.API.Marshal(r.Data)
+ 	if err != nil {
+ 		return err
+ 	}
+--- DOC_OLD ---
+Render (AsciiJSON) marshals the given interface object and writes it with custom ContentType.
+=== END CASE ===
+
+=== CASE id=go179 ===
+FILE: command.go | SYMBOL: Command.InitDefaultHelpCmd
+--- SIG_OLD ---
+func (c *Command) InitDefaultHelpCmd()
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -35,6 +35,7 @@
+ 					CheckErr(c.Root().Usage())
+ 				} else {
+ 					cmd.InitDefaultHelpFlag()
++					cmd.InitDefaultVersionFlag()
+ 					CheckErr(cmd.Help())
+ 				}
+ 			},
+--- DOC_OLD ---
+InitDefaultHelpCmd adds default help command to c.
+It is called automatically by executing the c or by calling help and usage.
+If c already has help command or c has no subcommands, it will do nothing.
+=== END CASE ===

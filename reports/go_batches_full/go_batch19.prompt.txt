@@ -1,0 +1,318 @@
+# FD-39: слепая R9-разметка полного Go-набора (full381, 381 кейс: gin + cobra)
+
+Тебе прислан один шард `go_batchNN.prompt.txt` (10-12 кейсов:
+подмножество `data/processed/go_full381.csv`, всего 381 строка go000…go380,
+репо gin + cobra). Размечай КАЖДУЮ строку независимо. Меток (включая прокси
+`doc_changed` из sidecar) ты не видишь — и не пытайся их угадать: решай только
+по диффу и godoc. Sidecar `go_full381_sidecar.json` тебе НЕ показывают.
+
+Прогон независимый: не смешивай ответы с другим прогоном; один шард —
+один контекст целиком, не размечать по частям в разных сессиях.
+
+## Вход строки
+- `id` — идентификатор пары (go000…go380), его же вернуть в ответе;
+- `file`/`symbol` — файл и функция/метод (вид `Recv.Name` — метод с ресивером);
+- `sig_old` — заголовок `func …` ДО (у методов — с ресивером в скобках);
+- `diff_code` — unified diff полного текста объявления (с телом, БЕЗ godoc);
+- `doc_old` — godoc-комментарий (`//…`) ДО изменения.
+Больше ничего не видно — код вне диффа не додумывать. Go-специфика:
+документируется экспортируемое поведение; однострочный godoc — полноценное утверждение.
+
+## Шкала R9 (вопрос: «нужно ли обновить godoc из-за этого изменения?»)
+- **A. Нужно обновить** — хотя бы одно утверждение godoc стало НЕВЕРНЫМ
+  (имя/назначение параметра, поведение, возвращаемое значение, условие ошибки).
+- **B. Желательно обновить** — ничего неверного нет, но изменение добавило важную
+  возможность/условие, которых нет в godoc.
+- **C. Актуально** — все утверждения остаются верными и полными.
+- **D. Не могу решить** — нужен контекст вне диффа и godoc (указать какой в `why`).
+  Доля D < 10%.
+
+**Жёсткое правило: если в godoc нет утверждения, ставшего ложным, — НЕ A.**
+
+## Как размечать (≤ 2 минут на строку)
+1. Выписать проверяемые утверждения godoc.
+2. Найти для каждого соответствующий фрагмент диффа.
+3. Есть конкретное ложное утверждение → A; неверного нет, но появилось важное → B; иначе → C.
+4. Сомнение A/B → B; B/C → C (и поясни в `why`).
+
+## Формат ответа (строго, CSV)
+ОДИН CSV-блок, заголовок строго:
+id,label,stale_statement,why
+- `label` ∈ {A,B,C,D}; строк столько же, в том же порядке, что кейсы;
+- `stale_statement` — точная подстрока `doc_old`, ставшая ложной (только для A,
+  иначе пусто). Цитируй посимвольно — проверяется автоматически;
+- `why` — одна фраза (для D — какого контекста не хватило).
+
+КЕЙСЫ:
+=== CASE id=go228 ===
+FILE: context.go | SYMBOL: Context.ShouldBindTOML
+--- SIG_OLD ---
+func (c *Context) ShouldBindTOML(obj interface{}) error
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+-func (c *Context) ShouldBindTOML(obj interface{}) error {
++func (c *Context) ShouldBindTOML(obj any) error {
+ 	return c.ShouldBindWith(obj, binding.TOML)
+ }
+--- DOC_OLD ---
+ShouldBindTOML is a shortcut for c.ShouldBindWith(obj, binding.TOML).
+=== END CASE ===
+
+=== CASE id=go229 ===
+FILE: recovery.go | SYMBOL: CustomRecoveryWithWriter
+--- SIG_OLD ---
+func CustomRecoveryWithWriter(out io.Writer, handle RecoveryFunc) HandlerFunc
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -23,12 +23,7 @@
+ 					stack := stack(3)
+ 					httpRequest, _ := httputil.DumpRequest(c.Request, false)
+ 					headers := strings.Split(string(httpRequest), "\r\n")
+-					for idx, header := range headers {
+-						key, _, _ := strings.Cut(header, ":")
+-						if key == "Authorization" {
+-							headers[idx] = key + ": *"
+-						}
+-					}
++					maskAuthorization(headers)
+ 					headersToStr := strings.Join(headers, "\r\n")
+ 					if brokenPipe {
+ 						logger.Printf("%s\n%s%s", err, headersToStr, reset)
+--- DOC_OLD ---
+CustomRecoveryWithWriter returns a middleware for a given writer that recovers from any panics and calls the provided handle func to handle it.
+=== END CASE ===
+
+=== CASE id=go230 ===
+FILE: command.go | SYMBOL: Command.SetVersionTemplate
+--- SIG_OLD ---
+func (c *Command) SetVersionTemplate(s string)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,7 @@
+ func (c *Command) SetVersionTemplate(s string) {
++	if s == "" {
++		c.versionTemplate = nil
++		return
++	}
+ 	c.versionTemplate = tmpl(s)
+ }
+--- DOC_OLD ---
+SetVersionTemplate sets version template to be used. Application can use it to set custom template.
+=== END CASE ===
+
+=== CASE id=go231 ===
+FILE: context.go | SYMBOL: Context.GetInt32
+--- SIG_OLD ---
+func (c *Context) GetInt32(key any) (i32 int32)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+-func (c *Context) GetInt32(key any) (i32 int32) {
++func (c *Context) GetInt32(key any) int32 {
+ 	return getTyped[int32](c, key)
+ }
+--- DOC_OLD ---
+GetInt32 returns the value associated with the key as an integer 32.
+=== END CASE ===
+
+=== CASE id=go232 ===
+FILE: context.go | SYMBOL: Context.GetInt8Slice
+--- SIG_OLD ---
+func (c *Context) GetInt8Slice(key any) (i8s []int8)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+-func (c *Context) GetInt8Slice(key any) (i8s []int8) {
++func (c *Context) GetInt8Slice(key any) []int8 {
+ 	return getTyped[[]int8](c, key)
+ }
+--- DOC_OLD ---
+GetInt8Slice returns the value associated with the key as a slice of int8 integers.
+=== END CASE ===
+
+=== CASE id=go233 ===
+FILE: tree.go | SYMBOL: node.getValue
+--- SIG_OLD ---
+func (n *node) getValue(path string, params *Params, skippedNodes *[]skippedNode, unescape bool) (value nodeValue)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -68,7 +68,14 @@
+ 						end++
+ 					}
+ 
+-					if params != nil && cap(*params) > 0 {
++					if params != nil {
++
++						if cap(*params) < int(globalParamsCount) {
++							newParams := make(Params, len(*params), globalParamsCount)
++							copy(newParams, *params)
++							*params = newParams
++						}
++
+ 						if value.params == nil {
+ 							value.params = params
+ 						}
+@@ -112,6 +119,13 @@
+ 				case catchAll:
+ 
+ 					if params != nil {
++
++						if cap(*params) < int(globalParamsCount) {
++							newParams := make(Params, len(*params), globalParamsCount)
++							copy(newParams, *params)
++							*params = newParams
++						}
++
+ 						if value.params == nil {
+ 							value.params = params
+ 						}
+--- DOC_OLD ---
+Returns the handle registered with the given path (key). The values of
+wildcards are saved to a map.
+If no handle can be found, a TSR (trailing slash redirect) recommendation is
+made if a handle exists with an extra (without the) trailing slash for the
+given path.
+=== END CASE ===
+
+=== CASE id=go234 ===
+FILE: context.go | SYMBOL: Context.GetInt16
+--- SIG_OLD ---
+func (c *Context) GetInt16(key string) (i16 int16)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,6 +1,3 @@
+ func (c *Context) GetInt16(key string) (i16 int16) {
+-	if val, ok := c.Get(key); ok && val != nil {
+-		i16, _ = val.(int16)
+-	}
+-	return
++	return getTyped[int16](c, key)
+ }
+--- DOC_OLD ---
+GetInt16 returns the value associated with the key as an integer 16.
+=== END CASE ===
+
+=== CASE id=go235 ===
+FILE: response_writer.go | SYMBOL: responseWriter.Hijack
+--- SIG_OLD ---
+func (w *responseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,5 +1,6 @@
+ func (w *responseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+-	if w.Written() {
++
++	if w.size > 0 {
+ 		return nil, nil, errHijackAlreadyWritten
+ 	}
+ 	if w.size < 0 {
+--- DOC_OLD ---
+Hijack implements the http.Hijacker interface.
+=== END CASE ===
+
+=== CASE id=go236 ===
+FILE: gin.go | SYMBOL: Engine.RunQUIC
+--- SIG_OLD ---
+func (engine *Engine) RunQUIC(addr, certFile, keyFile string) (err error)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -4,7 +4,7 @@
+ 
+ 	if engine.isUnsafeTrustedProxies() {
+ 		debugPrint("[WARNING] You trusted all proxies, this is NOT safe. We recommend you to set a value.\n" +
+-			"Please check https://pkg.go.dev/github.com/gin-gonic/gin#readme-don-t-trust-all-proxies for details.")
++			"Please check https://github.com/gin-gonic/gin/blob/master/docs/doc.md#dont-trust-all-proxies for details.")
+ 	}
+ 
+ 	err = http3.ListenAndServeQUIC(addr, certFile, keyFile, engine.Handler())
+--- DOC_OLD ---
+RunQUIC attaches the router to a http.Server and starts listening and serving QUIC requests.
+It is a shortcut for http3.ListenAndServeQUIC(addr, certFile, keyFile, router)
+Note: this method will block the calling goroutine indefinitely unless an error happens.
+=== END CASE ===
+
+=== CASE id=go237 ===
+FILE: doc/md_docs.go | SYMBOL: GenMarkdownCustom
+--- SIG_OLD ---
+func GenMarkdownCustom(cmd *cobra.Command, w io.Writer, linkHandler func(string) string) error
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -13,12 +13,12 @@
+ 	}
+ 
+ 	if cmd.Runnable() {
+-		buf.WriteString(fmt.Sprintf("```\n%s\n```\n\n", cmd.UseLine()))
++		fmt.Fprintf(buf, "```\n%s\n```\n\n", cmd.UseLine())
+ 	}
+ 
+ 	if len(cmd.Example) > 0 {
+ 		buf.WriteString("### Examples\n\n")
+-		buf.WriteString(fmt.Sprintf("```\n%s\n```\n\n", cmd.Example))
++		fmt.Fprintf(buf, "```\n%s\n```\n\n", cmd.Example)
+ 	}
+ 
+ 	if err := printOptions(buf, cmd, name); err != nil {
+@@ -31,7 +31,7 @@
+ 			pname := parent.CommandPath()
+ 			link := pname + markdownExtension
+ 			link = strings.ReplaceAll(link, " ", "_")
+-			buf.WriteString(fmt.Sprintf("* [%s](%s)\t - %s\n", pname, linkHandler(link), parent.Short))
++			fmt.Fprintf(buf, "* [%s](%s)\t - %s\n", pname, linkHandler(link), parent.Short)
+ 			cmd.VisitParents(func(c *cobra.Command) {
+ 				if c.DisableAutoGenTag {
+ 					cmd.DisableAutoGenTag = c.DisableAutoGenTag
+@@ -49,7 +49,7 @@
+ 			cname := name + " " + child.Name()
+ 			link := cname + markdownExtension
+ 			link = strings.ReplaceAll(link, " ", "_")
+-			buf.WriteString(fmt.Sprintf("* [%s](%s)\t - %s\n", cname, linkHandler(link), child.Short))
++			fmt.Fprintf(buf, "* [%s](%s)\t - %s\n", cname, linkHandler(link), child.Short)
+ 		}
+ 		buf.WriteString("\n")
+ 	}
+--- DOC_OLD ---
+GenMarkdownCustom creates custom markdown output.
+=== END CASE ===
+
+=== CASE id=go238 ===
+FILE: context.go | SYMBOL: Context.GetUint16
+--- SIG_OLD ---
+func (c *Context) GetUint16(key string) (ui16 uint16)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+-func (c *Context) GetUint16(key string) (ui16 uint16) {
++func (c *Context) GetUint16(key any) (ui16 uint16) {
+ 	return getTyped[uint16](c, key)
+ }
+--- DOC_OLD ---
+GetUint16 returns the value associated with the key as an unsigned integer 16.
+=== END CASE ===
+
+=== CASE id=go239 ===
+FILE: context.go | SYMBOL: Context.GetInt16
+--- SIG_OLD ---
+func (c *Context) GetInt16(key any) (i16 int16)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+-func (c *Context) GetInt16(key any) (i16 int16) {
++func (c *Context) GetInt16(key any) int16 {
+ 	return getTyped[int16](c, key)
+ }
+--- DOC_OLD ---
+GetInt16 returns the value associated with the key as an integer 16.
+=== END CASE ===

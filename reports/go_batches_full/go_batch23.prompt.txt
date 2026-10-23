@@ -1,0 +1,286 @@
+# FD-39: слепая R9-разметка полного Go-набора (full381, 381 кейс: gin + cobra)
+
+Тебе прислан один шард `go_batchNN.prompt.txt` (10-12 кейсов:
+подмножество `data/processed/go_full381.csv`, всего 381 строка go000…go380,
+репо gin + cobra). Размечай КАЖДУЮ строку независимо. Меток (включая прокси
+`doc_changed` из sidecar) ты не видишь — и не пытайся их угадать: решай только
+по диффу и godoc. Sidecar `go_full381_sidecar.json` тебе НЕ показывают.
+
+Прогон независимый: не смешивай ответы с другим прогоном; один шард —
+один контекст целиком, не размечать по частям в разных сессиях.
+
+## Вход строки
+- `id` — идентификатор пары (go000…go380), его же вернуть в ответе;
+- `file`/`symbol` — файл и функция/метод (вид `Recv.Name` — метод с ресивером);
+- `sig_old` — заголовок `func …` ДО (у методов — с ресивером в скобках);
+- `diff_code` — unified diff полного текста объявления (с телом, БЕЗ godoc);
+- `doc_old` — godoc-комментарий (`//…`) ДО изменения.
+Больше ничего не видно — код вне диффа не додумывать. Go-специфика:
+документируется экспортируемое поведение; однострочный godoc — полноценное утверждение.
+
+## Шкала R9 (вопрос: «нужно ли обновить godoc из-за этого изменения?»)
+- **A. Нужно обновить** — хотя бы одно утверждение godoc стало НЕВЕРНЫМ
+  (имя/назначение параметра, поведение, возвращаемое значение, условие ошибки).
+- **B. Желательно обновить** — ничего неверного нет, но изменение добавило важную
+  возможность/условие, которых нет в godoc.
+- **C. Актуально** — все утверждения остаются верными и полными.
+- **D. Не могу решить** — нужен контекст вне диффа и godoc (указать какой в `why`).
+  Доля D < 10%.
+
+**Жёсткое правило: если в godoc нет утверждения, ставшего ложным, — НЕ A.**
+
+## Как размечать (≤ 2 минут на строку)
+1. Выписать проверяемые утверждения godoc.
+2. Найти для каждого соответствующий фрагмент диффа.
+3. Есть конкретное ложное утверждение → A; неверного нет, но появилось важное → B; иначе → C.
+4. Сомнение A/B → B; B/C → C (и поясни в `why`).
+
+## Формат ответа (строго, CSV)
+ОДИН CSV-блок, заголовок строго:
+id,label,stale_statement,why
+- `label` ∈ {A,B,C,D}; строк столько же, в том же порядке, что кейсы;
+- `stale_statement` — точная подстрока `doc_old`, ставшая ложной (только для A,
+  иначе пусто). Цитируй посимвольно — проверяется автоматически;
+- `why` — одна фраза (для D — какого контекста не хватило).
+
+КЕЙСЫ:
+=== CASE id=go276 ===
+FILE: context.go | SYMBOL: Context.GetUint64Slice
+--- SIG_OLD ---
+func (c *Context) GetUint64Slice(key any) (ui64s []uint64)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+-func (c *Context) GetUint64Slice(key any) (ui64s []uint64) {
++func (c *Context) GetUint64Slice(key any) []uint64 {
+ 	return getTyped[[]uint64](c, key)
+ }
+--- DOC_OLD ---
+GetUint64Slice returns the value associated with the key as a slice of uint64 integers.
+=== END CASE ===
+
+=== CASE id=go277 ===
+FILE: powershell_completions.go | SYMBOL: Command.GenPowerShellCompletion
+--- SIG_OLD ---
+func (c *Command) GenPowerShellCompletion(w io.Writer) error
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,10 +1,3 @@
+ func (c *Command) GenPowerShellCompletion(w io.Writer) error {
+-	buf := new(bytes.Buffer)
+-
+-	var subCommandCases bytes.Buffer
+-	generatePowerShellSubcommandCases(&subCommandCases, c, "")
+-	fmt.Fprintf(buf, powerShellCompletionTemplate, c.Name(), c.Name(), subCommandCases.String())
+-
+-	_, err := buf.WriteTo(w)
+-	return err
++	return c.genPowerShellCompletion(w, false)
+ }
+--- DOC_OLD ---
+GenPowerShellCompletion generates PowerShell completion file and writes to the passed writer.
+=== END CASE ===
+
+=== CASE id=go278 ===
+FILE: context.go | SYMBOL: Context.Err
+--- SIG_OLD ---
+func (c *Context) Err() error
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,5 +1,5 @@
+ func (c *Context) Err() error {
+-	if !c.engine.ContextWithFallback || c.Request == nil || c.Request.Context() == nil {
++	if !c.hasRequestContext() {
+ 		return nil
+ 	}
+ 	return c.Request.Context().Err()
+--- DOC_OLD ---
+Err returns nil when c.Request has no Context.
+=== END CASE ===
+
+=== CASE id=go279 ===
+FILE: doc/man_docs.go | SYMBOL: GenManTreeFromOpts
+--- SIG_OLD ---
+func GenManTreeFromOpts(cmd *cobra.Command, opts GenManTreeOptions) error
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -20,7 +20,7 @@
+ 	if opts.CommandSeparator != "" {
+ 		separator = opts.CommandSeparator
+ 	}
+-	basename := strings.Replace(cmd.CommandPath(), " ", separator, -1)
++	basename := strings.ReplaceAll(cmd.CommandPath(), " ", separator)
+ 	filename := filepath.Join(opts.Path, basename+"."+section)
+ 	f, err := os.Create(filename)
+ 	if err != nil {
+--- DOC_OLD ---
+GenManTreeFromOpts generates a man page for the command and all descendants.
+The pages are written to the opts.Path directory.
+=== END CASE ===
+
+=== CASE id=go280 ===
+FILE: gin.go | SYMBOL: Engine.Run
+--- SIG_OLD ---
+func (engine *Engine) Run(addr ...string) (err error)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -9,8 +9,9 @@
+ 	address := resolveAddress(addr)
+ 	debugPrint("Listening and serving HTTP on %s\n", address)
+ 	server := &http.Server{
+-		Addr:		address,
+-		Handler:	engine.Handler(),
++		Addr:			address,
++		Handler:		engine.Handler(),
++		ReadHeaderTimeout:	engine.getReadHeaderTimeout(),
+ 	}
+ 	err = server.ListenAndServe()
+ 	return
+--- DOC_OLD ---
+Run attaches the router to a http.Server and starts listening and serving HTTP requests.
+It is a shortcut for http.ListenAndServe(addr, router)
+Note: this method will block the calling goroutine indefinitely unless an error happens.
+=== END CASE ===
+
+=== CASE id=go281 ===
+FILE: completions.go | SYMBOL: Command.initCompleteCmd
+--- SIG_OLD ---
+func (c *Command) initCompleteCmd(args []string)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -30,10 +30,6 @@
+ 				fmt.Fprintln(finalCmd.OutOrStdout(), comp)
+ 			}
+ 
+-			if directive >= shellCompDirectiveMaxValue {
+-				directive = ShellCompDirectiveDefault
+-			}
+-
+ 			fmt.Fprintf(finalCmd.OutOrStdout(), ":%d\n", directive)
+ 
+ 			fmt.Fprintf(finalCmd.ErrOrStderr(), "Completion ended with directive: %s\n", directive.string())
+--- DOC_OLD ---
+Adds a special hidden command that can be used to request custom completions.
+=== END CASE ===
+
+=== CASE id=go282 ===
+FILE: context.go | SYMBOL: Context.BindTOML
+--- SIG_OLD ---
+func (c *Context) BindTOML(obj interface{}) error
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+-func (c *Context) BindTOML(obj interface{}) error {
++func (c *Context) BindTOML(obj any) error {
+ 	return c.MustBindWith(obj, binding.TOML)
+ }
+--- DOC_OLD ---
+BindTOML is a shortcut for c.MustBindWith(obj, binding.TOML).
+=== END CASE ===
+
+=== CASE id=go283 ===
+FILE: context.go | SYMBOL: Context.GetUint32Slice
+--- SIG_OLD ---
+func (c *Context) GetUint32Slice(key any) (ui32s []uint32)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+-func (c *Context) GetUint32Slice(key any) (ui32s []uint32) {
++func (c *Context) GetUint32Slice(key any) []uint32 {
+ 	return getTyped[[]uint32](c, key)
+ }
+--- DOC_OLD ---
+GetUint32Slice returns the value associated with the key as a slice of uint32 integers.
+=== END CASE ===
+
+=== CASE id=go284 ===
+FILE: gin.go | SYMBOL: New
+--- SIG_OLD ---
+func New() *Engine
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -25,7 +25,7 @@
+ 	}
+ 	engine.RouterGroup.engine = engine
+ 	engine.pool.New = func() any {
+-		return engine.allocateContext()
++		return engine.allocateContext(engine.maxParams)
+ 	}
+ 	return engine
+ }
+--- DOC_OLD ---
+New returns a new blank Engine instance without any middleware attached.
+By default, the configuration is:
+- RedirectTrailingSlash:  true
+- RedirectFixedPath:      false
+- HandleMethodNotAllowed: false
+- ForwardedByClientIP:    true
+- UseRawPath:             false
+- UnescapePathValues:     true
+=== END CASE ===
+
+=== CASE id=go285 ===
+FILE: command.go | SYMBOL: Command.AddCommand
+--- SIG_OLD ---
+func (c *Command) AddCommand(cmds ...*Command)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -4,6 +4,10 @@
+ 			panic("Command can't be a child of itself")
+ 		}
+ 		cmds[i].parent = c
++
++		if x.GroupID != "" && !c.ContainsGroup(x.GroupID) {
++			panic(fmt.Sprintf("Group id '%s' is not defined for subcommand '%s'", x.GroupID, cmds[i].CommandPath()))
++		}
+ 
+ 		usageLen := len(x.Use)
+ 		if usageLen > c.commandsMaxUseLen {
+--- DOC_OLD ---
+AddCommand adds one or more commands to this parent command.
+=== END CASE ===
+
+=== CASE id=go286 ===
+FILE: logger.go | SYMBOL: LoggerWithConfig
+--- SIG_OLD ---
+func LoggerWithConfig(conf LoggerConfig) HandlerFunc
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -56,7 +56,7 @@
+ 
+ 		param.BodySize = c.Writer.Size()
+ 
+-		if raw != "" {
++		if raw != "" && !conf.SkipQueryString {
+ 			path = path + "?" + raw
+ 		}
+--- DOC_OLD ---
+LoggerWithConfig instance a Logger middleware with config.
+=== END CASE ===
+
+=== CASE id=go287 ===
+FILE: command.go | SYMBOL: Command.PrintErrf
+--- SIG_OLD ---
+func (c *Command) PrintErrf(format string, i ...interface{})
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+ func (c *Command) PrintErrf(format string, i ...interface{}) {
+-	c.Print(fmt.Sprintf(format, i...))
++	c.PrintErr(fmt.Sprintf(format, i...))
+ }
+--- DOC_OLD ---
+PrintErrf is a convenience method to Printf to the defined Err output, fallback to Stderr if not set.
+=== END CASE ===

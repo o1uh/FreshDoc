@@ -1,0 +1,318 @@
+# FD-39: слепая R9-разметка полного Go-набора (full381, 381 кейс: gin + cobra)
+
+Тебе прислан один шард `go_batchNN.prompt.txt` (10-12 кейсов:
+подмножество `data/processed/go_full381.csv`, всего 381 строка go000…go380,
+репо gin + cobra). Размечай КАЖДУЮ строку независимо. Меток (включая прокси
+`doc_changed` из sidecar) ты не видишь — и не пытайся их угадать: решай только
+по диффу и godoc. Sidecar `go_full381_sidecar.json` тебе НЕ показывают.
+
+Прогон независимый: не смешивай ответы с другим прогоном; один шард —
+один контекст целиком, не размечать по частям в разных сессиях.
+
+## Вход строки
+- `id` — идентификатор пары (go000…go380), его же вернуть в ответе;
+- `file`/`symbol` — файл и функция/метод (вид `Recv.Name` — метод с ресивером);
+- `sig_old` — заголовок `func …` ДО (у методов — с ресивером в скобках);
+- `diff_code` — unified diff полного текста объявления (с телом, БЕЗ godoc);
+- `doc_old` — godoc-комментарий (`//…`) ДО изменения.
+Больше ничего не видно — код вне диффа не додумывать. Go-специфика:
+документируется экспортируемое поведение; однострочный godoc — полноценное утверждение.
+
+## Шкала R9 (вопрос: «нужно ли обновить godoc из-за этого изменения?»)
+- **A. Нужно обновить** — хотя бы одно утверждение godoc стало НЕВЕРНЫМ
+  (имя/назначение параметра, поведение, возвращаемое значение, условие ошибки).
+- **B. Желательно обновить** — ничего неверного нет, но изменение добавило важную
+  возможность/условие, которых нет в godoc.
+- **C. Актуально** — все утверждения остаются верными и полными.
+- **D. Не могу решить** — нужен контекст вне диффа и godoc (указать какой в `why`).
+  Доля D < 10%.
+
+**Жёсткое правило: если в godoc нет утверждения, ставшего ложным, — НЕ A.**
+
+## Как размечать (≤ 2 минут на строку)
+1. Выписать проверяемые утверждения godoc.
+2. Найти для каждого соответствующий фрагмент диффа.
+3. Есть конкретное ложное утверждение → A; неверного нет, но появилось важное → B; иначе → C.
+4. Сомнение A/B → B; B/C → C (и поясни в `why`).
+
+## Формат ответа (строго, CSV)
+ОДИН CSV-блок, заголовок строго:
+id,label,stale_statement,why
+- `label` ∈ {A,B,C,D}; строк столько же, в том же порядке, что кейсы;
+- `stale_statement` — точная подстрока `doc_old`, ставшая ложной (только для A,
+  иначе пусто). Цитируй посимвольно — проверяется автоматически;
+- `why` — одна фраза (для D — какого контекста не хватило).
+
+КЕЙСЫ:
+=== CASE id=go084 ===
+FILE: command.go | SYMBOL: Command.PersistentFlags
+--- SIG_OLD ---
+func (c *Command) PersistentFlags() *flag.FlagSet
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,6 +1,6 @@
+ func (c *Command) PersistentFlags() *flag.FlagSet {
+ 	if c.pflags == nil {
+-		c.pflags = flag.NewFlagSet(c.Name(), flag.ContinueOnError)
++		c.pflags = flag.NewFlagSet(c.displayName(), flag.ContinueOnError)
+ 		if c.flagErrorBuf == nil {
+ 			c.flagErrorBuf = new(bytes.Buffer)
+ 		}
+--- DOC_OLD ---
+PersistentFlags returns the persistent FlagSet specifically set in the current command.
+=== END CASE ===
+
+=== CASE id=go085 ===
+FILE: context.go | SYMBOL: Context.GetInt64
+--- SIG_OLD ---
+func (c *Context) GetInt64(key string) (i64 int64)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,6 +1,3 @@
+ func (c *Context) GetInt64(key string) (i64 int64) {
+-	if val, ok := c.Get(key); ok && val != nil {
+-		i64, _ = val.(int64)
+-	}
+-	return
++	return getTyped[int64](c, key)
+ }
+--- DOC_OLD ---
+GetInt64 returns the value associated with the key as an integer 64.
+=== END CASE ===
+
+=== CASE id=go086 ===
+FILE: context.go | SYMBOL: Context.Copy
+--- SIG_OLD ---
+func (c *Context) Copy() *Context
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -20,5 +20,15 @@
+ 	cp.Params = make([]Param, len(cParams))
+ 	copy(cp.Params, cParams)
+ 
++	if c.Errors != nil {
++		cp.Errors = make(errorMsgs, len(c.Errors))
++		copy(cp.Errors, c.Errors)
++	}
++
++	if c.Accepted != nil {
++		cp.Accepted = make([]string, len(c.Accepted))
++		copy(cp.Accepted, c.Accepted)
++	}
++
+ 	return &cp
+ }
+--- DOC_OLD ---
+Copy returns a copy of the current context that can be safely used outside the request's scope.
+This has to be used when the context has to be passed to a goroutine.
+=== END CASE ===
+
+=== CASE id=go087 ===
+FILE: custom_completions.go | SYMBOL: Command.initCompleteCmd
+--- SIG_OLD ---
+func (c *Command) initCompleteCmd(args []string)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,13 +1,13 @@
+ func (c *Command) initCompleteCmd(args []string) {
+ 	completeCmd := &Command{
+-		Use:			fmt.Sprintf("%s [command-line]", CompRequestCmd),
++		Use:			fmt.Sprintf("%s [command-line]", ShellCompRequestCmd),
+ 		DisableFlagsInUseLine:	true,
+ 		Hidden:			true,
+ 		DisableFlagParsing:	true,
+ 		Args:			MinimumNArgs(1),
+ 		Short:			"Request shell completion choices for the specified command-line",
+ 		Long: fmt.Sprintf("%[2]s is a special command that is used by the shell completion logic\n%[1]s",
+-			"to request completion choices for the specified command-line.", CompRequestCmd),
++			"to request completion choices for the specified command-line.", ShellCompRequestCmd),
+ 		Run: func(cmd *Command, args []string) {
+ 			finalCmd, completions, directive, err := cmd.getCompletions(args)
+ 			if err != nil {
+@@ -20,8 +20,8 @@
+ 				fmt.Fprintln(finalCmd.OutOrStdout(), comp)
+ 			}
+ 
+-			if directive > BashCompDirectiveError+BashCompDirectiveNoSpace+BashCompDirectiveNoFileComp {
+-				directive = BashCompDirectiveDefault
++			if directive > ShellCompDirectiveError+ShellCompDirectiveNoSpace+ShellCompDirectiveNoFileComp {
++				directive = ShellCompDirectiveDefault
+ 			}
+ 
+ 			fmt.Fprintf(finalCmd.OutOrStdout(), ":%d\n", directive)
+@@ -31,7 +31,7 @@
+ 	}
+ 	c.AddCommand(completeCmd)
+ 	subCmd, _, err := c.Find(args)
+-	if err != nil || subCmd.Name() != CompRequestCmd {
++	if err != nil || subCmd.Name() != ShellCompRequestCmd {
+ 
+ 		c.RemoveCommand(completeCmd)
+ 	}
+--- DOC_OLD ---
+Adds a special hidden command that can be used to request custom completions.
+=== END CASE ===
+
+=== CASE id=go088 ===
+FILE: context.go | SYMBOL: Context.GetFloat64
+--- SIG_OLD ---
+func (c *Context) GetFloat64(key string) (f64 float64)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,6 +1,3 @@
+ func (c *Context) GetFloat64(key string) (f64 float64) {
+-	if val, ok := c.Get(key); ok && val != nil {
+-		f64, _ = val.(float64)
+-	}
+-	return
++	return getTyped[float64](c, key)
+ }
+--- DOC_OLD ---
+GetFloat64 returns the value associated with the key as a float64.
+=== END CASE ===
+
+=== CASE id=go089 ===
+FILE: response_writer.go | SYMBOL: responseWriter.Hijack
+--- SIG_OLD ---
+func (w *responseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -3,8 +3,12 @@
+ 	if w.size > 0 {
+ 		return nil, nil, errHijackAlreadyWritten
+ 	}
++	hijacker, ok := w.ResponseWriter.(http.Hijacker)
++	if !ok {
++		return nil, nil, http.ErrNotSupported
++	}
+ 	if w.size < 0 {
+ 		w.size = 0
+ 	}
+-	return w.ResponseWriter.(http.Hijacker).Hijack()
++	return hijacker.Hijack()
+ }
+--- DOC_OLD ---
+Hijack implements the http.Hijacker interface.
+=== END CASE ===
+
+=== CASE id=go090 ===
+FILE: context.go | SYMBOL: Context.GetFloat32Slice
+--- SIG_OLD ---
+func (c *Context) GetFloat32Slice(key string) (f32s []float32)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+-func (c *Context) GetFloat32Slice(key string) (f32s []float32) {
++func (c *Context) GetFloat32Slice(key any) (f32s []float32) {
+ 	return getTyped[[]float32](c, key)
+ }
+--- DOC_OLD ---
+GetFloat32Slice returns the value associated with the key as a slice of float32 numbers.
+=== END CASE ===
+
+=== CASE id=go091 ===
+FILE: context.go | SYMBOL: Context.GetInt
+--- SIG_OLD ---
+func (c *Context) GetInt(key any) (i int)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+-func (c *Context) GetInt(key any) (i int) {
++func (c *Context) GetInt(key any) int {
+ 	return getTyped[int](c, key)
+ }
+--- DOC_OLD ---
+GetInt returns the value associated with the key as an integer.
+=== END CASE ===
+
+=== CASE id=go092 ===
+FILE: gin.go | SYMBOL: Engine.RunTLS
+--- SIG_OLD ---
+func (engine *Engine) RunTLS(addr, certFile, keyFile string) (err error)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -7,6 +7,10 @@
+ 			"Please check https://github.com/gin-gonic/gin/blob/master/docs/doc.md#dont-trust-all-proxies for details.")
+ 	}
+ 
+-	err = http.ListenAndServeTLS(addr, certFile, keyFile, engine.Handler())
++	server := &http.Server{
++		Addr:		addr,
++		Handler:	engine.Handler(),
++	}
++	err = server.ListenAndServeTLS(certFile, keyFile)
+ 	return
+ }
+--- DOC_OLD ---
+RunTLS attaches the router to a http.Server and starts listening and serving HTTPS (secure) requests.
+It is a shortcut for http.ListenAndServeTLS(addr, certFile, keyFile, router)
+Note: this method will block the calling goroutine indefinitely unless an error happens.
+=== END CASE ===
+
+=== CASE id=go093 ===
+FILE: command.go | SYMBOL: Command.HelpFunc
+--- SIG_OLD ---
+func (c *Command) HelpFunc() func(*Command, []string)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -7,7 +7,7 @@
+ 	}
+ 	return func(c *Command, a []string) {
+ 		c.mergePersistentFlags()
+-		err := tmpl(c.OutOrStdout(), c.HelpTemplate(), c)
++		err := tmpl(c.OutOrStderr(), c.HelpTemplate(), c)
+ 		if err != nil {
+ 			c.Println(err)
+ 		}
+--- DOC_OLD ---
+HelpFunc returns either the function set by SetHelpFunc for this command
+or a parent, or it returns a function with default help behavior.
+=== END CASE ===
+
+=== CASE id=go094 ===
+FILE: gin.go | SYMBOL: Engine.RunListener
+--- SIG_OLD ---
+func (engine *Engine) RunListener(listener net.Listener) (err error)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -8,7 +8,8 @@
+ 	}
+ 
+ 	server := &http.Server{
+-		Handler: engine.Handler(),
++		Handler:		engine.Handler(),
++		ReadHeaderTimeout:	engine.getReadHeaderTimeout(),
+ 	}
+ 	err = server.Serve(listener)
+ 	return
+--- DOC_OLD ---
+RunListener attaches the router to a http.Server and starts listening and serving HTTP requests
+through the specified net.Listener
+=== END CASE ===
+
+=== CASE id=go095 ===
+FILE: context.go | SYMBOL: Context.GetUint64
+--- SIG_OLD ---
+func (c *Context) GetUint64(key string) (ui64 uint64)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+-func (c *Context) GetUint64(key string) (ui64 uint64) {
++func (c *Context) GetUint64(key any) (ui64 uint64) {
+ 	return getTyped[uint64](c, key)
+ }
+--- DOC_OLD ---
+GetUint64 returns the value associated with the key as an unsigned integer 64.
+=== END CASE ===

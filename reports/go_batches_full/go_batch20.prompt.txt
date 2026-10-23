@@ -1,0 +1,365 @@
+# FD-39: слепая R9-разметка полного Go-набора (full381, 381 кейс: gin + cobra)
+
+Тебе прислан один шард `go_batchNN.prompt.txt` (10-12 кейсов:
+подмножество `data/processed/go_full381.csv`, всего 381 строка go000…go380,
+репо gin + cobra). Размечай КАЖДУЮ строку независимо. Меток (включая прокси
+`doc_changed` из sidecar) ты не видишь — и не пытайся их угадать: решай только
+по диффу и godoc. Sidecar `go_full381_sidecar.json` тебе НЕ показывают.
+
+Прогон независимый: не смешивай ответы с другим прогоном; один шард —
+один контекст целиком, не размечать по частям в разных сессиях.
+
+## Вход строки
+- `id` — идентификатор пары (go000…go380), его же вернуть в ответе;
+- `file`/`symbol` — файл и функция/метод (вид `Recv.Name` — метод с ресивером);
+- `sig_old` — заголовок `func …` ДО (у методов — с ресивером в скобках);
+- `diff_code` — unified diff полного текста объявления (с телом, БЕЗ godoc);
+- `doc_old` — godoc-комментарий (`//…`) ДО изменения.
+Больше ничего не видно — код вне диффа не додумывать. Go-специфика:
+документируется экспортируемое поведение; однострочный godoc — полноценное утверждение.
+
+## Шкала R9 (вопрос: «нужно ли обновить godoc из-за этого изменения?»)
+- **A. Нужно обновить** — хотя бы одно утверждение godoc стало НЕВЕРНЫМ
+  (имя/назначение параметра, поведение, возвращаемое значение, условие ошибки).
+- **B. Желательно обновить** — ничего неверного нет, но изменение добавило важную
+  возможность/условие, которых нет в godoc.
+- **C. Актуально** — все утверждения остаются верными и полными.
+- **D. Не могу решить** — нужен контекст вне диффа и godoc (указать какой в `why`).
+  Доля D < 10%.
+
+**Жёсткое правило: если в godoc нет утверждения, ставшего ложным, — НЕ A.**
+
+## Как размечать (≤ 2 минут на строку)
+1. Выписать проверяемые утверждения godoc.
+2. Найти для каждого соответствующий фрагмент диффа.
+3. Есть конкретное ложное утверждение → A; неверного нет, но появилось важное → B; иначе → C.
+4. Сомнение A/B → B; B/C → C (и поясни в `why`).
+
+## Формат ответа (строго, CSV)
+ОДИН CSV-блок, заголовок строго:
+id,label,stale_statement,why
+- `label` ∈ {A,B,C,D}; строк столько же, в том же порядке, что кейсы;
+- `stale_statement` — точная подстрока `doc_old`, ставшая ложной (только для A,
+  иначе пусто). Цитируй посимвольно — проверяется автоматически;
+- `why` — одна фраза (для D — какого контекста не хватило).
+
+КЕЙСЫ:
+=== CASE id=go240 ===
+FILE: command.go | SYMBOL: Command.UsageTemplate
+--- SIG_OLD ---
+func (c *Command) UsageTemplate() string
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -14,10 +14,16 @@
+   {{.NameAndAliases}}{{end}}{{if .HasExample}}
+ 
+ Examples:
+-{{.Example}}{{end}}{{if .HasAvailableSubCommands}}
++{{.Example}}{{end}}{{if .HasAvailableSubCommands}}{{$cmds := .Commands}}{{if eq (len .Groups) 0}}
+ 
+-Available Commands:{{range .Commands}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
+-  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
++Available Commands:{{range $cmds}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
++  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{else}}{{range $group := .Groups}}
++
++{{.Title}}{{range $cmds}}{{if (and (eq .GroupID $group.ID) (or .IsAvailableCommand (eq .Name "help")))}}
++  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{if not .AllChildCommandsHaveGroup}}
++
++Additional Commands:{{range $cmds}}{{if (and (eq .GroupID "") (or .IsAvailableCommand (eq .Name "help")))}}
++  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
+ 
+ Flags:
+ {{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
+--- DOC_OLD ---
+UsageTemplate returns usage template for the command.
+=== END CASE ===
+
+=== CASE id=go241 ===
+FILE: completions.go | SYMBOL: Command.RegisterFlagCompletionFunc
+--- SIG_OLD ---
+func (c *Command) RegisterFlagCompletionFunc(flagName string, f func(cmd *Command, args []string, toComplete string) ([]string, ShellCompDirective)) error
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -3,14 +3,12 @@
+ 	if flag == nil {
+ 		return fmt.Errorf("RegisterFlagCompletionFunc: flag '%s' does not exist", flagName)
+ 	}
++	flagCompletionMutex.Lock()
++	defer flagCompletionMutex.Unlock()
+ 
+-	root := c.Root()
+-	if _, exists := root.flagCompletionFunctions[flag]; exists {
++	if _, exists := flagCompletionFunctions[flag]; exists {
+ 		return fmt.Errorf("RegisterFlagCompletionFunc: flag '%s' already registered", flagName)
+ 	}
+-	if root.flagCompletionFunctions == nil {
+-		root.flagCompletionFunctions = map[*pflag.Flag]func(cmd *Command, args []string, toComplete string) ([]string, ShellCompDirective){}
+-	}
+-	root.flagCompletionFunctions[flag] = f
++	flagCompletionFunctions[flag] = f
+ 	return nil
+ }
+--- DOC_OLD ---
+RegisterFlagCompletionFunc should be called to register a function to provide completion for a flag.
+=== END CASE ===
+
+=== CASE id=go242 ===
+FILE: tree.go | SYMBOL: node.getValue
+--- SIG_OLD ---
+func (n *node) getValue(path string, params *Params, skippedNodes *[]skippedNode, unescape bool) (value nodeValue)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -15,9 +15,7 @@
+ 					if c == idxc {
+ 
+ 						if n.wildChild {
+-							index := len(*skippedNodes)
+-							*skippedNodes = (*skippedNodes)[:index+1]
+-							(*skippedNodes)[index] = skippedNode{
++							*skippedNodes = append(*skippedNodes, skippedNode{
+ 								path:	prefix + path,
+ 								node: &node{
+ 									path:		n.path,
+@@ -29,7 +27,7 @@
+ 									fullPath:	n.fullPath,
+ 								},
+ 								paramsCount:	globalParamsCount,
+-							}
++							})
+ 						}
+ 
+ 						n = n.children[i]
+--- DOC_OLD ---
+Returns the handle registered with the given path (key). The values of
+wildcards are saved to a map.
+If no handle can be found, a TSR (trailing slash redirect) recommendation is
+made if a handle exists with an extra (without the) trailing slash for the
+given path.
+=== END CASE ===
+
+=== CASE id=go243 ===
+FILE: doc/md_docs.go | SYMBOL: GenMarkdownTreeCustom
+--- SIG_OLD ---
+func GenMarkdownTreeCustom(cmd *cobra.Command, dir string, filePrepender, linkHandler func(string) string) error
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -8,7 +8,7 @@
+ 		}
+ 	}
+ 
+-	basename := strings.Replace(cmd.CommandPath(), " ", "_", -1) + ".md"
++	basename := strings.ReplaceAll(cmd.CommandPath(), " ", "_") + ".md"
+ 	filename := filepath.Join(dir, basename)
+ 	f, err := os.Create(filename)
+ 	if err != nil {
+--- DOC_OLD ---
+GenMarkdownTreeCustom is the the same as GenMarkdownTree, but
+with custom filePrepender and linkHandler.
+=== END CASE ===
+
+=== CASE id=go244 ===
+FILE: recovery.go | SYMBOL: CustomRecoveryWithWriter
+--- SIG_OLD ---
+func CustomRecoveryWithWriter(out io.Writer, handle RecoveryFunc) HandlerFunc
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -18,6 +18,9 @@
+ 							brokenPipe = true
+ 						}
+ 					}
++				}
++				if e, ok := err.(error); ok && errors.Is(e, http.ErrAbortHandler) {
++					brokenPipe = true
+ 				}
+ 				if logger != nil {
+ 					const stackSkip = 3
+--- DOC_OLD ---
+CustomRecoveryWithWriter returns a middleware for a given writer that recovers from any panics and calls the provided handle func to handle it.
+=== END CASE ===
+
+=== CASE id=go245 ===
+FILE: command.go | SYMBOL: Command.ResetFlags
+--- SIG_OLD ---
+func (c *Command) ResetFlags()
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,9 +1,9 @@
+ func (c *Command) ResetFlags() {
+ 	c.flagErrorBuf = new(bytes.Buffer)
+ 	c.flagErrorBuf.Reset()
+-	c.flags = flag.NewFlagSet(c.displayName(), flag.ContinueOnError)
++	c.flags = flag.NewFlagSet(c.DisplayName(), flag.ContinueOnError)
+ 	c.flags.SetOutput(c.flagErrorBuf)
+-	c.pflags = flag.NewFlagSet(c.displayName(), flag.ContinueOnError)
++	c.pflags = flag.NewFlagSet(c.DisplayName(), flag.ContinueOnError)
+ 	c.pflags.SetOutput(c.flagErrorBuf)
+ 
+ 	c.lflags = nil
+--- DOC_OLD ---
+ResetFlags deletes all flags from command.
+=== END CASE ===
+
+=== CASE id=go246 ===
+FILE: context.go | SYMBOL: Context.GetStringMapString
+--- SIG_OLD ---
+func (c *Context) GetStringMapString(key any) (sms map[string]string)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+-func (c *Context) GetStringMapString(key any) (sms map[string]string) {
++func (c *Context) GetStringMapString(key any) map[string]string {
+ 	return getTyped[map[string]string](c, key)
+ }
+--- DOC_OLD ---
+GetStringMapString returns the value associated with the key as a map of strings.
+=== END CASE ===
+
+=== CASE id=go247 ===
+FILE: command.go | SYMBOL: Command.UsageFunc
+--- SIG_OLD ---
+func (c *Command) UsageFunc() (f func(*Command) error)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -7,7 +7,8 @@
+ 	}
+ 	return func(c *Command) error {
+ 		c.mergePersistentFlags()
+-		err := tmpl(c.OutOrStderr(), c.UsageTemplate(), c)
++		fn := c.getUsageTemplateFunc()
++		err := fn(c.OutOrStderr(), c)
+ 		if err != nil {
+ 			c.PrintErrln(err)
+ 		}
+--- DOC_OLD ---
+UsageFunc returns either the function set by SetUsageFunc for this command
+or a parent, or it returns a default usage function.
+=== END CASE ===
+
+=== CASE id=go248 ===
+FILE: doc/rest_docs.go | SYMBOL: GenReSTTreeCustom
+--- SIG_OLD ---
+func GenReSTTreeCustom(cmd *cobra.Command, dir string, filePrepender func(string) string, linkHandler func(string, string) string) error
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -8,7 +8,7 @@
+ 		}
+ 	}
+ 
+-	basename := strings.Replace(cmd.CommandPath(), " ", "_", -1) + ".rst"
++	basename := strings.ReplaceAll(cmd.CommandPath(), " ", "_") + ".rst"
+ 	filename := filepath.Join(dir, basename)
+ 	f, err := os.Create(filename)
+ 	if err != nil {
+--- DOC_OLD ---
+GenReSTTreeCustom is the the same as GenReSTTree, but
+with custom filePrepender and linkHandler.
+=== END CASE ===
+
+=== CASE id=go249 ===
+FILE: args.go | SYMBOL: ExactValidArgs
+--- SIG_OLD ---
+func ExactValidArgs(n int) PositionalArgs
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,8 +1,3 @@
+ func ExactValidArgs(n int) PositionalArgs {
+-	return func(cmd *Command, args []string) error {
+-		if err := ExactArgs(n)(cmd, args); err != nil {
+-			return err
+-		}
+-		return OnlyValidArgs(cmd, args)
+-	}
++	return MatchAll(ExactArgs(n), OnlyValidArgs)
+ }
+--- DOC_OLD ---
+ExactValidArgs returns an error if
+there are not exactly N positional args OR
+there are any positional args that are not in the `ValidArgs` field of `Command`
+=== END CASE ===
+
+=== CASE id=go250 ===
+FILE: binding/default_validator.go | SYMBOL: defaultValidator.ValidateStruct
+--- SIG_OLD ---
+func (v *defaultValidator) ValidateStruct(obj any) error
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -6,7 +6,10 @@
+ 	value := reflect.ValueOf(obj)
+ 	switch value.Kind() {
+ 	case reflect.Ptr:
+-		return v.ValidateStruct(value.Elem().Interface())
++		if value.Elem().Kind() != reflect.Struct {
++			return v.ValidateStruct(value.Elem().Interface())
++		}
++		return v.validateStruct(obj)
+ 	case reflect.Struct:
+ 		return v.validateStruct(obj)
+ 	case reflect.Slice, reflect.Array:
+--- DOC_OLD ---
+ValidateStruct receives any kind of type, but only performed struct or pointer to struct type.
+=== END CASE ===
+
+=== CASE id=go251 ===
+FILE: command.go | SYMBOL: Command.UsageTemplate
+--- SIG_OLD ---
+func (c *Command) UsageTemplate() string
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,39 +1,10 @@
+ func (c *Command) UsageTemplate() string {
+-	if c.usageTemplate != "" {
+-		return c.usageTemplate
++	if c.usageTemplate != nil {
++		return c.usageTemplate.tmpl
+ 	}
+ 
+ 	if c.HasParent() {
+ 		return c.parent.UsageTemplate()
+ 	}
+-	return `Usage:{{if .Runnable}}
+-  {{.UseLine}}{{end}}{{if .HasAvailableSubCommands}}
+-  {{.CommandPath}} [command]{{end}}{{if gt (len .Aliases) 0}}
+-
+-Aliases:
+-  {{.NameAndAliases}}{{end}}{{if .HasExample}}
+-
+-Examples:
+-{{.Example}}{{end}}{{if .HasAvailableSubCommands}}{{$cmds := .Commands}}{{if eq (len .Groups) 0}}
+-
+-Available Commands:{{range $cmds}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
+-  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{else}}{{range $group := .Groups}}
+-
+-{{.Title}}{{range $cmds}}{{if (and (eq .GroupID $group.ID) (or .IsAvailableCommand (eq .Name "help")))}}
+-  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{if not .AllChildCommandsHaveGroup}}
+-
+-Additional Commands:{{range $cmds}}{{if (and (eq .GroupID "") (or .IsAvailableCommand (eq .Name "help")))}}
+-  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
+-
+-Flags:
+-{{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
+-
+-Global Flags:
+-{{.InheritedFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasHelpSubCommands}}
+-
+-Additional help topics:{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
+-  {{rpad .CommandPath .CommandPathPadding}} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
+-
+-Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}
+-`
++	return defaultUsageTemplate
+ }
+--- DOC_OLD ---
+UsageTemplate returns usage template for the command.
+=== END CASE ===

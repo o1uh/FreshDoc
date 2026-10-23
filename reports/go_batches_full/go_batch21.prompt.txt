@@ -1,0 +1,299 @@
+# FD-39: слепая R9-разметка полного Go-набора (full381, 381 кейс: gin + cobra)
+
+Тебе прислан один шард `go_batchNN.prompt.txt` (10-12 кейсов:
+подмножество `data/processed/go_full381.csv`, всего 381 строка go000…go380,
+репо gin + cobra). Размечай КАЖДУЮ строку независимо. Меток (включая прокси
+`doc_changed` из sidecar) ты не видишь — и не пытайся их угадать: решай только
+по диффу и godoc. Sidecar `go_full381_sidecar.json` тебе НЕ показывают.
+
+Прогон независимый: не смешивай ответы с другим прогоном; один шард —
+один контекст целиком, не размечать по частям в разных сессиях.
+
+## Вход строки
+- `id` — идентификатор пары (go000…go380), его же вернуть в ответе;
+- `file`/`symbol` — файл и функция/метод (вид `Recv.Name` — метод с ресивером);
+- `sig_old` — заголовок `func …` ДО (у методов — с ресивером в скобках);
+- `diff_code` — unified diff полного текста объявления (с телом, БЕЗ godoc);
+- `doc_old` — godoc-комментарий (`//…`) ДО изменения.
+Больше ничего не видно — код вне диффа не додумывать. Go-специфика:
+документируется экспортируемое поведение; однострочный godoc — полноценное утверждение.
+
+## Шкала R9 (вопрос: «нужно ли обновить godoc из-за этого изменения?»)
+- **A. Нужно обновить** — хотя бы одно утверждение godoc стало НЕВЕРНЫМ
+  (имя/назначение параметра, поведение, возвращаемое значение, условие ошибки).
+- **B. Желательно обновить** — ничего неверного нет, но изменение добавило важную
+  возможность/условие, которых нет в godoc.
+- **C. Актуально** — все утверждения остаются верными и полными.
+- **D. Не могу решить** — нужен контекст вне диффа и godoc (указать какой в `why`).
+  Доля D < 10%.
+
+**Жёсткое правило: если в godoc нет утверждения, ставшего ложным, — НЕ A.**
+
+## Как размечать (≤ 2 минут на строку)
+1. Выписать проверяемые утверждения godoc.
+2. Найти для каждого соответствующий фрагмент диффа.
+3. Есть конкретное ложное утверждение → A; неверного нет, но появилось важное → B; иначе → C.
+4. Сомнение A/B → B; B/C → C (и поясни в `why`).
+
+## Формат ответа (строго, CSV)
+ОДИН CSV-блок, заголовок строго:
+id,label,stale_statement,why
+- `label` ∈ {A,B,C,D}; строк столько же, в том же порядке, что кейсы;
+- `stale_statement` — точная подстрока `doc_old`, ставшая ложной (только для A,
+  иначе пусто). Цитируй посимвольно — проверяется автоматически;
+- `why` — одна фраза (для D — какого контекста не хватило).
+
+КЕЙСЫ:
+=== CASE id=go252 ===
+FILE: render/json.go | SYMBOL: IndentedJSON.Render
+--- SIG_OLD ---
+func (r IndentedJSON) Render(w http.ResponseWriter) error
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,6 +1,6 @@
+ func (r IndentedJSON) Render(w http.ResponseWriter) error {
+ 	r.WriteContentType(w)
+-	jsonBytes, err := json.MarshalIndent(r.Data, "", "    ")
++	jsonBytes, err := json.API.MarshalIndent(r.Data, "", "    ")
+ 	if err != nil {
+ 		return err
+ 	}
+--- DOC_OLD ---
+Render (IndentedJSON) marshals the given interface object and writes it with custom ContentType.
+=== END CASE ===
+
+=== CASE id=go253 ===
+FILE: command.go | SYMBOL: Command.InheritedFlags
+--- SIG_OLD ---
+func (c *Command) InheritedFlags() *flag.FlagSet
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -2,7 +2,7 @@
+ 	c.mergePersistentFlags()
+ 
+ 	if c.iflags == nil {
+-		c.iflags = flag.NewFlagSet(c.Name(), flag.ContinueOnError)
++		c.iflags = flag.NewFlagSet(c.displayName(), flag.ContinueOnError)
+ 		if c.flagErrorBuf == nil {
+ 			c.flagErrorBuf = new(bytes.Buffer)
+ 		}
+--- DOC_OLD ---
+InheritedFlags returns all flags which were inherited from parent commands.
+=== END CASE ===
+
+=== CASE id=go254 ===
+FILE: context.go | SYMBOL: Context.GetInt16
+--- SIG_OLD ---
+func (c *Context) GetInt16(key string) (i16 int16)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+-func (c *Context) GetInt16(key string) (i16 int16) {
++func (c *Context) GetInt16(key any) (i16 int16) {
+ 	return getTyped[int16](c, key)
+ }
+--- DOC_OLD ---
+GetInt16 returns the value associated with the key as an integer 16.
+=== END CASE ===
+
+=== CASE id=go255 ===
+FILE: context.go | SYMBOL: Context.GetUint32
+--- SIG_OLD ---
+func (c *Context) GetUint32(key string) (ui32 uint32)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,6 +1,3 @@
+ func (c *Context) GetUint32(key string) (ui32 uint32) {
+-	if val, ok := c.Get(key); ok && val != nil {
+-		ui32, _ = val.(uint32)
+-	}
+-	return
++	return getTyped[uint32](c, key)
+ }
+--- DOC_OLD ---
+GetUint32 returns the value associated with the key as an unsigned integer 32.
+=== END CASE ===
+
+=== CASE id=go256 ===
+FILE: context.go | SYMBOL: Context.GetDuration
+--- SIG_OLD ---
+func (c *Context) GetDuration(key string) (d time.Duration)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,6 +1,3 @@
+ func (c *Context) GetDuration(key string) (d time.Duration) {
+-	if val, ok := c.Get(key); ok && val != nil {
+-		d, _ = val.(time.Duration)
+-	}
+-	return
++	return getTyped[time.Duration](c, key)
+ }
+--- DOC_OLD ---
+GetDuration returns the value associated with the key as a duration.
+=== END CASE ===
+
+=== CASE id=go257 ===
+FILE: errors.go | SYMBOL: Error.MarshalJSON
+--- SIG_OLD ---
+func (msg *Error) MarshalJSON() ([]byte, error)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+ func (msg *Error) MarshalJSON() ([]byte, error) {
+-	return json.Marshal(msg.JSON())
++	return json.API.Marshal(msg.JSON())
+ }
+--- DOC_OLD ---
+MarshalJSON implements the json.Marshaller interface.
+=== END CASE ===
+
+=== CASE id=go258 ===
+FILE: context.go | SYMBOL: Context.GetIntSlice
+--- SIG_OLD ---
+func (c *Context) GetIntSlice(key any) (is []int)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+-func (c *Context) GetIntSlice(key any) (is []int) {
++func (c *Context) GetIntSlice(key any) []int {
+ 	return getTyped[[]int](c, key)
+ }
+--- DOC_OLD ---
+GetIntSlice returns the value associated with the key as a slice of integers.
+=== END CASE ===
+
+=== CASE id=go259 ===
+FILE: command.go | SYMBOL: Command.Find
+--- SIG_OLD ---
+func (c *Command) Find(args []string) (*Command, []string, error)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -10,7 +10,7 @@
+ 
+ 		cmd := c.findNext(nextSubCmd)
+ 		if cmd != nil {
+-			return innerfind(cmd, argsMinusFirstX(innerArgs, nextSubCmd))
++			return innerfind(cmd, c.argsMinusFirstX(innerArgs, nextSubCmd))
+ 		}
+ 		return c, innerArgs
+ 	}
+--- DOC_OLD ---
+Find the target command given the args and command tree
+Meant to be run on the highest node. Only searches down.
+=== END CASE ===
+
+=== CASE id=go260 ===
+FILE: context.go | SYMBOL: Context.Set
+--- SIG_OLD ---
+func (c *Context) Set(key string, value any)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,9 +1,9 @@
+ func (c *Context) Set(key string, value any) {
+ 	c.mu.Lock()
++	defer c.mu.Unlock()
+ 	if c.Keys == nil {
+ 		c.Keys = make(map[string]any)
+ 	}
+ 
+ 	c.Keys[key] = value
+-	c.mu.Unlock()
+ }
+--- DOC_OLD ---
+Set is used to store a new key/value pair exclusively for this context.
+It also lazy initializes  c.Keys if it was not used previously.
+=== END CASE ===
+
+=== CASE id=go261 ===
+FILE: completions.go | SYMBOL: Command.initCompleteCmd
+--- SIG_OLD ---
+func (c *Command) initCompleteCmd(args []string)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -17,26 +17,26 @@
+ 			}
+ 
+ 			noDescriptions := (cmd.CalledAs() == ShellCompNoDescRequestCmd)
++			noActiveHelp := GetActiveHelpConfig(finalCmd) == activeHelpGlobalDisable
++			out := finalCmd.OutOrStdout()
+ 			for _, comp := range completions {
+-				if GetActiveHelpConfig(finalCmd) == activeHelpGlobalDisable {
++				if noActiveHelp && strings.HasPrefix(comp, activeHelpMarker) {
+ 
+-					if strings.HasPrefix(comp, activeHelpMarker) {
+-						continue
+-					}
++					continue
+ 				}
+ 				if noDescriptions {
+ 
+-					comp = strings.Split(comp, "\t")[0]
++					comp = strings.SplitN(comp, "\t", 2)[0]
+ 				}
+ 
+-				comp = strings.Split(comp, "\n")[0]
++				comp = strings.SplitN(comp, "\n", 2)[0]
+ 
+ 				comp = strings.TrimSpace(comp)
+ 
+-				fmt.Fprintln(finalCmd.OutOrStdout(), comp)
++				fmt.Fprintln(out, comp)
+ 			}
+ 
+-			fmt.Fprintf(finalCmd.OutOrStdout(), ":%d\n", directive)
++			fmt.Fprintf(out, ":%d\n", directive)
+ 
+ 			fmt.Fprintf(finalCmd.ErrOrStderr(), "Completion ended with directive: %s\n", directive.string())
+ 		},
+--- DOC_OLD ---
+initCompleteCmd adds a special hidden command that can be used to request custom completions.
+=== END CASE ===
+
+=== CASE id=go262 ===
+FILE: command.go | SYMBOL: Command.LocalNonPersistentFlags
+--- SIG_OLD ---
+func (c *Command) LocalNonPersistentFlags() *flag.FlagSet
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,7 +1,7 @@
+ func (c *Command) LocalNonPersistentFlags() *flag.FlagSet {
+ 	persistentFlags := c.PersistentFlags()
+ 
+-	out := flag.NewFlagSet(c.Name(), flag.ContinueOnError)
++	out := flag.NewFlagSet(c.displayName(), flag.ContinueOnError)
+ 	c.LocalFlags().VisitAll(func(f *flag.Flag) {
+ 		if persistentFlags.Lookup(f.Name) == nil {
+ 			out.AddFlag(f)
+--- DOC_OLD ---
+LocalNonPersistentFlags are flags specific to this command which will NOT persist to subcommands.
+=== END CASE ===
+
+=== CASE id=go263 ===
+FILE: render/json.go | SYMBOL: JsonpJSON.Render
+--- SIG_OLD ---
+func (r JsonpJSON) Render(w http.ResponseWriter) (err error)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,6 +1,6 @@
+ func (r JsonpJSON) Render(w http.ResponseWriter) (err error) {
+ 	r.WriteContentType(w)
+-	ret, err := json.Marshal(r.Data)
++	ret, err := json.API.Marshal(r.Data)
+ 	if err != nil {
+ 		return err
+ 	}
+--- DOC_OLD ---
+Render (JsonpJSON) marshals the given interface object and writes it and its callback with custom ContentType.
+=== END CASE ===

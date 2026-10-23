@@ -1,0 +1,309 @@
+# FD-39: слепая R9-разметка полного Go-набора (full381, 381 кейс: gin + cobra)
+
+Тебе прислан один шард `go_batchNN.prompt.txt` (10-12 кейсов:
+подмножество `data/processed/go_full381.csv`, всего 381 строка go000…go380,
+репо gin + cobra). Размечай КАЖДУЮ строку независимо. Меток (включая прокси
+`doc_changed` из sidecar) ты не видишь — и не пытайся их угадать: решай только
+по диффу и godoc. Sidecar `go_full381_sidecar.json` тебе НЕ показывают.
+
+Прогон независимый: не смешивай ответы с другим прогоном; один шард —
+один контекст целиком, не размечать по частям в разных сессиях.
+
+## Вход строки
+- `id` — идентификатор пары (go000…go380), его же вернуть в ответе;
+- `file`/`symbol` — файл и функция/метод (вид `Recv.Name` — метод с ресивером);
+- `sig_old` — заголовок `func …` ДО (у методов — с ресивером в скобках);
+- `diff_code` — unified diff полного текста объявления (с телом, БЕЗ godoc);
+- `doc_old` — godoc-комментарий (`//…`) ДО изменения.
+Больше ничего не видно — код вне диффа не додумывать. Go-специфика:
+документируется экспортируемое поведение; однострочный godoc — полноценное утверждение.
+
+## Шкала R9 (вопрос: «нужно ли обновить godoc из-за этого изменения?»)
+- **A. Нужно обновить** — хотя бы одно утверждение godoc стало НЕВЕРНЫМ
+  (имя/назначение параметра, поведение, возвращаемое значение, условие ошибки).
+- **B. Желательно обновить** — ничего неверного нет, но изменение добавило важную
+  возможность/условие, которых нет в godoc.
+- **C. Актуально** — все утверждения остаются верными и полными.
+- **D. Не могу решить** — нужен контекст вне диффа и godoc (указать какой в `why`).
+  Доля D < 10%.
+
+**Жёсткое правило: если в godoc нет утверждения, ставшего ложным, — НЕ A.**
+
+## Как размечать (≤ 2 минут на строку)
+1. Выписать проверяемые утверждения godoc.
+2. Найти для каждого соответствующий фрагмент диффа.
+3. Есть конкретное ложное утверждение → A; неверного нет, но появилось важное → B; иначе → C.
+4. Сомнение A/B → B; B/C → C (и поясни в `why`).
+
+## Формат ответа (строго, CSV)
+ОДИН CSV-блок, заголовок строго:
+id,label,stale_statement,why
+- `label` ∈ {A,B,C,D}; строк столько же, в том же порядке, что кейсы;
+- `stale_statement` — точная подстрока `doc_old`, ставшая ложной (только для A,
+  иначе пусто). Цитируй посимвольно — проверяется автоматически;
+- `why` — одна фраза (для D — какого контекста не хватило).
+
+КЕЙСЫ:
+=== CASE id=go036 ===
+FILE: command.go | SYMBOL: Command.InitDefaultHelpCmd
+--- SIG_OLD ---
+func (c *Command) InitDefaultHelpCmd()
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -32,10 +32,10 @@
+ 				cmd, _, e := c.Root().Find(args)
+ 				if cmd == nil || e != nil {
+ 					c.Printf("Unknown help topic %#q\n", args)
+-					c.Root().Usage()
++					CheckErr(c.Root().Usage())
+ 				} else {
+ 					cmd.InitDefaultHelpFlag()
+-					cmd.Help()
++					CheckErr(cmd.Help())
+ 				}
+ 			},
+ 		}
+--- DOC_OLD ---
+InitDefaultHelpCmd adds default help command to c.
+It is called automatically by executing the c or by calling help and usage.
+If c already has help command or c has no subcommands, it will do nothing.
+=== END CASE ===
+
+=== CASE id=go037 ===
+FILE: cobra/cmd/root.go | SYMBOL: Execute
+--- SIG_OLD ---
+func Execute()
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+-func Execute() {
+-	rootCmd.Execute()
++func Execute() error {
++	return rootCmd.Execute()
+ }
+--- DOC_OLD ---
+Execute executes the root command.
+=== END CASE ===
+
+=== CASE id=go038 ===
+FILE: context.go | SYMBOL: Context.Negotiate
+--- SIG_OLD ---
+func (c *Context) Negotiate(code int, config Negotiate)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -24,6 +24,10 @@
+ 		data := chooseData(config.PROTOBUFData, config.Data)
+ 		c.ProtoBuf(code, data)
+ 
++	case binding.MIMEBSON:
++		data := chooseData(config.BSONData, config.Data)
++		c.BSON(code, data)
++
+ 	default:
+ 		c.AbortWithError(http.StatusNotAcceptable, errors.New("the accepted formats are not offered by the server"))
+ 	}
+--- DOC_OLD ---
+Negotiate calls different Render according to acceptable Accept format.
+=== END CASE ===
+
+=== CASE id=go039 ===
+FILE: context.go | SYMBOL: Context.Next
+--- SIG_OLD ---
+func (c *Context) Next()
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,6 +1,9 @@
+ func (c *Context) Next() {
+ 	c.index++
+ 	for c.index < int8(len(c.handlers)) {
++		if c.handlers[c.index] == nil {
++			continue
++		}
+ 		c.handlers[c.index](c)
+ 		c.index++
+ 	}
+--- DOC_OLD ---
+Next should be used only inside middleware.
+It executes the pending handlers in the chain inside the calling handler.
+See example in GitHub.
+=== END CASE ===
+
+=== CASE id=go040 ===
+FILE: gin.go | SYMBOL: Engine.RunListener
+--- SIG_OLD ---
+func (engine *Engine) RunListener(listener net.Listener) (err error)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -7,6 +7,9 @@
+ 			"Please check https://github.com/gin-gonic/gin/blob/master/docs/doc.md#dont-trust-all-proxies for details.")
+ 	}
+ 
+-	err = http.Serve(listener, engine.Handler())
++	server := &http.Server{
++		Handler: engine.Handler(),
++	}
++	err = server.Serve(listener)
+ 	return
+ }
+--- DOC_OLD ---
+RunListener attaches the router to a http.Server and starts listening and serving HTTP requests
+through the specified net.Listener
+=== END CASE ===
+
+=== CASE id=go041 ===
+FILE: context.go | SYMBOL: Context.GetUint16Slice
+--- SIG_OLD ---
+func (c *Context) GetUint16Slice(key any) (ui16s []uint16)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+-func (c *Context) GetUint16Slice(key any) (ui16s []uint16) {
++func (c *Context) GetUint16Slice(key any) []uint16 {
+ 	return getTyped[[]uint16](c, key)
+ }
+--- DOC_OLD ---
+GetUint16Slice returns the value associated with the key as a slice of uint16 integers.
+=== END CASE ===
+
+=== CASE id=go042 ===
+FILE: context.go | SYMBOL: Context.GetStringMapStringSlice
+--- SIG_OLD ---
+func (c *Context) GetStringMapStringSlice(key string) (smss map[string][]string)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+-func (c *Context) GetStringMapStringSlice(key string) (smss map[string][]string) {
++func (c *Context) GetStringMapStringSlice(key any) (smss map[string][]string) {
+ 	return getTyped[map[string][]string](c, key)
+ }
+--- DOC_OLD ---
+GetStringMapStringSlice returns the value associated with the key as a map to a slice of strings.
+=== END CASE ===
+
+=== CASE id=go043 ===
+FILE: context.go | SYMBOL: Context.GetStringMapStringSlice
+--- SIG_OLD ---
+func (c *Context) GetStringMapStringSlice(key string) (smss map[string][]string)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,6 +1,3 @@
+ func (c *Context) GetStringMapStringSlice(key string) (smss map[string][]string) {
+-	if val, ok := c.Get(key); ok && val != nil {
+-		smss, _ = val.(map[string][]string)
+-	}
+-	return
++	return getTyped[map[string][]string](c, key)
+ }
+--- DOC_OLD ---
+GetStringMapStringSlice returns the value associated with the key as a map to a slice of strings.
+=== END CASE ===
+
+=== CASE id=go044 ===
+FILE: zsh_completions.go | SYMBOL: Command.MarkZshCompPositionalArgumentWords
+--- SIG_OLD ---
+func (c *Command) MarkZshCompPositionalArgumentWords(argPosition int, words ...string) error
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,20 +1,3 @@
+ func (c *Command) MarkZshCompPositionalArgumentWords(argPosition int, words ...string) error {
+-	if argPosition < 1 {
+-		return fmt.Errorf("Invalid argument position (%d)", argPosition)
+-	}
+-	if len(words) == 0 {
+-		return fmt.Errorf("Trying to set empty word list for positional argument %d", argPosition)
+-	}
+-	annotation, err := c.zshCompGetArgsAnnotations()
+-	if err != nil {
+-		return err
+-	}
+-	if c.zshcompArgsAnnotationnIsDuplicatePosition(annotation, argPosition) {
+-		return fmt.Errorf("Duplicate annotation for positional argument at index %d", argPosition)
+-	}
+-	annotation[argPosition] = zshCompArgHint{
+-		Tipe:		zshCompArgumentWordComp,
+-		Options:	words,
+-	}
+-	return c.zshCompSetArgsAnnotations(annotation)
++	return nil
+ }
+--- DOC_OLD ---
+MarkZshCompPositionalArgumentWords marks the specified positional argument
+(first argument is 1) as completed by the provided words. At east one word
+must be provided, spaces within words will be offered completion with
+"word\ word".
+=== END CASE ===
+
+=== CASE id=go045 ===
+FILE: completions.go | SYMBOL: FixedCompletions
+--- SIG_OLD ---
+func FixedCompletions(choices []string, directive ShellCompDirective) func(cmd *Command, args []string, toComplete string) ([]string, ShellCompDirective)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,4 +1,4 @@
+-func FixedCompletions(choices []string, directive ShellCompDirective) func(cmd *Command, args []string, toComplete string) ([]string, ShellCompDirective) {
++func FixedCompletions(choices []string, directive ShellCompDirective) CompletionFunc {
+ 	return func(cmd *Command, args []string, toComplete string) ([]string, ShellCompDirective) {
+ 		return choices, directive
+ 	}
+--- DOC_OLD ---
+FixedCompletions can be used to create a completion function which always
+returns the same results.
+=== END CASE ===
+
+=== CASE id=go046 ===
+FILE: cobra/cmd/licenses.go | SYMBOL: findLicense
+--- SIG_OLD ---
+func findLicense(name string) License
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,7 +1,7 @@
+ func findLicense(name string) License {
+ 	found := matchLicense(name)
+ 	if found == "" {
+-		er("unknown license: " + name)
++		cobra.CheckErr(fmt.Errorf("unknown license: " + name))
+ 	}
+ 	return Licenses[found]
+ }
+--- DOC_OLD ---
+findLicense looks for License object of built-in licenses.
+If it didn't find license, then the app will be terminated and
+error will be printed.
+=== END CASE ===
+
+=== CASE id=go047 ===
+FILE: command.go | SYMBOL: Command.VersionTemplate
+--- SIG_OLD ---
+func (c *Command) VersionTemplate() string
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,11 +1,10 @@
+ func (c *Command) VersionTemplate() string {
+-	if c.versionTemplate != "" {
+-		return c.versionTemplate
++	if c.versionTemplate != nil {
++		return c.versionTemplate.tmpl
+ 	}
+ 
+ 	if c.HasParent() {
+ 		return c.parent.VersionTemplate()
+ 	}
+-	return `{{with .DisplayName}}{{printf "%s " .}}{{end}}{{printf "version %s" .Version}}
+-`
++	return defaultVersionTemplate
+ }
+--- DOC_OLD ---
+VersionTemplate return version template for the command.
+=== END CASE ===

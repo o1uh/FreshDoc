@@ -1,0 +1,328 @@
+# FD-39: слепая R9-разметка полного Go-набора (full381, 381 кейс: gin + cobra)
+
+Тебе прислан один шард `go_batchNN.prompt.txt` (10-12 кейсов:
+подмножество `data/processed/go_full381.csv`, всего 381 строка go000…go380,
+репо gin + cobra). Размечай КАЖДУЮ строку независимо. Меток (включая прокси
+`doc_changed` из sidecar) ты не видишь — и не пытайся их угадать: решай только
+по диффу и godoc. Sidecar `go_full381_sidecar.json` тебе НЕ показывают.
+
+Прогон независимый: не смешивай ответы с другим прогоном; один шард —
+один контекст целиком, не размечать по частям в разных сессиях.
+
+## Вход строки
+- `id` — идентификатор пары (go000…go380), его же вернуть в ответе;
+- `file`/`symbol` — файл и функция/метод (вид `Recv.Name` — метод с ресивером);
+- `sig_old` — заголовок `func …` ДО (у методов — с ресивером в скобках);
+- `diff_code` — unified diff полного текста объявления (с телом, БЕЗ godoc);
+- `doc_old` — godoc-комментарий (`//…`) ДО изменения.
+Больше ничего не видно — код вне диффа не додумывать. Go-специфика:
+документируется экспортируемое поведение; однострочный godoc — полноценное утверждение.
+
+## Шкала R9 (вопрос: «нужно ли обновить godoc из-за этого изменения?»)
+- **A. Нужно обновить** — хотя бы одно утверждение godoc стало НЕВЕРНЫМ
+  (имя/назначение параметра, поведение, возвращаемое значение, условие ошибки).
+- **B. Желательно обновить** — ничего неверного нет, но изменение добавило важную
+  возможность/условие, которых нет в godoc.
+- **C. Актуально** — все утверждения остаются верными и полными.
+- **D. Не могу решить** — нужен контекст вне диффа и godoc (указать какой в `why`).
+  Доля D < 10%.
+
+**Жёсткое правило: если в godoc нет утверждения, ставшего ложным, — НЕ A.**
+
+## Как размечать (≤ 2 минут на строку)
+1. Выписать проверяемые утверждения godoc.
+2. Найти для каждого соответствующий фрагмент диффа.
+3. Есть конкретное ложное утверждение → A; неверного нет, но появилось важное → B; иначе → C.
+4. Сомнение A/B → B; B/C → C (и поясни в `why`).
+
+## Формат ответа (строго, CSV)
+ОДИН CSV-блок, заголовок строго:
+id,label,stale_statement,why
+- `label` ∈ {A,B,C,D}; строк столько же, в том же порядке, что кейсы;
+- `stale_statement` — точная подстрока `doc_old`, ставшая ложной (только для A,
+  иначе пусто). Цитируй посимвольно — проверяется автоматически;
+- `why` — одна фраза (для D — какого контекста не хватило).
+
+КЕЙСЫ:
+=== CASE id=go000 ===
+FILE: context.go | SYMBOL: Context.GetDuration
+--- SIG_OLD ---
+func (c *Context) GetDuration(key string) (d time.Duration)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+-func (c *Context) GetDuration(key string) (d time.Duration) {
++func (c *Context) GetDuration(key any) (d time.Duration) {
+ 	return getTyped[time.Duration](c, key)
+ }
+--- DOC_OLD ---
+GetDuration returns the value associated with the key as a duration.
+=== END CASE ===
+
+=== CASE id=go001 ===
+FILE: doc/md_docs.go | SYMBOL: GenMarkdownCustom
+--- SIG_OLD ---
+func GenMarkdownCustom(cmd *cobra.Command, w io.Writer, linkHandler func(string) string) error
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -29,7 +29,7 @@
+ 		if cmd.HasParent() {
+ 			parent := cmd.Parent()
+ 			pname := parent.CommandPath()
+-			link := pname + ".md"
++			link := pname + markdownExtension
+ 			link = strings.ReplaceAll(link, " ", "_")
+ 			buf.WriteString(fmt.Sprintf("* [%s](%s)\t - %s\n", pname, linkHandler(link), parent.Short))
+ 			cmd.VisitParents(func(c *cobra.Command) {
+@@ -47,7 +47,7 @@
+ 				continue
+ 			}
+ 			cname := name + " " + child.Name()
+-			link := cname + ".md"
++			link := cname + markdownExtension
+ 			link = strings.ReplaceAll(link, " ", "_")
+ 			buf.WriteString(fmt.Sprintf("* [%s](%s)\t - %s\n", cname, linkHandler(link), child.Short))
+ 		}
+--- DOC_OLD ---
+GenMarkdownCustom creates custom markdown output.
+=== END CASE ===
+
+=== CASE id=go002 ===
+FILE: command.go | SYMBOL: Command.ExecuteC
+--- SIG_OLD ---
+func (c *Command) ExecuteC() (cmd *Command, err error)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -12,6 +12,8 @@
+ 	}
+ 
+ 	c.InitDefaultHelpCmd()
++
++	c.initDefaultCompletionCmd()
+ 
+ 	args := c.args
+--- DOC_OLD ---
+ExecuteC executes the command.
+=== END CASE ===
+
+=== CASE id=go003 ===
+FILE: context.go | SYMBOL: Context.GetFloat32
+--- SIG_OLD ---
+func (c *Context) GetFloat32(key string) (f32 float32)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+-func (c *Context) GetFloat32(key string) (f32 float32) {
++func (c *Context) GetFloat32(key any) (f32 float32) {
+ 	return getTyped[float32](c, key)
+ }
+--- DOC_OLD ---
+GetFloat32 returns the value associated with the key as a float32.
+=== END CASE ===
+
+=== CASE id=go004 ===
+FILE: context.go | SYMBOL: Context.Copy
+--- SIG_OLD ---
+func (c *Context) Copy() *Context
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -2,19 +2,23 @@
+ 	cp := Context{
+ 		writermem:	c.writermem,
+ 		Request:	c.Request,
+-		Params:		c.Params,
+ 		engine:		c.engine,
+ 	}
++
+ 	cp.writermem.ResponseWriter = nil
+ 	cp.Writer = &cp.writermem
+ 	cp.index = abortIndex
+ 	cp.handlers = nil
+-	cp.Keys = map[string]any{}
+-	for k, v := range c.Keys {
++
++	cKeys := c.Keys
++	cp.Keys = make(map[string]any, len(cKeys))
++	for k, v := range cKeys {
+ 		cp.Keys[k] = v
+ 	}
+-	paramCopy := make([]Param, len(cp.Params))
+-	copy(paramCopy, cp.Params)
+-	cp.Params = paramCopy
++
++	cParams := c.Params
++	cp.Params = make([]Param, len(cParams))
++	copy(cp.Params, cParams)
++
+ 	return &cp
+ }
+--- DOC_OLD ---
+Copy returns a copy of the current context that can be safely used outside the request's scope.
+This has to be used when the context has to be passed to a goroutine.
+=== END CASE ===
+
+=== CASE id=go005 ===
+FILE: test_helpers.go | SYMBOL: waitForServerReady
+--- SIG_OLD ---
+func waitForServerReady(url string, maxAttempts int) error
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -10,10 +10,7 @@
+ 			return nil
+ 		}
+ 
+-		backoff := time.Duration(10*(1<<uint(i))) * time.Millisecond
+-		if backoff > 500*time.Millisecond {
+-			backoff = 500 * time.Millisecond
+-		}
++		backoff := min(time.Duration(10*(1<<uint(i)))*time.Millisecond, 500*time.Millisecond)
+ 		time.Sleep(backoff)
+ 	}
+--- DOC_OLD ---
+waitForServerReady waits for a server to be ready by making HTTP requests
+with exponential backoff. This is more reliable than time.Sleep() for testing.
+=== END CASE ===
+
+=== CASE id=go006 ===
+FILE: response_writer.go | SYMBOL: responseWriter.Flush
+--- SIG_OLD ---
+func (w *responseWriter) Flush()
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,4 +1,6 @@
+ func (w *responseWriter) Flush() {
+ 	w.WriteHeaderNow()
+-	w.ResponseWriter.(http.Flusher).Flush()
++	if f, ok := w.ResponseWriter.(http.Flusher); ok {
++		f.Flush()
++	}
+ }
+--- DOC_OLD ---
+Flush implements the http.Flusher interface.
+=== END CASE ===
+
+=== CASE id=go007 ===
+FILE: zsh_completions.go | SYMBOL: Command.MarkZshCompPositionalArgumentFile
+--- SIG_OLD ---
+func (c *Command) MarkZshCompPositionalArgumentFile(argPosition int, patterns ...string) error
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,17 +1,3 @@
+ func (c *Command) MarkZshCompPositionalArgumentFile(argPosition int, patterns ...string) error {
+-	if argPosition < 1 {
+-		return fmt.Errorf("Invalid argument position (%d)", argPosition)
+-	}
+-	annotation, err := c.zshCompGetArgsAnnotations()
+-	if err != nil {
+-		return err
+-	}
+-	if c.zshcompArgsAnnotationnIsDuplicatePosition(annotation, argPosition) {
+-		return fmt.Errorf("Duplicate annotation for positional argument at index %d", argPosition)
+-	}
+-	annotation[argPosition] = zshCompArgHint{
+-		Tipe:		zshCompArgumentFilenameComp,
+-		Options:	patterns,
+-	}
+-	return c.zshCompSetArgsAnnotations(annotation)
++	return nil
+ }
+--- DOC_OLD ---
+MarkZshCompPositionalArgumentFile marks the specified argument (first
+argument is 1) as completed by file selection. patterns (e.g. "*.txt") are
+optional - if not provided the completion will search for all files.
+=== END CASE ===
+
+=== CASE id=go008 ===
+FILE: context.go | SYMBOL: Context.GetInt64
+--- SIG_OLD ---
+func (c *Context) GetInt64(key string) (i64 int64)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+-func (c *Context) GetInt64(key string) (i64 int64) {
++func (c *Context) GetInt64(key any) (i64 int64) {
+ 	return getTyped[int64](c, key)
+ }
+--- DOC_OLD ---
+GetInt64 returns the value associated with the key as an integer 64.
+=== END CASE ===
+
+=== CASE id=go009 ===
+FILE: gin.go | SYMBOL: Engine.RunTLS
+--- SIG_OLD ---
+func (engine *Engine) RunTLS(addr, certFile, keyFile string) (err error)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -4,7 +4,7 @@
+ 
+ 	if engine.isUnsafeTrustedProxies() {
+ 		debugPrint("[WARNING] You trusted all proxies, this is NOT safe. We recommend you to set a value.\n" +
+-			"Please check https://pkg.go.dev/github.com/gin-gonic/gin#readme-don-t-trust-all-proxies for details.")
++			"Please check https://github.com/gin-gonic/gin/blob/master/docs/doc.md#dont-trust-all-proxies for details.")
+ 	}
+ 
+ 	err = http.ListenAndServeTLS(addr, certFile, keyFile, engine.Handler())
+--- DOC_OLD ---
+RunTLS attaches the router to a http.Server and starts listening and serving HTTPS (secure) requests.
+It is a shortcut for http.ListenAndServeTLS(addr, certFile, keyFile, router)
+Note: this method will block the calling goroutine indefinitely unless an error happens.
+=== END CASE ===
+
+=== CASE id=go010 ===
+FILE: context.go | SYMBOL: Context.GetUint8
+--- SIG_OLD ---
+func (c *Context) GetUint8(key any) (ui8 uint8)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+-func (c *Context) GetUint8(key any) (ui8 uint8) {
++func (c *Context) GetUint8(key any) uint8 {
+ 	return getTyped[uint8](c, key)
+ }
+--- DOC_OLD ---
+GetUint8 returns the value associated with the key as an unsigned integer 8.
+=== END CASE ===
+
+=== CASE id=go011 ===
+FILE: doc/md_docs.go | SYMBOL: GenMarkdownTreeCustom
+--- SIG_OLD ---
+func GenMarkdownTreeCustom(cmd *cobra.Command, dir string, filePrepender, filePostpender, linkHandler func(string) string) error
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,9 +1,9 @@
+-func GenMarkdownTreeCustom(cmd *cobra.Command, dir string, filePrepender, filePostpender, linkHandler func(string) string) error {
++func GenMarkdownTreeCustom(cmd *cobra.Command, dir string, filePrepender, linkHandler func(string) string) error {
+ 	for _, c := range cmd.Commands() {
+ 		if !c.IsAvailableCommand() || c.IsAdditionalHelpTopicCommand() {
+ 			continue
+ 		}
+-		if err := GenMarkdownTreeCustom(c, dir, filePrepender, filePostpender, linkHandler); err != nil {
++		if err := GenMarkdownTreeCustom(c, dir, filePrepender, linkHandler); err != nil {
+ 			return err
+ 		}
+ 	}
+@@ -22,8 +22,5 @@
+ 	if err := GenMarkdownCustom(cmd, f, linkHandler); err != nil {
+ 		return err
+ 	}
+-	if _, err := io.WriteString(f, filePostpender(filename)); err != nil {
+-		return err
+-	}
+ 	return nil
+ }
+--- DOC_OLD ---
+GenMarkdownTreeCustom is the the same as GenMarkdownTree, but
+with custom filePrepender, filePostpender, and linkHandler.
+=== END CASE ===
