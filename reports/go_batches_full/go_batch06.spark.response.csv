@@ -1,0 +1,13 @@
+id,label,stale_statement,why
+go072,C,,equivalent condition using named constant
+go073,C,,removal of named return keeps behavior
+go074,C,,refactor to generic helper preserves semantics
+go075,C,,key widened to any while doc stays generic
+go076,C,,extraction to displayName helper preserves behavior
+go077,C,,Replace with -1 equals ReplaceAll
+go078,C,,internal switch to exported accessor with same meaning
+go079,C,,numeric range replaced by equivalent http constants
+go080,C,,default help behavior description remains accurate
+go081,C,,whitespace-only change
+go082,B,,new optional perm argument adds undocumented capability
+go083,C,,key widened to any while doc stays generic

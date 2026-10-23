@@ -1,0 +1,18 @@
+{
+  "task": "FD-39",
+  "seed": 22,
+  "n_total": 17559,
+  "quotas": {
+    "ext_hebcup": 1000000000,
+    "ext_jit": 1000000000,
+    "ext_python2": 1000000000,
+    "ext_go_silver": 1000000000
+  },
+  "actual": {
+    "ext_hebcup": 8278,
+    "ext_python2": 4957,
+    "ext_jit": 3944,
+    "ext_go_silver": 380
+  },
+  "created_at": "2026-10-23T14:35:49+00:00"
+}

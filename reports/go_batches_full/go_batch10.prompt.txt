@@ -1,0 +1,365 @@
+# FD-39: слепая R9-разметка полного Go-набора (full381, 381 кейс: gin + cobra)
+
+Тебе прислан один шард `go_batchNN.prompt.txt` (10-12 кейсов:
+подмножество `data/processed/go_full381.csv`, всего 381 строка go000…go380,
+репо gin + cobra). Размечай КАЖДУЮ строку независимо. Меток (включая прокси
+`doc_changed` из sidecar) ты не видишь — и не пытайся их угадать: решай только
+по диффу и godoc. Sidecar `go_full381_sidecar.json` тебе НЕ показывают.
+
+Прогон независимый: не смешивай ответы с другим прогоном; один шард —
+один контекст целиком, не размечать по частям в разных сессиях.
+
+## Вход строки
+- `id` — идентификатор пары (go000…go380), его же вернуть в ответе;
+- `file`/`symbol` — файл и функция/метод (вид `Recv.Name` — метод с ресивером);
+- `sig_old` — заголовок `func …` ДО (у методов — с ресивером в скобках);
+- `diff_code` — unified diff полного текста объявления (с телом, БЕЗ godoc);
+- `doc_old` — godoc-комментарий (`//…`) ДО изменения.
+Больше ничего не видно — код вне диффа не додумывать. Go-специфика:
+документируется экспортируемое поведение; однострочный godoc — полноценное утверждение.
+
+## Шкала R9 (вопрос: «нужно ли обновить godoc из-за этого изменения?»)
+- **A. Нужно обновить** — хотя бы одно утверждение godoc стало НЕВЕРНЫМ
+  (имя/назначение параметра, поведение, возвращаемое значение, условие ошибки).
+- **B. Желательно обновить** — ничего неверного нет, но изменение добавило важную
+  возможность/условие, которых нет в godoc.
+- **C. Актуально** — все утверждения остаются верными и полными.
+- **D. Не могу решить** — нужен контекст вне диффа и godoc (указать какой в `why`).
+  Доля D < 10%.
+
+**Жёсткое правило: если в godoc нет утверждения, ставшего ложным, — НЕ A.**
+
+## Как размечать (≤ 2 минут на строку)
+1. Выписать проверяемые утверждения godoc.
+2. Найти для каждого соответствующий фрагмент диффа.
+3. Есть конкретное ложное утверждение → A; неверного нет, но появилось важное → B; иначе → C.
+4. Сомнение A/B → B; B/C → C (и поясни в `why`).
+
+## Формат ответа (строго, CSV)
+ОДИН CSV-блок, заголовок строго:
+id,label,stale_statement,why
+- `label` ∈ {A,B,C,D}; строк столько же, в том же порядке, что кейсы;
+- `stale_statement` — точная подстрока `doc_old`, ставшая ложной (только для A,
+  иначе пусто). Цитируй посимвольно — проверяется автоматически;
+- `why` — одна фраза (для D — какого контекста не хватило).
+
+КЕЙСЫ:
+=== CASE id=go120 ===
+FILE: context.go | SYMBOL: Context.GetBool
+--- SIG_OLD ---
+func (c *Context) GetBool(key string) (b bool)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,6 +1,3 @@
+ func (c *Context) GetBool(key string) (b bool) {
+-	if val, ok := c.Get(key); ok && val != nil {
+-		b, _ = val.(bool)
+-	}
+-	return
++	return getTyped[bool](c, key)
+ }
+--- DOC_OLD ---
+GetBool returns the value associated with the key as a boolean.
+=== END CASE ===
+
+=== CASE id=go121 ===
+FILE: context.go | SYMBOL: Context.GetFloat32
+--- SIG_OLD ---
+func (c *Context) GetFloat32(key any) (f32 float32)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+-func (c *Context) GetFloat32(key any) (f32 float32) {
++func (c *Context) GetFloat32(key any) float32 {
+ 	return getTyped[float32](c, key)
+ }
+--- DOC_OLD ---
+GetFloat32 returns the value associated with the key as a float32.
+=== END CASE ===
+
+=== CASE id=go122 ===
+FILE: completions.go | SYMBOL: Command.initDefaultCompletionCmd
+--- SIG_OLD ---
+func (c *Command) initDefaultCompletionCmd()
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -20,6 +20,7 @@
+ `, c.Root().Name()),
+ 		Args:			NoArgs,
+ 		ValidArgsFunction:	NoFileCompletions,
++		Hidden:			c.CompletionOptions.HiddenDefaultCmd,
+ 	}
+ 	c.AddCommand(completionCmd)
+--- DOC_OLD ---
+initDefaultCompletionCmd adds a default 'completion' command to c.
+This function will do nothing if any of the following is true:
+1- the feature has been explicitly disabled by the program,
+2- c has no subcommands (to avoid creating one),
+3- c already has a 'completion' command provided by the program.
+=== END CASE ===
+
+=== CASE id=go123 ===
+FILE: context.go | SYMBOL: Context.GetUint16Slice
+--- SIG_OLD ---
+func (c *Context) GetUint16Slice(key string) (ui16s []uint16)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+-func (c *Context) GetUint16Slice(key string) (ui16s []uint16) {
++func (c *Context) GetUint16Slice(key any) (ui16s []uint16) {
+ 	return getTyped[[]uint16](c, key)
+ }
+--- DOC_OLD ---
+GetUint16Slice returns the value associated with the key as a slice of uint16 integers.
+=== END CASE ===
+
+=== CASE id=go124 ===
+FILE: deprecated.go | SYMBOL: Context.BindWith
+--- SIG_OLD ---
+func (c *Context) BindWith(obj any, b binding.Binding) error
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,5 +1,5 @@
+ func (c *Context) BindWith(obj any, b binding.Binding) error {
+-	log.Println(`BindWith(\"interface{}, binding.Binding\") error is going to
++	log.Println(`BindWith(\"any, binding.Binding\") error is going to
+ 	be deprecated, please check issue #662 and either use MustBindWith() if you
+ 	want HTTP 400 to be automatically returned if any error occur, or use
+ 	ShouldBindWith() if you need to manage the error.`)
+--- DOC_OLD ---
+BindWith binds the passed struct pointer using the specified binding engine.
+See the binding package.
+=== END CASE ===
+
+=== CASE id=go125 ===
+FILE: completions.go | SYMBOL: Command.initDefaultCompletionCmd
+--- SIG_OLD ---
+func (c *Command) initDefaultCompletionCmd()
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -37,13 +37,18 @@
+ If it is not installed already, you can install it via your OS's package manager.
+ 
+ To load completions in your current shell session:
+-$ source <(%[1]s completion bash)
++
++	source <(%[1]s completion bash)
+ 
+ To load completions for every new session, execute once:
+-Linux:
+-  $ %[1]s completion bash > /etc/bash_completion.d/%[1]s
+-MacOS:
+-  $ %[1]s completion bash > /usr/local/etc/bash_completion.d/%[1]s
++
++#### Linux:
++
++	%[1]s completion bash > /etc/bash_completion.d/%[1]s
++
++#### macOS:
++
++	%[1]s completion bash > /usr/local/etc/bash_completion.d/%[1]s
+ 
+ You will need to start a new shell for this setup to take effect.
+   `, c.Root().Name()),
+@@ -67,13 +72,17 @@
+ If shell completion is not already enabled in your environment you will need
+ to enable it.  You can execute the following once:
+ 
+-$ echo "autoload -U compinit; compinit" >> ~/.zshrc
++	echo "autoload -U compinit; compinit" >> ~/.zshrc
+ 
+ To load completions for every new session, execute once:
+-# Linux:
+-$ %[1]s completion zsh > "${fpath[1]}/_%[1]s"
+-# macOS:
+-$ %[1]s completion zsh > /usr/local/share/zsh/site-functions/_%[1]s
++
++#### Linux:
++
++	%[1]s completion zsh > "${fpath[1]}/_%[1]s"
++
++#### macOS:
++
++	%[1]s completion zsh > /usr/local/share/zsh/site-functions/_%[1]s
+ 
+ You will need to start a new shell for this setup to take effect.
+ `, c.Root().Name()),
+@@ -97,10 +106,12 @@
+ Generate the autocompletion script for the fish shell.
+ 
+ To load completions in your current shell session:
+-$ %[1]s completion fish | source
++
++	%[1]s completion fish | source
+ 
+ To load completions for every new session, execute once:
+-$ %[1]s completion fish > ~/.config/fish/completions/%[1]s.fish
++
++	%[1]s completion fish > ~/.config/fish/completions/%[1]s.fish
+ 
+ You will need to start a new shell for this setup to take effect.
+ `, c.Root().Name()),
+@@ -121,7 +132,8 @@
+ Generate the autocompletion script for powershell.
+ 
+ To load completions in your current shell session:
+-PS C:\> %[1]s completion powershell | Out-String | Invoke-Expression
++
++	%[1]s completion powershell | Out-String | Invoke-Expression
+ 
+ To load completions for every new session, add the output of the above command
+ to your powershell profile.
+--- DOC_OLD ---
+initDefaultCompletionCmd adds a default 'completion' command to c.
+This function will do nothing if any of the following is true:
+1- the feature has been explicitly disabled by the program,
+2- c has no subcommands (to avoid creating one),
+3- c already has a 'completion' command provided by the program.
+=== END CASE ===
+
+=== CASE id=go126 ===
+FILE: errors.go | SYMBOL: errorMsgs.MarshalJSON
+--- SIG_OLD ---
+func (a errorMsgs) MarshalJSON() ([]byte, error)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+ func (a errorMsgs) MarshalJSON() ([]byte, error) {
+-	return json.Marshal(a.JSON())
++	return json.API.Marshal(a.JSON())
+ }
+--- DOC_OLD ---
+MarshalJSON implements the json.Marshaller interface.
+=== END CASE ===
+
+=== CASE id=go127 ===
+FILE: command.go | SYMBOL: Command.SetVersionTemplate
+--- SIG_OLD ---
+func (c *Command) SetVersionTemplate(s string)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+ func (c *Command) SetVersionTemplate(s string) {
+-	c.versionTemplate = s
++	c.versionTemplate = tmpl(s)
+ }
+--- DOC_OLD ---
+SetVersionTemplate sets version template to be used. Application can use it to set custom template.
+=== END CASE ===
+
+=== CASE id=go128 ===
+FILE: command.go | SYMBOL: Command.HelpTemplate
+--- SIG_OLD ---
+func (c *Command) HelpTemplate() string
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,12 +1,10 @@
+ func (c *Command) HelpTemplate() string {
+-	if c.helpTemplate != "" {
+-		return c.helpTemplate
++	if c.helpTemplate != nil {
++		return c.helpTemplate.tmpl
+ 	}
+ 
+ 	if c.HasParent() {
+ 		return c.parent.HelpTemplate()
+ 	}
+-	return `{{with (or .Long .Short)}}{{. | trimTrailingWhitespaces}}
+-
+-{{end}}{{if or .Runnable .HasSubCommands}}{{.UsageString}}{{end}}`
++	return defaultHelpTemplate
+ }
+--- DOC_OLD ---
+HelpTemplate return help template for the command.
+=== END CASE ===
+
+=== CASE id=go129 ===
+FILE: tree.go | SYMBOL: node.getValue
+--- SIG_OLD ---
+func (n *node) getValue(path string, params *Params, skippedNodes *[]skippedNode, unescape bool) (value nodeValue)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,5 +1,7 @@
+ func (n *node) getValue(path string, params *Params, skippedNodes *[]skippedNode, unescape bool) (value nodeValue) {
+ 	var globalParamsCount int16
++
++	*skippedNodes = (*skippedNodes)[:0]
+ 
+ walk:
+ 	for {
+--- DOC_OLD ---
+Returns the handle registered with the given path (key). The values of
+wildcards are saved to a map.
+If no handle can be found, a TSR (trailing slash redirect) recommendation is
+made if a handle exists with an extra (without the) trailing slash for the
+given path.
+=== END CASE ===
+
+=== CASE id=go130 ===
+FILE: doc/rest_docs.go | SYMBOL: GenReSTCustom
+--- SIG_OLD ---
+func GenReSTCustom(cmd *cobra.Command, w io.Writer, linkHandler func(string, string) string) error
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -10,7 +10,7 @@
+ 	if len(long) == 0 {
+ 		long = short
+ 	}
+-	ref := strings.Replace(name, " ", "_", -1)
++	ref := strings.ReplaceAll(name, " ", "_")
+ 
+ 	buf.WriteString(".. _" + ref + ":\n\n")
+ 	buf.WriteString(name + "\n")
+@@ -39,7 +39,7 @@
+ 		if cmd.HasParent() {
+ 			parent := cmd.Parent()
+ 			pname := parent.CommandPath()
+-			ref = strings.Replace(pname, " ", "_", -1)
++			ref = strings.ReplaceAll(pname, " ", "_")
+ 			buf.WriteString(fmt.Sprintf("* %s \t - %s\n", linkHandler(pname, ref), parent.Short))
+ 			cmd.VisitParents(func(c *cobra.Command) {
+ 				if c.DisableAutoGenTag {
+@@ -56,7 +56,7 @@
+ 				continue
+ 			}
+ 			cname := name + " " + child.Name()
+-			ref = strings.Replace(cname, " ", "_", -1)
++			ref = strings.ReplaceAll(cname, " ", "_")
+ 			buf.WriteString(fmt.Sprintf("* %s \t - %s\n", linkHandler(cname, ref), child.Short))
+ 		}
+ 		buf.WriteString("\n")
+--- DOC_OLD ---
+GenReSTCustom creates custom reStructured Text output.
+=== END CASE ===
+
+=== CASE id=go131 ===
+FILE: active_help.go | SYMBOL: activeHelpEnvVar
+--- SIG_OLD ---
+func activeHelpEnvVar(name string) string
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,5 +1,6 @@
+ func activeHelpEnvVar(name string) string {
+ 
+ 	activeHelpEnvVar := strings.ToUpper(fmt.Sprintf("%s%s", name, activeHelpEnvVarSuffix))
+-	return strings.ReplaceAll(activeHelpEnvVar, "-", "_")
++	activeHelpEnvVar = activeHelpEnvVarPrefixSubstRegexp.ReplaceAllString(activeHelpEnvVar, "_")
++	return activeHelpEnvVar
+ }
+--- DOC_OLD ---
+activeHelpEnvVar returns the name of the program-specific ActiveHelp environment
+variable.  It has the format <PROGRAM>_ACTIVE_HELP where <PROGRAM> is the name of the
+root command in upper case, with all - replaced by _.
+=== END CASE ===

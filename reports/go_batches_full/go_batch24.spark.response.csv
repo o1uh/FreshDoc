@@ -1,0 +1,13 @@
+id,label,stale_statement,why
+go288,C,,FlagSet name source is internal detail not mentioned in doc
+go289,C,,internal annotation constant rename with identical behavior
+go290,C,,loop variable rename with no behavior change
+go291,C,,exported wrapper type change preserves documented filesystem behavior
+go292,C,,new BSON case still covered by generic appropriate Binding wording
+go293,C,,method name capitalization is internal detail not mentioned in doc
+go294,C,,active-help filtering is internal detail beyond abstract doc scope
+go295,C,,added Content-Length header does not contradict custom ContentType claim
+go296,C,,FlagSet name source is internal detail not mentioned in doc
+go297,C,,error value change not described by generic executes the command doc
+go298,C,,removal of named return does not change documented return meaning
+go299,C,,refactor to helper preserves documented generation behavior

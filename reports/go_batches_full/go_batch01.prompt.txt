@@ -1,0 +1,402 @@
+# FD-39: слепая R9-разметка полного Go-набора (full381, 381 кейс: gin + cobra)
+
+Тебе прислан один шард `go_batchNN.prompt.txt` (10-12 кейсов:
+подмножество `data/processed/go_full381.csv`, всего 381 строка go000…go380,
+репо gin + cobra). Размечай КАЖДУЮ строку независимо. Меток (включая прокси
+`doc_changed` из sidecar) ты не видишь — и не пытайся их угадать: решай только
+по диффу и godoc. Sidecar `go_full381_sidecar.json` тебе НЕ показывают.
+
+Прогон независимый: не смешивай ответы с другим прогоном; один шард —
+один контекст целиком, не размечать по частям в разных сессиях.
+
+## Вход строки
+- `id` — идентификатор пары (go000…go380), его же вернуть в ответе;
+- `file`/`symbol` — файл и функция/метод (вид `Recv.Name` — метод с ресивером);
+- `sig_old` — заголовок `func …` ДО (у методов — с ресивером в скобках);
+- `diff_code` — unified diff полного текста объявления (с телом, БЕЗ godoc);
+- `doc_old` — godoc-комментарий (`//…`) ДО изменения.
+Больше ничего не видно — код вне диффа не додумывать. Go-специфика:
+документируется экспортируемое поведение; однострочный godoc — полноценное утверждение.
+
+## Шкала R9 (вопрос: «нужно ли обновить godoc из-за этого изменения?»)
+- **A. Нужно обновить** — хотя бы одно утверждение godoc стало НЕВЕРНЫМ
+  (имя/назначение параметра, поведение, возвращаемое значение, условие ошибки).
+- **B. Желательно обновить** — ничего неверного нет, но изменение добавило важную
+  возможность/условие, которых нет в godoc.
+- **C. Актуально** — все утверждения остаются верными и полными.
+- **D. Не могу решить** — нужен контекст вне диффа и godoc (указать какой в `why`).
+  Доля D < 10%.
+
+**Жёсткое правило: если в godoc нет утверждения, ставшего ложным, — НЕ A.**
+
+## Как размечать (≤ 2 минут на строку)
+1. Выписать проверяемые утверждения godoc.
+2. Найти для каждого соответствующий фрагмент диффа.
+3. Есть конкретное ложное утверждение → A; неверного нет, но появилось важное → B; иначе → C.
+4. Сомнение A/B → B; B/C → C (и поясни в `why`).
+
+## Формат ответа (строго, CSV)
+ОДИН CSV-блок, заголовок строго:
+id,label,stale_statement,why
+- `label` ∈ {A,B,C,D}; строк столько же, в том же порядке, что кейсы;
+- `stale_statement` — точная подстрока `doc_old`, ставшая ложной (только для A,
+  иначе пусто). Цитируй посимвольно — проверяется автоматически;
+- `why` — одна фраза (для D — какого контекста не хватило).
+
+КЕЙСЫ:
+=== CASE id=go012 ===
+FILE: completions.go | SYMBOL: Command.InitDefaultCompletionCmd
+--- SIG_OLD ---
+func (c *Command) InitDefaultCompletionCmd()
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,5 +1,5 @@
+-func (c *Command) InitDefaultCompletionCmd() {
+-	if c.CompletionOptions.DisableDefaultCmd || !c.HasSubCommands() {
++func (c *Command) InitDefaultCompletionCmd(args ...string) {
++	if c.CompletionOptions.DisableDefaultCmd {
+ 		return
+ 	}
+ 
+@@ -11,6 +11,15 @@
+ 	}
+ 
+ 	haveNoDescFlag := !c.CompletionOptions.DisableNoDescFlag && !c.CompletionOptions.DisableDescriptions
++
++	hasSubCommands := false
++	for _, cmd := range c.commands {
++		if cmd.Name() != ShellCompRequestCmd && cmd.Name() != helpCommandName {
++
++			hasSubCommands = true
++			break
++		}
++	}
+ 
+ 	completionCmd := &Command{
+ 		Use:	compCmdName,
+@@ -24,6 +33,17 @@
+ 		GroupID:		c.completionCommandGroupID,
+ 	}
+ 	c.AddCommand(completionCmd)
++
++	if !hasSubCommands {
++
++		subCmd, cmdArgs, err := c.Find(args)
++		if err != nil || subCmd.Name() != compCmdName &&
++			!(subCmd.Name() == ShellCompRequestCmd && len(cmdArgs) > 1 && cmdArgs[0] == compCmdName) {
++
++			c.RemoveCommand(completionCmd)
++			return
++		}
++	}
+ 
+ 	out := c.OutOrStdout()
+ 	noDesc := c.CompletionOptions.DisableDescriptions
+--- DOC_OLD ---
+InitDefaultCompletionCmd adds a default 'completion' command to c.
+This function will do nothing if any of the following is true:
+1- the feature has been explicitly disabled by the program,
+2- c has no subcommands (to avoid creating one),
+3- c already has a 'completion' command provided by the program.
+=== END CASE ===
+
+=== CASE id=go013 ===
+FILE: gin.go | SYMBOL: Default
+--- SIG_OLD ---
+func Default() *Engine
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,6 +1,6 @@
+-func Default() *Engine {
++func Default(opts ...OptionFunc) *Engine {
+ 	debugPrintWARNINGDefault()
+ 	engine := New()
+ 	engine.Use(Logger(), Recovery())
+-	return engine
++	return engine.With(opts...)
+ }
+--- DOC_OLD ---
+Default returns an Engine instance with the Logger and Recovery middleware already attached.
+=== END CASE ===
+
+=== CASE id=go014 ===
+FILE: recovery.go | SYMBOL: stack
+--- SIG_OLD ---
+func stack(skip int) []byte
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -12,7 +12,7 @@
+ 
+ 		fmt.Fprintf(buf, "%s:%d (0x%x)\n", file, line, pc)
+ 		if file != lastFile {
+-			data, err := ioutil.ReadFile(file)
++			data, err := os.ReadFile(file)
+ 			if err != nil {
+ 				continue
+ 			}
+--- DOC_OLD ---
+stack returns a nicely formatted stack frame, skipping skip frames.
+=== END CASE ===
+
+=== CASE id=go015 ===
+FILE: doc/md_docs.go | SYMBOL: GenMarkdownTreeCustom
+--- SIG_OLD ---
+func GenMarkdownTreeCustom(cmd *cobra.Command, dir string, filePrepender, linkHandler func(string) string) error
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,9 +1,9 @@
+-func GenMarkdownTreeCustom(cmd *cobra.Command, dir string, filePrepender, linkHandler func(string) string) error {
++func GenMarkdownTreeCustom(cmd *cobra.Command, dir string, filePrepender, filePostpender, linkHandler func(string) string) error {
+ 	for _, c := range cmd.Commands() {
+ 		if !c.IsAvailableCommand() || c.IsAdditionalHelpTopicCommand() {
+ 			continue
+ 		}
+-		if err := GenMarkdownTreeCustom(c, dir, filePrepender, linkHandler); err != nil {
++		if err := GenMarkdownTreeCustom(c, dir, filePrepender, filePostpender, linkHandler); err != nil {
+ 			return err
+ 		}
+ 	}
+@@ -22,5 +22,8 @@
+ 	if err := GenMarkdownCustom(cmd, f, linkHandler); err != nil {
+ 		return err
+ 	}
++	if _, err := io.WriteString(f, filePostpender(filename)); err != nil {
++		return err
++	}
+ 	return nil
+ }
+--- DOC_OLD ---
+GenMarkdownTreeCustom is the the same as GenMarkdownTree, but
+with custom filePrepender and linkHandler.
+=== END CASE ===
+
+=== CASE id=go016 ===
+FILE: context.go | SYMBOL: Context.Copy
+--- SIG_OLD ---
+func (c *Context) Copy() *Context
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -12,11 +12,8 @@
+ 	cp.fullPath = c.fullPath
+ 
+ 	cKeys := c.Keys
+-	cp.Keys = make(map[any]any, len(cKeys))
+ 	c.mu.RLock()
+-	for k, v := range cKeys {
+-		cp.Keys[k] = v
+-	}
++	cp.Keys = maps.Clone(cKeys)
+ 	c.mu.RUnlock()
+ 
+ 	cParams := c.Params
+--- DOC_OLD ---
+Copy returns a copy of the current context that can be safely used outside the request's scope.
+This has to be used when the context has to be passed to a goroutine.
+=== END CASE ===
+
+=== CASE id=go017 ===
+FILE: context.go | SYMBOL: Context.GetDuration
+--- SIG_OLD ---
+func (c *Context) GetDuration(key any) (d time.Duration)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+-func (c *Context) GetDuration(key any) (d time.Duration) {
++func (c *Context) GetDuration(key any) time.Duration {
+ 	return getTyped[time.Duration](c, key)
+ }
+--- DOC_OLD ---
+GetDuration returns the value associated with the key as a duration.
+=== END CASE ===
+
+=== CASE id=go018 ===
+FILE: completions.go | SYMBOL: Command.initDefaultCompletionCmd
+--- SIG_OLD ---
+func (c *Command) initDefaultCompletionCmd()
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -70,7 +70,10 @@
+ $ echo "autoload -U compinit; compinit" >> ~/.zshrc
+ 
+ To load completions for every new session, execute once:
++# Linux:
+ $ %[1]s completion zsh > "${fpath[1]}/_%[1]s"
++# macOS:
++$ %[1]s completion zsh > /usr/local/share/zsh/site-functions/_%[1]s
+ 
+ You will need to start a new shell for this setup to take effect.
+ `, c.Root().Name()),
+--- DOC_OLD ---
+initDefaultCompletionCmd adds a default 'completion' command to c.
+This function will do nothing if any of the following is true:
+1- the feature has been explicitly disabled by the program,
+2- c has no subcommands (to avoid creating one),
+3- c already has a 'completion' command provided by the program.
+=== END CASE ===
+
+=== CASE id=go019 ===
+FILE: context.go | SYMBOL: Context.Next
+--- SIG_OLD ---
+func (c *Context) Next()
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,6 +1,6 @@
+ func (c *Context) Next() {
+ 	c.index++
+-	for c.index < int8(len(c.handlers)) {
++	for c.index < safeInt8(len(c.handlers)) {
+ 		if c.handlers[c.index] != nil {
+ 			c.handlers[c.index](c)
+ 		}
+--- DOC_OLD ---
+Next should be used only inside middleware.
+It executes the pending handlers in the chain inside the calling handler.
+See example in GitHub.
+=== END CASE ===
+
+=== CASE id=go020 ===
+FILE: context.go | SYMBOL: Context.GetUint8
+--- SIG_OLD ---
+func (c *Context) GetUint8(key string) (ui8 uint8)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,3 +1,3 @@
+-func (c *Context) GetUint8(key string) (ui8 uint8) {
++func (c *Context) GetUint8(key any) (ui8 uint8) {
+ 	return getTyped[uint8](c, key)
+ }
+--- DOC_OLD ---
+GetUint8 returns the value associated with the key as an unsigned integer 8.
+=== END CASE ===
+
+=== CASE id=go021 ===
+FILE: logger.go | SYMBOL: LoggerWithConfig
+--- SIG_OLD ---
+func LoggerWithConfig(conf LoggerConfig) HandlerFunc
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -36,30 +36,32 @@
+ 
+ 		c.Next()
+ 
+-		if _, ok := skip[path]; !ok {
+-			param := LogFormatterParams{
+-				Request:	c.Request,
+-				isTerm:		isTerm,
+-				Keys:		c.Keys,
+-			}
++		if _, ok := skip[path]; ok || (conf.Skip != nil && conf.Skip(c)) {
++			return
++		}
+ 
+-			param.TimeStamp = time.Now()
+-			param.Latency = param.TimeStamp.Sub(start)
++		param := LogFormatterParams{
++			Request:	c.Request,
++			isTerm:		isTerm,
++			Keys:		c.Keys,
++		}
+ 
+-			param.ClientIP = c.ClientIP()
+-			param.Method = c.Request.Method
+-			param.StatusCode = c.Writer.Status()
+-			param.ErrorMessage = c.Errors.ByType(ErrorTypePrivate).String()
++		param.TimeStamp = time.Now()
++		param.Latency = param.TimeStamp.Sub(start)
+ 
+-			param.BodySize = c.Writer.Size()
++		param.ClientIP = c.ClientIP()
++		param.Method = c.Request.Method
++		param.StatusCode = c.Writer.Status()
++		param.ErrorMessage = c.Errors.ByType(ErrorTypePrivate).String()
+ 
+-			if raw != "" {
+-				path = path + "?" + raw
+-			}
++		param.BodySize = c.Writer.Size()
+ 
+-			param.Path = path
++		if raw != "" {
++			path = path + "?" + raw
++		}
+ 
+-			fmt.Fprint(out, formatter(param))
+-		}
++		param.Path = path
++
++		fmt.Fprint(out, formatter(param))
+ 	}
+ }
+--- DOC_OLD ---
+LoggerWithConfig instance a Logger middleware with config.
+=== END CASE ===
+
+=== CASE id=go022 ===
+FILE: command.go | SYMBOL: Command.ExecuteC
+--- SIG_OLD ---
+func (c *Command) ExecuteC() (cmd *Command, err error)
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -33,8 +33,8 @@
+ 			c = cmd
+ 		}
+ 		if !c.SilenceErrors {
+-			c.Println("Error:", err.Error())
+-			c.Printf("Run '%v --help' for usage.\n", c.CommandPath())
++			c.PrintErrln("Error:", err.Error())
++			c.PrintErrf("Run '%v --help' for usage.\n", c.CommandPath())
+ 		}
+ 		return c, err
+ 	}
+@@ -57,7 +57,7 @@
+ 		}
+ 
+ 		if !cmd.SilenceErrors && !c.SilenceErrors {
+-			c.Println("Error:", err.Error())
++			c.PrintErrln("Error:", err.Error())
+ 		}
+ 
+ 		if !cmd.SilenceUsage && !c.SilenceUsage {
+--- DOC_OLD ---
+ExecuteC executes the command.
+=== END CASE ===
+
+=== CASE id=go023 ===
+FILE: path.go | SYMBOL: cleanPath
+--- SIG_OLD ---
+func cleanPath(p string) string
+--- DIFF ---
+--- a/go
++++ b/go
+@@ -1,5 +1,4 @@
+ func cleanPath(p string) string {
+-	const stackBufSize = 128
+ 
+ 	if p == "" {
+ 		return "/"
+--- DOC_OLD ---
+cleanPath is the URL version of path.Clean, it returns a canonical URL path
+for p, eliminating . and .. elements.
+
+The following rules are applied iteratively until no further processing can
+be done:
+ 1. Replace multiple slashes with a single slash.
+ 2. Eliminate each . path name element (the current directory).
+ 3. Eliminate each inner .. path name element (the parent directory)
+    along with the non-.. element that precedes it.
+ 4. Eliminate .. elements that begin a rooted path:
+    that is, replace "/.." by "/" at the beginning of a path.
+
+If the result of this process is an empty string, "/" is returned.
+=== END CASE ===

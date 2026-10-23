@@ -1,0 +1,13 @@
+id,label,stale_statement,why
+go084,C,,internal FlagSet name source changed but doc makes no name claim
+go085,C,,pure refactor to generic helper with same observable behavior
+go086,C,,generic copy promise still holds and lists no fields
+go087,C,,pure constant renames with no behavior change
+go088,C,,pure refactor to generic helper with same observable behavior
+go089,B,,now returns ErrNotSupported instead of panicking when unsupported
+go090,C,,key type widened but doc states no key type
+go091,C,,named to unnamed return is cosmetic with same behavior
+go092,C,,still serves HTTPS the same way despite internal Server construction
+go093,C,,output stream changed but doc states no stream
+go094,C,,added internal timeout but doc claims remain true
+go095,C,,key type widened but doc states no key type

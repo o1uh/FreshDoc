@@ -1,10 +1,16 @@
 """FD-22: тесты нулевого судьи M3 (промпт R10, разбор, валидаторы)."""
 
+import argparse
+import sys
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
-from src.models.m3_judge import (
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+
+from m3_judge import cmd_export_external  # noqa: E402
+from src.models.m3_judge import (  # noqa: E402
     ALLOWED_DRIFT,
     JUDGE_MODEL,
     parse_batch_response,
@@ -95,3 +101,33 @@ def test_real_prompt_template_r10(tmp_path=None):
     assert "{diff_code}" in text and "{doc_old}" in text
     assert "confidence" in text and "drift_type" in text
     assert "temperature" not in text  # параметры — в config/m3_judge.yaml, не в промпте
+
+
+def _ext_row(pid, split):
+    return {"pair_id": pid, "split": split,
+            "sig_old": "s", "code_old": "a", "code_new": "b",
+            "diff_code": "-a\n+b", "doc_old": "d", "label_stale": 1,
+            "drift_type": "unknown", "sig_type": "unknown",
+            "source": "x", "project": "p", "label_source": "l",
+            "weight": 0.0, "n_src_lines": 5}
+
+
+def test_export_external_stratified(tmp_path):
+    pytest.importorskip("pyarrow")
+    df = pd.DataFrame(
+        [_ext_row(f"h{i}", "ext_hebcup") for i in range(5)]
+        + [_ext_row(f"j{i}", "ext_jit") for i in range(6)]
+        + [_ext_row(f"p{i}", "ext_python2") for i in range(4)])
+    ds = tmp_path / "ext.parquet"
+    df.to_parquet(ds, index=False)
+    out_dir = tmp_path / "m3ext"
+    sel_json = tmp_path / "sel.json"
+    args = argparse.Namespace(dataset=str(ds), dir=str(out_dir), seed=7,
+                              n_hebcup=3, n_jit=4, n_python2=10, n_go=10**9,
+                              select_json=str(sel_json))
+    cmd_export_external(args)
+    man = pd.read_csv(out_dir / "m3_manifest.csv", dtype=str)
+    assert len(man) == 3 + 4 + 4  # python2 обрезано наличием
+    assert set(man["m3_id"]) == {f"e{i:05d}" for i in range(1, 12)}
+    assert man["pair_id"].is_unique
+    assert (man["split"] == "ext_python2").sum() == 4

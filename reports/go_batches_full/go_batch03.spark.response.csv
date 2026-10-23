@@ -1,0 +1,13 @@
+id,label,stale_statement,why
+go036,C,,wrapping Usage and Help with CheckErr keeps documented purpose
+go037,B,,new error return adds important contract missing in doc
+go038,C,,generic format statement still covers added BSON case
+go039,C,,nil guard is internal robustness still executes pending handlers
+go040,C,,explicit http.Server matches documented attach and serve behavior
+go041,C,,removing named return keeps return type and meaning
+go042,C,,widening key to any keeps documented return for key
+go043,C,,helper refactor preserves documented return semantics
+go044,A,marks the specified positional argument,body stubbed to return nil so no marking occurs
+go045,C,,alias CompletionFunc keeps same signature and same results
+go046,C,,CheckErr preserves documented terminate and print error
+go047,C,,storage change still returns version template for command

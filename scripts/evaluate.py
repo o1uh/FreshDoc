@@ -80,6 +80,18 @@ def _val_real_mask(truth: pd.DataFrame) -> np.ndarray:
     return m
 
 
+def resolve_splits(have: set[str], arg: str) -> list[str]:
+    """FD-39: какие сплиты оценивать. Явный --splits побеждает;
+    иначе только сплиты, присутствующие в данных (порядок EVAL_SPLITS,
+    затем прочие внешние по алфавиту). train никогда не оценивается (R11)."""
+    if arg:
+        return [s.strip() for s in arg.split(",") if s.strip()]
+    have = set(map(str, have))
+    present = [s for s in EVAL_SPLITS if s in have]
+    extra = sorted(s for s in have if s not in EVAL_SPLITS and s != "train")
+    return present + extra
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="FD-19: единая оценка моделей (R11).")
     ap.add_argument("--dataset", default=str(IN_DATASET))
@@ -90,6 +102,16 @@ def main() -> int:
     ap.add_argument("--figdir", default=str(FIG_DIR))
     ap.add_argument("--n_boot", type=int, default=1000)
     ap.add_argument("--seed", type=int, default=42)
+    ap.add_argument("--threshold_fixed", type=float, default=None,
+                    help="FD-39: единый порог для всех моделей вместо подбора "
+                         "по val (нужен для внешних наборов без сплита val).")
+    ap.add_argument("--splits", default="",
+                    help="FD-39: сплиты через запятую. По умолчанию: EVAL_SPLITS, "
+                         "присутствующие в данных, + все прочие сплиты данных.")
+    ap.add_argument("--drop_empty", action="store_true",
+                    help="FD-39: отбросить строки с пустыми diff_code/doc_old "
+                         "(судить нечего; иначе метрики external считаются "
+                         "на временном отфильтрованном parquet).")
     args = ap.parse_args()
 
     if not args.pred:
@@ -104,6 +126,23 @@ def main() -> int:
     if missing:
         print(f"В датасете нет колонок: {missing}")
         return 2
+    n_truth_total = int(len(truth))
+    dropped_empty = 0
+    dropped_by_split: dict[str, int] = {}
+    if args.drop_empty:
+        for col in ("diff_code", "doc_old"):
+            if col not in truth.columns:
+                print(f"--drop_empty: в датасете нет колонки {col}")
+                return 2
+        empty_mask = ((truth["diff_code"].fillna("").astype(str).str.strip() == "")
+                      | (truth["doc_old"].fillna("").astype(str).str.strip() == ""))
+        dropped_empty = int(empty_mask.sum())
+        if dropped_empty:
+            dropped_by_split = (truth.loc[empty_mask, "split"]
+                                .astype(str).value_counts().to_dict())
+            print(f"WARNING: --drop_empty отброшено {dropped_empty}/{n_truth_total} "
+                  f"строк с пустыми diff/doc {dropped_by_split} (судить нечего)")
+            truth = truth.loc[~empty_mask].copy().reset_index(drop=True)
 
     models: dict[str, pd.DataFrame] = {}
     for raw in args.pred:
@@ -118,9 +157,14 @@ def main() -> int:
     metrics: dict = {
         "dataset": str(ds_path),
         "dataset_rows": int(len(truth)),
+        "dataset_rows_total": n_truth_total,
+        "dropped_empty": dropped_empty,
+        "dropped_empty_by_split": dropped_by_split,
+        "drop_empty": bool(args.drop_empty),
         "n_boot": int(args.n_boot),
         "seed": int(args.seed),
-        "threshold_from": "val real rows (max F1), per model",
+        "threshold_from": ("fixed" if args.threshold_fixed is not None
+                           else "val real rows (max F1), per model"),
         "splits_separate_no_averaging": True,
         "built_at": datetime.now(timezone.utc).isoformat(),
         "models": {},
@@ -148,12 +192,20 @@ def main() -> int:
             thr = pick_threshold_f1(yv, sv)
         print(f"[{name}] порог по val (n={len(yv)}, pos={int(yv.sum()) if len(yv) else 0}): {thr:.4f}")
 
+        if args.threshold_fixed is not None:
+            thr = float(args.threshold_fixed)
+            print(f"[{name}] FD-39: фиксированный порог вместо val: {thr:.4f}")
+
         model_entry: dict = {"threshold_val": float(thr),
                              "n_overlap": int(len(merged)),
                              "n_missing": n_missing,
                              "has_type_pred": bool(has_type),
                              "splits": {}}
-        for split in EVAL_SPLITS:
+        if args.splits:
+            splits = resolve_splits(set(), args.splits)
+        else:
+            splits = resolve_splits(set(merged["split"].astype(str).unique()), "")
+        for split in splits:
             sub = merged.loc[merged["split"] == split]
             model_entry["splits"][split] = {}
             for group in EVAL_GROUPS:

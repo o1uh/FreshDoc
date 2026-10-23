@@ -115,9 +115,9 @@ def test_cli_end_to_end_full(tmp_path, monkeypatch):
 
 
 def test_cli_end_to_end_subset_no_val(tmp_path, monkeypatch):
-    """M3-подобный сабсет (только test_real+gold): пустые срезы — nan, код 0."""
+    """M3-подобный сабсет (только test_real+gold): оцениваются только
+    присутствующие в пересечении сплиты (FD-39 fix resolve_splits)."""
     import json
-    import math
     truth_path = tmp_path / "truth.parquet"
     _cli_truth().to_parquet(truth_path, index=False)
     sub = _cli_truth().loc[_cli_truth()["split"].isin(["test_real", "gold"]), ["pair_id"]].copy()
@@ -128,10 +128,10 @@ def test_cli_end_to_end_subset_no_val(tmp_path, monkeypatch):
     assert _run_cli(monkeypatch, truth_path, f"m3={pred_path}", out_m, out_t, figdir) == 0
     rep = json.loads(out_m.read_text(encoding="utf-8"))
     assert rep["models"]["m3"]["threshold_val"] == 0.5
-    val_all = rep["models"]["m3"]["splits"]["val"]["all"]
-    assert val_all["n"] == 0 and math.isnan(val_all["f1"])
-    ts = rep["models"]["m3"]["splits"]["test_synth"]["all"]
-    assert ts["n"] == 0 and math.isnan(ts["pr_auc"])
+    assert set(rep["models"]["m3"]["splits"]) == {"test_real", "gold"}
+    flat = pd.read_csv(out_t)
+    assert set(flat["split"].unique()) <= {"test_real", "gold",
+                                           "test_real_subset", "gold_subset"}
 
 
 def test_eval_splits_and_groups_lists():

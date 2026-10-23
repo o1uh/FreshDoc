@@ -1,0 +1,13 @@
+id,label,stale_statement,why
+go228,C,,interface{} to any is alias with identical behavior
+go229,C,,extracted masking helper with no behavior change
+go230,B,,empty string now resets template which is undocumented
+go231,C,,removing named return does not change documented behavior
+go232,C,,removing named return does not change documented behavior
+go233,C,,internal params capacity growth does not affect documented routing
+go234,C,,switch to getTyped preserves documented return semantics
+go235,C,,condition refactor preserves documented Hijacker implementation
+go236,C,,warning URL change does not affect documented QUIC behavior
+go237,C,,Sprintf to Fprintf refactor with identical output
+go238,C,,key type widening is visible in signature and doc stays true
+go239,C,,removing named return does not change documented behavior

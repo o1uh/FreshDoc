@@ -1,0 +1,13 @@
+id,label,stale_statement,why
+go120,C,,behavior unchanged only refactored to generic helper
+go121,C,,only named return removed behavior unchanged
+go122,B,,new HiddenDefaultCmd behavior not mentioned in doc
+go123,C,,key widened but generic doc statement stays true
+go124,C,,only log wording changed from interface to any
+go125,C,,only completion help text formatting changed
+go126,C,,only json implementation switched doc stays true
+go127,C,,only internal type conversion added
+go128,C,,only internal template storage refactored
+go129,C,,only internal slice reset added
+go130,C,,equivalent Replace to ReplaceAll refactor
+go131,D,,need regexp definition to verify dash-only claim

@@ -1,0 +1,13 @@
+id,label,stale_statement,why
+go000,C,,doc does not mention key type so still true
+go001,C,,internal constant replaces literal without behavior change
+go002,C,,generic executes statement still covers extra init
+go003,C,,doc does not mention key type so still true
+go004,C,,copy safety claim still holds after internal reset
+go005,C,,backoff capping logic unchanged only refactored
+go006,C,,implements claim still true guard only avoids panic
+go007,A,as completed by file selection,function now returns nil without marking
+go008,C,,doc does not mention key type so still true
+go009,C,,warning URL change does not affect documented behavior
+go010,C,,named return removal does not affect documented value
+go011,A,"with custom filePrepender, filePostpender, and linkHandler.",filePostpender parameter removed but doc still claims it

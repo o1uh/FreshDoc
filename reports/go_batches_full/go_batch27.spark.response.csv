@@ -1,0 +1,13 @@
+id,label,stale_statement,why
+go324,B,,panic replaced by Error plus Abort not documented
+go325,C,,generic content-type mapping still accurate
+go326,C,,generic yaml-output description still holds
+go327,C,,named return removal does not change behavior
+go328,C,,SplitN to Cut is equivalent refactoring
+go329,C,,usage string source change not covered by doc
+go330,C,,explicit Server struct preserves described behavior
+go331,C,,template field change not detailed in doc
+go332,C,,encoder swap preserves described encoding behavior
+go333,C,,zero to named constant preserves generic Value contract
+go334,C,,unexported to exported displayName preserves path behavior
+go335,C,,FlagSet name source change not covered by doc

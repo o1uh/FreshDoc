@@ -407,7 +407,7 @@ class _TinyBackbone(torch.nn.Module):
 
     def forward(self, input_ids=None, attention_mask=None):
         b, n = input_ids.shape
-        hs = torch.randn(b, n, self._hidden)
+        hs = torch.randn(b, n, self._hidden, device=input_ids.device)
         return type("O", (), {"last_hidden_state": hs})()
 
 
