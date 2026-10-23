@@ -74,7 +74,7 @@
 
 ```bash
 .venv/Scripts/python.exe scripts/build_external.py --jit_types Param,Return,Summary \
-  --go_csv data/processed/go_full381.csv --go_consensus reports/go_full381_human.csv \
+  --go_csv data/processed/go_full381.csv --go_consensus reports/go_full381_consensus.csv \
   --out data/processed/external_all.parquet   # метки Go = консенсус (go_silver_consensus)
 ```
 

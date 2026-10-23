@@ -207,7 +207,7 @@ def main() -> int:
                         (~combined["gemini"].isin(bmap))).sum())
         if n_drop_d:
             print(f"WARNING: kappa_bin исключает {n_drop_d} строк с D "
-                  f"(бинарная шкала A/B→1, C→0; D — не консенсус)")
+                  f"(бинарная шкала A/B->1, C->0; D — не консенсус)")
         pairs = [(bmap[s], bmap[g]) for s, g in
                  zip(combined["spark"], combined["gemini"]) if s in bmap and g in bmap]
         kb = (cohen_kappa_score([p[0] for p in pairs], [p[1] for p in pairs], labels=[0, 1])
