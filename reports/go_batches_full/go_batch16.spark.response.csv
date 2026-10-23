@@ -1,0 +1,13 @@
+id,label,stale_statement,why
+go192,C,,only slice element type changed while generic array description still holds
+go193,C,,internal bash flag detail does not affect documented conditions
+go194,C,,loop syntax modernized with identical concatenation behavior
+go195,C,,named return removed with identical return behavior
+go196,C,,key type widened but generic key description still holds
+go197,C,,octal literal restyled with identical permissions
+go198,C,,warning URL changed with identical listening behavior
+go199,C,,generic negotiate description still covers added protobuf case
+go200,C,,return type and helpers changed with identical name lookup
+go201,C,,condition extracted to helper with identical no-deadline case
+go202,C,,type conversion added with identical setter behavior
+go203,C,,slice element type changed while generic description still holds

@@ -1,0 +1,13 @@
+id,label,stale_statement,why
+go168,B,,empty string now resets template to nil which doc does not mention
+go169,C,,pure refactor to generic helper with same behavior
+go170,C,,generic doc still covers additional YAML content type
+go171,C,,internal completion type change does not affect documented behavior
+go172,C,,SplitN change is behavior preserving optimization
+go173,C,,help on NotRunnable is internal error handling detail for generic doc
+go174,C,,atomic load refactor preserves returned mode
+go175,C,,added file close is resource cleanup without doc impact
+go176,C,,whitespace only change in completion help text
+go177,C,,pure refactor to generic helper with same behavior
+go178,C,,switch of JSON backend preserves documented marshal behavior
+go179,C,,extra version flag init is internal help detail

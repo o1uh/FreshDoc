@@ -1,0 +1,13 @@
+id,label,stale_statement,why
+go096,C,,internal buffer allocation simplified with no observable behavior change
+go097,C,,only help text capitalization and whitespace with documented conditions unchanged
+go098,C,,named return removed and loop optimized with marshaling behavior unchanged
+go099,C,,ioutil to io swap with identical read and bind behavior
+go100,C,,http.Serve call wrapped in http.Server with same blocking unix socket behavior
+go101,C,,blank line removal only with no behavior change
+go102,C,,added GroupID assignment is internal wiring with documented add conditions unchanged
+go103,C,,removed unused constant with middleware behavior unchanged
+go104,C,,unexported to exported name call with same returned inherited flags
+go105,C,,map capacity hint added with binding behavior unchanged
+go106,C,,constant rename with same written TOML content type
+go107,B,,new already-written error condition not mentioned in minimal interface delegation doc

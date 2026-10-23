@@ -1,0 +1,382 @@
+id,label,stale_statement,why
+go000,C,,doc does not mention key type so still true
+go001,C,,internal constant replaces literal without behavior change
+go002,C,,generic executes statement still covers extra init
+go003,C,,doc does not mention key type so still true
+go004,C,,copy safety claim still holds after internal reset
+go005,C,,backoff capping logic unchanged only refactored
+go006,C,,implements claim still true guard only avoids panic
+go007,A,as completed by file selection,function now returns nil without marking
+go008,C,,doc does not mention key type so still true
+go009,C,,warning URL change does not affect documented behavior
+go010,C,,named return removal does not affect documented value
+go011,A,"with custom filePrepender, filePostpender, and linkHandler.",filePostpender parameter removed but doc still claims it
+go012,A,"2- c has no subcommands (to avoid creating one),",условие отсутствия сабкоманд стало условным и зависит от args
+go013,B,,добавлен параметр opts для настройки Engine не отражён в godoc
+go014,C,,замена ioutil.ReadFile на os.ReadFile не меняет поведение
+go015,B,,добавлен параметр filePostpender не отражён в godoc
+go016,C,,замена ручного копирования на maps.Clone не меняет поведение
+go017,C,,удаление именованного возврата не меняет поведение
+go018,C,,изменён только текст справки zsh без изменения условий godoc
+go019,C,,замена на safeInt8 не меняет задокументированное поведение
+go020,B,,тип ключа расширен до any без отражения в godoc
+go021,B,,добавлена поддержка conf.Skip не отражённая в godoc
+go022,C,,перевод ошибок на stderr не противоречит краткому godoc
+go023,C,,удаление неиспользуемой константы не меняет поведение
+go024,C,,loop fusion preserves levenshtein behavior
+go025,C,,local variable rename only
+go026,C,,test check extracted to helper purpose unchanged
+go027,C,,internal lookup extended purpose unchanged
+go028,C,,generic doc still covers new BSON case
+go029,C,,refactor to generic helper preserves behavior
+go030,C,,directive type renamed doc mentions no type
+go031,C,,local variable rename only
+go032,C,,internal route sync leaves documented behavior unchanged
+go033,C,,named return removed behavior unchanged
+go034,C,,extra state restore keeps re-enter semantics
+go035,C,,key type widened doc specifies no key type
+go036,C,,wrapping Usage and Help with CheckErr keeps documented purpose
+go037,B,,new error return adds important contract missing in doc
+go038,C,,generic format statement still covers added BSON case
+go039,C,,nil guard is internal robustness still executes pending handlers
+go040,C,,explicit http.Server matches documented attach and serve behavior
+go041,C,,removing named return keeps return type and meaning
+go042,C,,widening key to any keeps documented return for key
+go043,C,,helper refactor preserves documented return semantics
+go044,A,marks the specified positional argument,body stubbed to return nil so no marking occurs
+go045,C,,alias CompletionFunc keeps same signature and same results
+go046,C,,CheckErr preserves documented terminate and print error
+go047,C,,storage change still returns version template for command
+go048,C,,чисто синтаксическое снятие именованного результата без смены поведения
+go049,C,,рефакторинг на getTyped сохраняет документированный возврат без новых условий
+go050,C,,чисто синтаксическое снятие именованного результата без смены поведения
+go051,C,,внутренний рефакторинг логирования и стека без смены заявленного назначения
+go052,C,,смена имени FlagSet не затрагивает утверждение о возврате локального набора
+go053,C,,рефакторинг на getTyped сохраняет документированный возврат без новых условий
+go054,C,,замена конкатенации на += семантически идентична и не меняет workaround
+go055,C,,эквивалентная перезапись разбора bracket-нотации с тем же результатом
+go056,C,,смена displayName на DisplayName не затрагивает утверждение о возврате набора
+go057,C,,добавление проверки ошибки Usage не меняет утверждение о возврате строки
+go058,C,,добавление ReadHeaderTimeout не опровергает описание запуска TLS-сервера
+go059,B,,замена panic на возврат ошибки из WriteJSON важна но не описана в godoc
+go060,C,,расширение string в any не противоречит формулировке про key
+go061,C,,удаление имени возвращаемого значения не меняет утверждения godoc
+go062,C,,расширение string в any не делает утверждение про key ложным
+go063,C,,удаление panic-проверки GroupID не опровергает общее утверждение про adds
+go064,C,,подстановка displayName не противоречит утверждению про full usage
+go065,C,,расширение string в any не противоречит формулировке про key
+go066,C,,расширение string в any не противоречит формулировке про key
+go067,C,,удаление имени возвращаемого значения не меняет утверждения godoc
+go068,C,,удаление имени возвращаемого значения не меняет утверждения godoc
+go069,C,,расширение string в any не противоречит формулировке про key
+go070,C,,переход на getTyped сохраняет утверждение про возврат unsigned integer
+go071,B,,добавлен важный случай доверия unix-сокетам без проверки RemoteIP
+go072,C,,equivalent condition using named constant
+go073,C,,removal of named return keeps behavior
+go074,C,,refactor to generic helper preserves semantics
+go075,C,,key widened to any while doc stays generic
+go076,C,,extraction to displayName helper preserves behavior
+go077,C,,Replace with -1 equals ReplaceAll
+go078,C,,internal switch to exported accessor with same meaning
+go079,C,,numeric range replaced by equivalent http constants
+go080,C,,default help behavior description remains accurate
+go081,C,,whitespace-only change
+go082,B,,new optional perm argument adds undocumented capability
+go083,C,,key widened to any while doc stays generic
+go084,C,,internal FlagSet name source changed but doc makes no name claim
+go085,C,,pure refactor to generic helper with same observable behavior
+go086,C,,generic copy promise still holds and lists no fields
+go087,C,,pure constant renames with no behavior change
+go088,C,,pure refactor to generic helper with same observable behavior
+go089,B,,now returns ErrNotSupported instead of panicking when unsupported
+go090,C,,key type widened but doc states no key type
+go091,C,,named to unnamed return is cosmetic with same behavior
+go092,C,,still serves HTTPS the same way despite internal Server construction
+go093,C,,output stream changed but doc states no stream
+go094,C,,added internal timeout but doc claims remain true
+go095,C,,key type widened but doc states no key type
+go096,C,,internal buffer allocation simplified with no observable behavior change
+go097,C,,only help text capitalization and whitespace with documented conditions unchanged
+go098,C,,named return removed and loop optimized with marshaling behavior unchanged
+go099,C,,ioutil to io swap with identical read and bind behavior
+go100,C,,http.Serve call wrapped in http.Server with same blocking unix socket behavior
+go101,C,,blank line removal only with no behavior change
+go102,C,,added GroupID assignment is internal wiring with documented add conditions unchanged
+go103,C,,removed unused constant with middleware behavior unchanged
+go104,C,,unexported to exported name call with same returned inherited flags
+go105,C,,map capacity hint added with binding behavior unchanged
+go106,C,,constant rename with same written TOML content type
+go107,B,,new already-written error condition not mentioned in minimal interface delegation doc
+go108,C,,обрезка описания после табуляции уточняет сверку но общее утверждение остается верным
+go109,C,,расширение ключа string в any не опровергает возврат карты строк
+go110,C,,добавление шортката -v при свободном имени не опровергает базовые утверждения
+go111,C,,внутренняя замена присваивания engine не меняет описанные дефолты
+go112,C,,переход с глобальных на Root-флаги не опровергает общее описание
+go113,C,,удалена только пустая строка без изменения поведения
+go114,B,,добавлен важный дефолт ReadHeaderTimeout отсутствующий в списке godoc
+go115,C,,рефакторинг чтения строк стека сохраняет формат результата
+go116,C,,смена Name на displayName меняет только текст usage не описанный в godoc
+go117,C,,рефакторинг детекта broken pipe сохраняет внешнее поведение мидлвари
+go118,C,,замена конкатенации на WriteString не меняет формат ошибки
+go119,C,,перестановка инициализации completion не меняет утверждение executes the command
+go120,C,,behavior unchanged only refactored to generic helper
+go121,C,,only named return removed behavior unchanged
+go122,B,,new HiddenDefaultCmd behavior not mentioned in doc
+go123,C,,key widened but generic doc statement stays true
+go124,C,,only log wording changed from interface to any
+go125,C,,only completion help text formatting changed
+go126,C,,only json implementation switched doc stays true
+go127,C,,only internal type conversion added
+go128,C,,only internal template storage refactored
+go129,C,,only internal slice reset added
+go130,C,,equivalent Replace to ReplaceAll refactor
+go131,D,,need regexp definition to verify dash-only claim
+go132,C,,смена displayName на DisplayName не меняет описанного поведения
+go133,C,,конверсия в tmpl не меняет утверждений godoc
+go134,C,,добавление внутренней аннотации не меняет описанного поведения
+go135,C,,смена типа map не затрагивает утверждений о копии для goroutine
+go136,C,,атомарное чтение не меняет утверждений о debug-режиме
+go137,B,,смена zsh-аннотации на Bash-аннотацию расширяет поддержку оболочек без ложных утверждений
+go138,C,,переименование dunno в dunnoBytes не меняет утверждения о trim
+go139,C,,добавление обрезки по newline это внутренняя правка формата completions
+go140,C,,удаление имени возвращаемого значения не меняет поведения
+go141,C,,удаление имени возвращаемого значения не меняет поведения
+go142,C,,замена == на commandNameMatches без внешней семантики не опровергает godoc
+go143,C,,переименование константы аннотации не меняет описанного поведения
+go144,C,,nil guard preserves documented all-handlers contract
+go145,C,,generic output description still holds after synopsis change
+go146,B,,key type widened from string to any not reflected in doc
+go147,C,,stderr change does not affect documented return contract
+go148,C,,typo fix does not affect equivalence claim
+go149,C,,test detection refactor preserves execute behavior
+go150,C,,marshal backend swap preserves documented behavior
+go151,C,,condition rewrite is logically equivalent with no behavior change
+go152,C,,header source moved to struct field but generic doc still true
+go153,C,,display name tweak does not affect add-command contract
+go154,A,It will abort the request with HTTP 400 if any error occurs.,MaxBytesError now aborts with 413 not 400
+go155,C,,extra YAML MIME still fits generic negotiate description
+go156,C,,замена на именованный тип без смены поведения
+go157,C,,внутренний рефактор вывода без смены назначения
+go158,C,,расширение типа ключа отражено в сигнатуре без противоречия godoc
+go159,C,,правка путей в help-тексте не затрагивает условия из godoc
+go160,C,,добавление блокировки усиливает заявленную безопасность без смены контракта
+go161,C,,рефактор на getTyped без смены возвращаемого значения
+go162,C,,рефактор на getTyped без смены возвращаемого значения
+go163,C,,удаление пустой строки из Debug не опровергает общее утверждение godoc
+go164,C,,изменение вызова helper не меняет описанную генерацию страниц
+go165,C,,переименование переменных аннотаций без смены логики
+go166,C,,убирание имени возвращаемого значения без смены семантики
+go167,C,,правка zsh-подсказки не затрагивает условия бездействия из godoc
+go168,B,,empty string now resets template to nil which doc does not mention
+go169,C,,pure refactor to generic helper with same behavior
+go170,C,,generic doc still covers additional YAML content type
+go171,C,,internal completion type change does not affect documented behavior
+go172,C,,SplitN change is behavior preserving optimization
+go173,C,,help on NotRunnable is internal error handling detail for generic doc
+go174,C,,atomic load refactor preserves returned mode
+go175,C,,added file close is resource cleanup without doc impact
+go176,C,,whitespace only change in completion help text
+go177,C,,pure refactor to generic helper with same behavior
+go178,C,,switch of JSON backend preserves documented marshal behavior
+go179,C,,extra version flag init is internal help detail
+go180,C,,warning URL text changed only and documented purpose unchanged
+go181,C,,internal helper rename with identical documented return contract
+go182,C,,wrapped ErrHelp handling still matches generic executes statement
+go183,C,,context propagation fix outside documented help-command conditions
+go184,C,,env description toggle is detail beyond generic hidden-command statement
+go185,C,,fix aligns code with documented Err output so doc stays correct
+go186,C,,permission refactor preserves same documented upload behavior
+go187,C,,doc never specifies output stream so remains accurate
+go188,C,,whitespace-only change with documented logging behavior unchanged
+go189,C,,lock placement fix preserves documented safe-copy guarantee
+go190,C,,key type widened to any still covered by generic key phrasing
+go191,C,,named return removal with no change to documented return value
+go192,C,,only slice element type changed while generic array description still holds
+go193,C,,internal bash flag detail does not affect documented conditions
+go194,C,,loop syntax modernized with identical concatenation behavior
+go195,C,,named return removed with identical return behavior
+go196,C,,key type widened but generic key description still holds
+go197,C,,octal literal restyled with identical permissions
+go198,C,,warning URL changed with identical listening behavior
+go199,C,,generic negotiate description still covers added protobuf case
+go200,C,,return type and helpers changed with identical name lookup
+go201,C,,condition extracted to helper with identical no-deadline case
+go202,C,,type conversion added with identical setter behavior
+go203,C,,slice element type changed while generic description still holds
+go204,C,,уточнено условие дедупликации состав локального FlagSet по смыслу тот же
+go205,C,,переименована переменная цикла логика поиска хендлера не изменилась
+go206,C,,перенос хранения в root не меняет назначение регистрации
+go207,C,,замена литерала константой поведение флага help то же
+go208,C,,замена литерала константой расширения имя файла то же
+go209,C,,исправлен пропуск nil-хендлеров выполнение цепочки соответствует доку
+go210,C,,добавлен учет существующего поля DisableAutoGenTag назначение генератора то же
+go211,C,,смена ресивера на значение семантику возврата обернутой ошибки не меняет
+go212,C,,убрано имя результата возвращаемый тип и смысл те же
+go213,C,,добавлены алиас и обрезка описаний назначение скрытой команды то же
+go214,C,,замена сигнатуры именованным типом поведение поиска то же
+go215,C,,смена displayName на DisplayName состав локального набора тот же
+go216,C,,внутренняя ленивая инициализация не меняет соответствие http.Handler
+go217,C,,внутренний аргумент allocateContext не меняет возвращаемые engine и context
+go218,C,,рефакторинг в helper не меняет генерацию файла
+go219,C,,убрано только имя возвращаемого значения без смены поведения
+go220,C,,переименование displayName в DisplayName не меняет обновление parentsPflags
+go221,C,,расширение key до any не противоречит формулировке про key
+go222,C,,замена цикла эквивалентна а godoc не содержит утверждений
+go223,B,,добавлена валидация oneRequired-групп отсутствующая в перечислении godoc
+go224,C,,экспорт InitDefaultCompletionCmd не меняет выполнение команды
+go225,C,,расширение key до any не противоречит формулировке про key
+go226,C,,переход на getTyped сохраняет возврат integer по key
+go227,C,,переименование Whitelist в Allowlist не меняет разбор флагов
+go228,C,,interface{} to any is alias with identical behavior
+go229,C,,extracted masking helper with no behavior change
+go230,B,,empty string now resets template which is undocumented
+go231,C,,removing named return does not change documented behavior
+go232,C,,removing named return does not change documented behavior
+go233,C,,internal params capacity growth does not affect documented routing
+go234,C,,switch to getTyped preserves documented return semantics
+go235,C,,condition refactor preserves documented Hijacker implementation
+go236,C,,warning URL change does not affect documented QUIC behavior
+go237,C,,Sprintf to Fprintf refactor with identical output
+go238,C,,key type widening is visible in signature and doc stays true
+go239,C,,removing named return does not change documented behavior
+go240,C,,расширение шаблона группами не меняет смысл generic godoc
+go241,C,,перенос хранилища в глобальное с мьютексом не меняет назначение
+go242,C,,замена ручного расширения среза на append эквивалентна
+go243,C,,замена Replace на ReplaceAll эквивалентна
+go244,C,,добавление ErrAbortHandler не меняет контракт godoc
+go245,C,,переименование displayName в DisplayName без смены поведения
+go246,C,,удаление имени возвращаемого значения без смены поведения
+go247,C,,смена способа получения шаблонной функции внутренняя деталь
+go248,C,,замена Replace на ReplaceAll эквивалентна
+go249,C,,вынесение в MatchAll сохраняет логику проверки
+go250,C,,оптимизация ветки указателя без смены контракта
+go251,C,,вынос шаблона в константу без смены смысла godoc
+go252,C,,внутренняя замена json-библиотеки без смены описанного поведения
+go253,C,,смена имени FlagSet не затрагивает описанный возврат inherited-флагов
+go254,B,,расширен тип ключа с string до any без отражения в godoc
+go255,C,,рефакторинг на getTyped без смены описанного поведения
+go256,C,,рефакторинг на getTyped без смены описанного поведения
+go257,C,,внутренняя замена json-библиотеки без смены описанного поведения
+go258,C,,убрано именованное возвращаемое значение без смены поведения
+go259,C,,вызов через ресивер без смены описанного поиска команды
+go260,C,,добавлен defer Unlock без смены описанного сохранения пары
+go261,C,,внутренние правки completions без смены описанного назначения
+go262,C,,смена имени FlagSet не затрагивает описанную непередачу субкомандам
+go263,C,,внутренняя замена json-библиотеки без смены описанного поведения
+go264,B,,added variadic opts parameter not mentioned in godoc
+go265,C,,preallocation change preserves removal behavior
+go266,C,,refactor to early break preserves group logic
+go267,C,,help text addition does not affect stated no-op conditions
+go268,C,,internal delegation preserves file generation behavior
+go269,C,,generic description still covers empty string alias
+go270,C,,generic listing still covers added KeepOrder directive
+go271,C,,helper extraction preserves nil-on-missing-context behavior
+go272,C,,key widening still matches type-agnostic key phrase
+go273,C,,Cut refactor preserves Authorization masking behavior
+go274,C,,int-range loop is semantically identical iteration
+go275,C,,helper extraction preserves documented return contract
+go276,C,,удаление имени результата не меняет наблюдаемое поведение
+go277,C,,вынос генерации в helper не меняет утверждение godoc
+go278,C,,вынос проверки в hasRequestContext сохраняет условие nil
+go279,C,,ReplaceAll эквивалентен Replace с минус один
+go280,C,,добавление ReadHeaderTimeout не делает утверждения ложными
+go281,C,,удаление клампинга directive вне scope generic-утверждения
+go282,C,,замена interface на any семантически эквивалентна
+go283,C,,удаление имени результата не меняет наблюдаемое поведение
+go284,C,,передача maxParams внутренняя деталь без влияния на godoc
+go285,B,,добавлен panic при неизвестном GroupID отсутствующий в godoc
+go286,C,,учет SkipQueryString не опровергает generic-утверждение про config
+go287,C,,исправление Print на PrintErr приводит код в соответствие с godoc
+go288,C,,FlagSet name source is internal detail not mentioned in doc
+go289,C,,internal annotation constant rename with identical behavior
+go290,C,,loop variable rename with no behavior change
+go291,C,,exported wrapper type change preserves documented filesystem behavior
+go292,C,,new BSON case still covered by generic appropriate Binding wording
+go293,C,,method name capitalization is internal detail not mentioned in doc
+go294,C,,active-help filtering is internal detail beyond abstract doc scope
+go295,C,,added Content-Length header does not contradict custom ContentType claim
+go296,C,,FlagSet name source is internal detail not mentioned in doc
+go297,C,,error value change not described by generic executes the command doc
+go298,C,,removal of named return does not change documented return meaning
+go299,C,,refactor to helper preserves documented generation behavior
+go300,C,,completion function is internal detail and all godoc claims stay true
+go301,C,,godoc does not fix key type so widening string to any keeps it true
+go302,C,,bounds-check guard fixes implementation without changing documented result
+go303,C,,internal helper swap preserves documented map plus bool contract
+go304,C,,godoc does not fix key type so widening string to any keeps it true
+go305,C,,extra emptyStr arg leaves observable wrapper behavior unchanged
+go306,C,,GroupID assignment is internal detail and documented conditions unchanged
+go307,C,,stderr change concerns default impl detail not described in godoc
+go308,C,,annotation is internal metadata and documented no-op conditions unchanged
+go309,C,,extra init step does not falsify generic executes-the-command claim
+go310,C,,bare return to explicit return value is no-op refactor
+go311,C,,godoc does not fix key type so widening string to any keeps it true
+go312,C,,param name blanked but doc claims nothing about params
+go313,C,,return element type renamed but doc claims about purpose still hold
+go314,C,,internal condition extracted to helper with no behavior claim changed
+go315,B,,new display-name annotation path not mentioned though full-path claim still true
+go316,C,,pure reimplementation with same newline-joined output
+go317,C,,removed help-on-error branch not described in generic doc
+go318,C,,marshal backend swapped but marshal-and-write claim still true
+go319,C,,ioutil to io swap with identical stream-data behavior
+go320,C,,lock changed to defer with identical return contract
+go321,C,,added internal group check with no documented claim affected
+go322,C,,key widened from string to any but doc is type-agnostic
+go323,B,,new backslash escape and panic condition not mentioned though search claim still true
+go324,B,,panic replaced by Error plus Abort not documented
+go325,C,,generic content-type mapping still accurate
+go326,C,,generic yaml-output description still holds
+go327,C,,named return removal does not change behavior
+go328,C,,SplitN to Cut is equivalent refactoring
+go329,C,,usage string source change not covered by doc
+go330,C,,explicit Server struct preserves described behavior
+go331,C,,template field change not detailed in doc
+go332,C,,encoder swap preserves described encoding behavior
+go333,C,,zero to named constant preserves generic Value contract
+go334,C,,unexported to exported displayName preserves path behavior
+go335,C,,FlagSet name source change not covered by doc
+go336,B,,adds one-required-group behavior not mentioned in doc
+go337,C,,interface-to-any alias with no behavior change
+go338,B,,empty string now resets template without doc mention
+go339,C,,nil fallback preserves implements contract
+go340,C,,pure WriteString-to-Fprintf refactor with same output
+go341,C,,internal FlagSet name change not covered by doc
+go342,C,,key widened to any while generic doc stays true
+go343,C,,generic listing doc still covers new directives
+go344,C,,key widened to any while generic doc stays true
+go345,C,,key widened to any with unchanged return contract
+go346,C,,only warning URL text changed
+go347,C,,constant rename with no behavior change
+go348,C,,warning URL change only no doc claim affected
+go349,C,,equivalent ReplaceAll refactor with same behavior
+go350,C,,internal trimming and threshold change keeps purpose
+go351,C,,constant rename only with same behavior
+go352,C,,refactor to shared helper preserving documented format
+go353,C,,multi-value header join still fits generic description
+go354,C,,context defaulting keeps generic executes-command true
+go355,C,,generic helper refactor with same return contract
+go356,B,,new nil-body error condition missing from doc
+go357,C,,generic color description still covers 1xx white case
+go358,C,,quote-escaping fix keeps download behavior true
+go359,C,,locking and map source change keeps purpose true
+go360,C,,только удалено имя возвращаемого значения без изменения поведения
+go361,C,,только удалено имя возвращаемого значения без изменения поведения
+go362,C,,расширение типа ключа видно в сигнатуре и не противоречит godoc
+go363,B,,добавлен fallback при nil HTMLRender не описанный в godoc
+go364,C,,замена ручного приведения типа на getTyped без изменения поведения
+go365,C,,чистый рефакторинг с выделением переменной без изменения поведения
+go366,B,,изменено условие chmod только для новых каталогов без отражения в godoc
+go367,C,,замена литерала на константу без изменения поведения
+go368,B,,добавлено поле Usage для runnable-команд не описанное в godoc
+go369,A,"If user didn't specify the license, it returns Apache License 2.0.",дефолт изменен с apache на none
+go370,C,,внутренний рефакторинг передачи Headers без изменения поведения
+go371,C,,замена Replace на ReplaceAll без изменения поведения
+go372,C,,удаление именованного результата не меняет поведение
+go373,C,,явный false равен zero value поведение не меняется
+go374,C,,расширение типа ключа godoc тип не ограничивает
+go375,B,,добавлено новое условие ошибки при nil Template
+go376,C,,удаление именованного результата не меняет поведение
+go377,A,"tmpl executes the given template text on data, writing the result to w.",сигнатура больше не принимает w и data и не исполняет шаблон
+go378,C,,смена префикса ошибки не затрагивает утверждение о выполнении команды
+go379,C,,добавление fullPath улучшает копию не опровергая godoc
+go380,C,,замена displayName на DisplayName не меняет описанное поведение

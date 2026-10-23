@@ -1,0 +1,13 @@
+id,label,stale_statement,why
+go300,C,,completion function is internal detail and all godoc claims stay true
+go301,C,,godoc does not fix key type so widening string to any keeps it true
+go302,C,,bounds-check guard fixes implementation without changing documented result
+go303,C,,internal helper swap preserves documented map plus bool contract
+go304,C,,godoc does not fix key type so widening string to any keeps it true
+go305,C,,extra emptyStr arg leaves observable wrapper behavior unchanged
+go306,C,,GroupID assignment is internal detail and documented conditions unchanged
+go307,C,,stderr change concerns default impl detail not described in godoc
+go308,C,,annotation is internal metadata and documented no-op conditions unchanged
+go309,C,,extra init step does not falsify generic executes-the-command claim
+go310,C,,bare return to explicit return value is no-op refactor
+go311,C,,godoc does not fix key type so widening string to any keeps it true

@@ -1,0 +1,13 @@
+id,label,stale_statement,why
+go264,B,,added variadic opts parameter not mentioned in godoc
+go265,C,,preallocation change preserves removal behavior
+go266,C,,refactor to early break preserves group logic
+go267,C,,help text addition does not affect stated no-op conditions
+go268,C,,internal delegation preserves file generation behavior
+go269,C,,generic description still covers empty string alias
+go270,C,,generic listing still covers added KeepOrder directive
+go271,C,,helper extraction preserves nil-on-missing-context behavior
+go272,C,,key widening still matches type-agnostic key phrase
+go273,C,,Cut refactor preserves Authorization masking behavior
+go274,C,,int-range loop is semantically identical iteration
+go275,C,,helper extraction preserves documented return contract

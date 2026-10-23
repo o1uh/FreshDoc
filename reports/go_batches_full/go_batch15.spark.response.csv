@@ -1,0 +1,13 @@
+id,label,stale_statement,why
+go180,C,,warning URL text changed only and documented purpose unchanged
+go181,C,,internal helper rename with identical documented return contract
+go182,C,,wrapped ErrHelp handling still matches generic executes statement
+go183,C,,context propagation fix outside documented help-command conditions
+go184,C,,env description toggle is detail beyond generic hidden-command statement
+go185,C,,fix aligns code with documented Err output so doc stays correct
+go186,C,,permission refactor preserves same documented upload behavior
+go187,C,,doc never specifies output stream so remains accurate
+go188,C,,whitespace-only change with documented logging behavior unchanged
+go189,C,,lock placement fix preserves documented safe-copy guarantee
+go190,C,,key type widened to any still covered by generic key phrasing
+go191,C,,named return removal with no change to documented return value

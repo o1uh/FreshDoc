@@ -1,0 +1,13 @@
+id,label,stale_statement,why
+go348,C,,warning URL change only no doc claim affected
+go349,C,,equivalent ReplaceAll refactor with same behavior
+go350,C,,internal trimming and threshold change keeps purpose
+go351,C,,constant rename only with same behavior
+go352,C,,refactor to shared helper preserving documented format
+go353,C,,multi-value header join still fits generic description
+go354,C,,context defaulting keeps generic executes-command true
+go355,C,,generic helper refactor with same return contract
+go356,B,,new nil-body error condition missing from doc
+go357,C,,generic color description still covers 1xx white case
+go358,C,,quote-escaping fix keeps download behavior true
+go359,C,,locking and map source change keeps purpose true

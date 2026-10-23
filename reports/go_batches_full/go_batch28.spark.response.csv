@@ -1,0 +1,13 @@
+id,label,stale_statement,why
+go336,B,,adds one-required-group behavior not mentioned in doc
+go337,C,,interface-to-any alias with no behavior change
+go338,B,,empty string now resets template without doc mention
+go339,C,,nil fallback preserves implements contract
+go340,C,,pure WriteString-to-Fprintf refactor with same output
+go341,C,,internal FlagSet name change not covered by doc
+go342,C,,key widened to any while generic doc stays true
+go343,C,,generic listing doc still covers new directives
+go344,C,,key widened to any while generic doc stays true
+go345,C,,key widened to any with unchanged return contract
+go346,C,,only warning URL text changed
+go347,C,,constant rename with no behavior change

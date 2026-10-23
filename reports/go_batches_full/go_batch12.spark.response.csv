@@ -1,0 +1,13 @@
+id,label,stale_statement,why
+go144,C,,nil guard preserves documented all-handlers contract
+go145,C,,generic output description still holds after synopsis change
+go146,B,,key type widened from string to any not reflected in doc
+go147,C,,stderr change does not affect documented return contract
+go148,C,,typo fix does not affect equivalence claim
+go149,C,,test detection refactor preserves execute behavior
+go150,C,,marshal backend swap preserves documented behavior
+go151,C,,condition rewrite is logically equivalent with no behavior change
+go152,C,,header source moved to struct field but generic doc still true
+go153,C,,display name tweak does not affect add-command contract
+go154,A,It will abort the request with HTTP 400 if any error occurs.,MaxBytesError now aborts with 413 not 400
+go155,C,,extra YAML MIME still fits generic negotiate description

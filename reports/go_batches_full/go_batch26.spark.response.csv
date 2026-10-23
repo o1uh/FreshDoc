@@ -1,0 +1,13 @@
+id,label,stale_statement,why
+go312,C,,param name blanked but doc claims nothing about params
+go313,C,,return element type renamed but doc claims about purpose still hold
+go314,C,,internal condition extracted to helper with no behavior claim changed
+go315,B,,new display-name annotation path not mentioned though full-path claim still true
+go316,C,,pure reimplementation with same newline-joined output
+go317,C,,removed help-on-error branch not described in generic doc
+go318,C,,marshal backend swapped but marshal-and-write claim still true
+go319,C,,ioutil to io swap with identical stream-data behavior
+go320,C,,lock changed to defer with identical return contract
+go321,C,,added internal group check with no documented claim affected
+go322,C,,key widened from string to any but doc is type-agnostic
+go323,B,,new backslash escape and panic condition not mentioned though search claim still true

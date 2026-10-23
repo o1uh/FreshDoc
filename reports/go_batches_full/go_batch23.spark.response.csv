@@ -1,0 +1,13 @@
+id,label,stale_statement,why
+go276,C,,удаление имени результата не меняет наблюдаемое поведение
+go277,C,,вынос генерации в helper не меняет утверждение godoc
+go278,C,,вынос проверки в hasRequestContext сохраняет условие nil
+go279,C,,ReplaceAll эквивалентен Replace с минус один
+go280,C,,добавление ReadHeaderTimeout не делает утверждения ложными
+go281,C,,удаление клампинга directive вне scope generic-утверждения
+go282,C,,замена interface на any семантически эквивалентна
+go283,C,,удаление имени результата не меняет наблюдаемое поведение
+go284,C,,передача maxParams внутренняя деталь без влияния на godoc
+go285,B,,добавлен panic при неизвестном GroupID отсутствующий в godoc
+go286,C,,учет SkipQueryString не опровергает generic-утверждение про config
+go287,C,,исправление Print на PrintErr приводит код в соответствие с godoc

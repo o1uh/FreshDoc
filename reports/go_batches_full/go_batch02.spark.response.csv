@@ -1,0 +1,13 @@
+id,label,stale_statement,why
+go024,C,,loop fusion preserves levenshtein behavior
+go025,C,,local variable rename only
+go026,C,,test check extracted to helper purpose unchanged
+go027,C,,internal lookup extended purpose unchanged
+go028,C,,generic doc still covers new BSON case
+go029,C,,refactor to generic helper preserves behavior
+go030,C,,directive type renamed doc mentions no type
+go031,C,,local variable rename only
+go032,C,,internal route sync leaves documented behavior unchanged
+go033,C,,named return removed behavior unchanged
+go034,C,,extra state restore keeps re-enter semantics
+go035,C,,key type widened doc specifies no key type
