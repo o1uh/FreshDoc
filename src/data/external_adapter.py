@@ -85,12 +85,13 @@ def generic_pair(
     label_source: str,
     split: str,
     doc_new: str = "",
+    sig_old: str = "",
 ) -> dict[str, Any]:
     """Собрать строку схемы R1 из сырых текстов (без фильтров R1)."""
     code_old = code_old or ""
     code_new = code_new or ""
     doc_old = doc_old or ""
-    sig_old = java_sig_heuristic(code_old)
+    sig_old = sig_old or java_sig_heuristic(code_old)
     diff_code = raw_unified_diff(code_old, code_new)
     n_src_lines = len(code_old.splitlines()) + len(doc_old.splitlines())
     return {
@@ -268,4 +269,5 @@ def go_record_to_pair(row: dict[str, Any], proxy_label: int) -> dict[str, Any]:
         label_source="go_silver_proxy",
         split="ext_go_silver",
         doc_new="",
+        sig_old=str(row.get("sig_old") or ""),
     )

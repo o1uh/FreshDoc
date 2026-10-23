@@ -20,8 +20,21 @@ from evaluate import resolve_splits  # noqa: E402
 from m3_judge import cmd_export_external  # noqa: E402
 from src.data.external_adapter import (  # noqa: E402
     cocc_code_has_docstring_block,
+    go_record_to_pair,
     jit_record_to_pair,
 )
+
+
+def test_go_keeps_clean_sig_old_without_brace():
+    row = {"repo": "gin", "symbol": "Context.Get",
+           "commit_new": "c1",
+           "code_old": "func (c *Context) Get(key string) int {\n\treturn 1\n}",
+           "code_new": "func (c *Context) Get(key any) int {\n\treturn 1\n}",
+           "doc_old": "Get returns a value.",
+           "sig_old": "func (c *Context) Get(key string) int"}
+    pair = go_record_to_pair(row, 0)
+    assert pair["sig_old"] == "func (c *Context) Get(key string) int"
+    assert not pair["sig_old"].endswith("{")
 
 
 # ---------- build_external: D-консенсус, хэши ----------

@@ -20,8 +20,6 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-import gdown  # noqa: E402
-
 
 def load_ids(path: Path) -> list[tuple[str, str]]:
     """Пары (fileId, имя) из ids-файла; пустые строки пропускаются."""
@@ -57,6 +55,10 @@ def main() -> int:
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
+    try:
+        import gdown
+    except ImportError:
+        raise SystemExit("Нет модуля gdown: pip install gdown (нужен только для докачки CoCC)")
     have = {p.name for p in out.glob("*.py")}
     print(f"Всего id: {len(pairs)}, уже на диске: {len(have)}, цель новых: {args.n}")
 

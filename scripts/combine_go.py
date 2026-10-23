@@ -13,7 +13,7 @@ reports/go_full381_disputes.csv (споры + тексты для ручного
 reports/go_full381_disputes_blind.csv (--export-blind: строго слепой файл споров:
 id,file,symbol,sig_old,diff_code,doc_old + пустые label/stale_statement/why;
 без прокси/меток/скоров),
-каппа Коэна (4-класс и бинарная A/B→1, C→0; строки с D из бинарной исключаются
+каппа Коэна (4-класс и бинарная A/B->1, C->0; строки с D из бинарной исключаются
 со счётчиком и WARNING).
 Порог согласия >= 0.7 — критерий приёмки, иначе ненулевой exit-код.
 Доля D у каждого судьи должна быть < 10%, иначе WARNING.
@@ -200,8 +200,10 @@ def main() -> int:
             print(f"доля D у {tag}: {frac:.3f} ({n_d}/{len(combined)})")
     try:
         from sklearn.metrics import cohen_kappa_score
-        k4 = cohen_kappa_score(combined["spark"].tolist(),
-                              combined["gemini"].tolist(), labels=list(VALID))
+        classes_present = set(combined["spark"].tolist()) | set(combined["gemini"].tolist())
+        k4 = (cohen_kappa_score(combined["spark"].tolist(),
+                               combined["gemini"].tolist(), labels=list(VALID))
+              if len(classes_present) > 1 else float("nan"))
         bmap = {"A": 1, "B": 1, "C": 0}
         n_drop_d = int(((~combined["spark"].isin(bmap)) |
                         (~combined["gemini"].isin(bmap))).sum())
@@ -210,8 +212,9 @@ def main() -> int:
                   f"(бинарная шкала A/B->1, C->0; D — не консенсус)")
         pairs = [(bmap[s], bmap[g]) for s, g in
                  zip(combined["spark"], combined["gemini"]) if s in bmap and g in bmap]
+        labels_present = {p[0] for p in pairs} | {p[1] for p in pairs}
         kb = (cohen_kappa_score([p[0] for p in pairs], [p[1] for p in pairs], labels=[0, 1])
-              if pairs else float("nan"))
+              if len(labels_present) > 1 else float("nan"))
         print(f"spark-vs-gemini: n={len(combined)}, согласие {agree:.3f}, "
               f"kappa4={k4:.3f}, kappa_bin={kb:.3f}")
     except ImportError:
