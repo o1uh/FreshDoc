@@ -327,6 +327,10 @@ class ReplayMetrics:
     # Headline R12 counters above are unchanged; this split only explains them.
     atomic_fixes: int = 0
     delayed_fixes: int = 0
+    # DLC survival: observed flag->fix lead times and right-censored ages of
+    # still-open flags at the window end (pooled across projects for KM).
+    fix_times: list[float] = field(default_factory=list)
+    censored_times: list[float] = field(default_factory=list)
     timeline_samples: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
     section_histories: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
 
@@ -754,13 +758,16 @@ def replay_project_history(
                             "event": event,
                         })
 
-    # Noise analysis (R12 step 6): open flags older than 90 days
+    # Noise analysis (R12 step 6): open flags older than 90 days.
+    # All open-flag ages are also kept for DLC survival (right-censored).
     open_flags = 0
     open_flags_90d = 0
+    censored_times: list[float] = []
     for st in states.values():
         if st.first_flagged_dt is not None and st.current_risk >= threshold:
             open_flags += 1
             age_days = (last_commit_dt - st.first_flagged_dt).total_seconds() / 86400.0
+            censored_times.append(max(0.0, age_days))
             if age_days > 90.0:
                 open_flags_90d += 1
 
@@ -797,6 +804,8 @@ def replay_project_history(
         noise_fraction=round(noise_frac, 4),
         atomic_fixes=atomic_fixes,
         delayed_fixes=delayed_fixes,
+        fix_times=list(all_lead_times),
+        censored_times=censored_times,
         timeline_samples=sample_timelines,
         section_histories=section_histories,
     )

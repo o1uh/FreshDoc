@@ -44,7 +44,13 @@ REPOS_DIR = PROJECT_ROOT / "data" / "repos"
 PROJECT_URLS = {
     "tornado": "https://github.com/tornadoweb/tornado.git",
     "ipython": "https://github.com/ipython/ipython.git",
+    "pandas": "https://github.com/pandas-dev/pandas.git",
+    "matplotlib": "https://github.com/matplotlib/matplotlib.git",
+    "textual": "https://github.com/Textualize/textual.git",
 }
+
+# Sensitivity marks (days) for the noise-cutoff table: answers "why 90".
+CUTOFF_MARKS = (30.0, 60.0, 90.0, 180.0)
 
 
 def ensure_repo(
@@ -167,15 +173,58 @@ def plot_risk_timelines(
     print(f"Risk timeline chart saved to {out_path} ({n_plots} functions)", flush=True)
 
 
+def plot_survival_curves(
+    pooled: dict[str, tuple[list, list]],
+    out_path: Path,
+) -> None:
+    """Kaplan-Meier survival curves per scorer (DLC): X — days since flag,
+    Y — share of alerts still open. Censored (still open) alerts only shrink
+    the at-risk set; the curve drops solely at observed fixes."""
+    from src.registry.survival import kaplan_meier
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    colors = {"m0": ("#e67e22", "--", "M0 (Rule)"), "m2": ("#2980b9", "-", "M2 (Neural)")}
+    fig, ax = plt.subplots(1, 1, figsize=(9, 5))
+    for key in ("m0", "m2"):
+        durs, obs = pooled.get(key, ([], []))
+        curve = kaplan_meier(list(durs), list(obs))
+        if not curve:
+            continue
+        xs = [t for t, _ in curve]
+        ys = [s for _, s in curve]
+        color, style, label = colors[key]
+        ax.step(xs, ys, where="post", color=color, linestyle=style,
+                label=f"{label} (n_fix={sum(obs)}, n_open={len(obs) - sum(obs)})")
+        ax.scatter(xs, ys, color=color, s=20)
+    ax.set_xlabel("Days since flag")
+    ax.set_ylabel("Share of alerts still open")
+    ax.set_ylim(-0.05, 1.05)
+    ax.set_title("Warning survival (Kaplan-Meier, pooled farm)", fontsize=11, fontweight="bold")
+    ax.grid(True, linestyle=":", alpha=0.6)
+    ax.legend(loc="upper right", fontsize=9)
+    plt.tight_layout()
+    plt.savefig(out_path, dpi=200)
+    plt.close()
+    print(f"Survival curve saved to {out_path}", flush=True)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="FD-29: Replay git history.")
     parser.add_argument("--max-commits", type=int, default=300)
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--ckpt", default="checkpoints/slot4_full/best")
     # Offline runs: point at existing local clones instead of `git clone`.
+    # Generic override for any project: --repo-path name=/path/to/clone
+    # (repeatable); keeps --tornado-path/--ipython-path as shortcuts.
     parser.add_argument("--tornado-path", default=None)
     parser.add_argument("--ipython-path", default=None)
+    parser.add_argument("--repo-path", action="append", default=[])
     parser.add_argument("--repos-dir", default=None)
+    parser.add_argument(
+        "--projects",
+        default=",".join(PROJECT_URLS),
+        help="Comma-separated subset of PROJECT_URLS to replay (default: all).",
+    )
     args = parser.parse_args()
 
     risk_cfg = load_risk_config()
@@ -201,9 +250,18 @@ def main() -> None:
         "tornado": args.tornado_path,
         "ipython": args.ipython_path,
     }
+    for spec in args.repo_path:
+        if "=" in spec:
+            name, _, path = spec.partition("=")
+            path_overrides[name.strip()] = path.strip()
     repos_dir = Path(args.repos_dir) if args.repos_dir else None
+    wanted = [p.strip() for p in str(args.projects).split(",") if p.strip()]
+    unknown = [p for p in wanted if p not in PROJECT_URLS]
+    if unknown:
+        raise SystemExit(f"Unknown projects: {unknown}. Known: {sorted(PROJECT_URLS)}")
 
-    for proj_name, proj_url in PROJECT_URLS.items():
+    for proj_name in wanted:
+        proj_url = PROJECT_URLS[proj_name]
         repo_dir = ensure_repo(
             proj_name,
             proj_url,
@@ -262,13 +320,23 @@ def main() -> None:
     cache.save()
     print(f"\nReplay cache saved to {CACHE_PATH} (hits: {cache.hits}, misses: {cache.misses})")
 
-    # Select timelines: top-2 per project (fix preferred, then event count),
-    # so both projects are always represented on the risk chart.
+    # Per-project timelines (top-2 with fix preferred) + per-project figure,
+    # so every farm project is represented regardless of farm size.
     # Keys are prefixed with the project to avoid collisions when two
     # projects contain the same qualified symbol name.
     from collections import Counter
 
-    top_symbols: list[str] = []
+    from src.registry.survival import kaplan_meier, survival_stats
+
+    combined_histories_m0: dict[str, list[dict]] = {}
+    combined_histories_m2: dict[str, list[dict]] = {}
+    for proj_name, m_dict in all_metrics.items():
+        for sym, h in m_dict["m0"].section_histories.items():
+            combined_histories_m0[f"{proj_name}::{sym}"] = h
+        for sym, h in m_dict["m2"].section_histories.items():
+            combined_histories_m2[f"{proj_name}::{sym}"] = h
+
+    figure_paths: dict[str, str] = {}
     for proj_name, m_dict in all_metrics.items():
         counts: Counter[str] = Counter()
         has_fix: dict[str, bool] = {}
@@ -287,30 +355,38 @@ def main() -> None:
         if len(pick) < 2:
             rest = [s for s, _ in counts.most_common() if s not in pick]
             pick += rest[: 2 - len(pick)]
-        top_symbols.extend(pick[:2])
-    print(f"\nTop functions for risk timeline plots (2 per project): {top_symbols}")
+        proj_hist_m0 = {k: v for k, v in combined_histories_m0.items()
+                        if k.startswith(proj_name + "::")}
+        proj_hist_m2 = {k: v for k, v in combined_histories_m2.items()
+                        if k.startswith(proj_name + "::")}
+        out_png = FIGURES_DIR / f"replay_risk_timeline_{proj_name}.png"
+        plot_risk_timelines(
+            proj_hist_m0,
+            proj_hist_m2,
+            symbols=pick[:2],
+            threshold_m0=tau_m0,
+            threshold_m2=tau_m2,
+            out_path=out_png,
+        )
+        figure_paths[proj_name] = f"figures/replay_risk_timeline_{proj_name}.png"
+    print(f"\nPer-project timeline figures: {figure_paths}")
 
-    combined_histories_m0: dict[str, list[dict]] = {}
-    combined_histories_m2: dict[str, list[dict]] = {}
-    for proj_name, m_dict in all_metrics.items():
-        for sym, h in m_dict["m0"].section_histories.items():
-            combined_histories_m0[f"{proj_name}::{sym}"] = h
-        for sym, h in m_dict["m2"].section_histories.items():
-            combined_histories_m2[f"{proj_name}::{sym}"] = h
-
-    # Plot timelines
-    timeline_png = FIGURES_DIR / "replay_risk_timeline.png"
-    plot_risk_timelines(
-        combined_histories_m0,
-        combined_histories_m2,
-        symbols=top_symbols,
-        threshold_m0=tau_m0,
-        threshold_m2=tau_m2,
-        out_path=timeline_png,
-    )
+    # DLC survival: pool flag->fix times (observed) and open-flag ages
+    # (censored) across farm projects, per scorer; KM curve figure.
+    pooled: dict[str, tuple[list, list]] = {}
+    for key in ("m0", "m2"):
+        durs: list[float] = []
+        obs: list[bool] = []
+        for m_dict in all_metrics.values():
+            m = m_dict[key]
+            durs += list(m.fix_times) + list(m.censored_times)
+            obs += [True] * len(m.fix_times) + [False] * len(m.censored_times)
+        pooled[key] = (durs, obs)
+    survival_png = FIGURES_DIR / "replay_survival.png"
+    plot_survival_curves(pooled, out_path=survival_png)
 
     # Generate markdown report
-    generate_report(all_metrics, tau_m0, tau_m2, cache)
+    generate_report(all_metrics, tau_m0, tau_m2, cache, figure_paths)
 
 
 def generate_report(
@@ -318,13 +394,18 @@ def generate_report(
     tau_m0: float,
     tau_m2: float,
     cache: ReplayCache,
+    figure_paths: dict[str, str] | None = None,
 ) -> None:
+    from src.registry.survival import survival_stats
+
+    figure_paths = figure_paths or {}
     lines = [
         "# FD-29: Проигрывание истории (Replay) и метрики опережения",
         "",
         "> Эксперимент выполнен в соответствии со справочником R12 и регламентом workflow.md.",
         f"> **Дата генерации:** {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}",
         f"> **Пороги срабатывания:** M0: $\\tau = {tau_m0}$, M2 (FD-25 cal): $\\tau = {tau_m2:.4f}$",
+        f"> **Проекты фермы ({len(metrics)}):** {', '.join(f'`{p}`' for p in metrics)}",
         "> **База реестра:** `data/registry.db`",
         "> **Кэш предсказаний:** `data/cache/replay_predictions.json`",
         "",
@@ -347,12 +428,15 @@ def generate_report(
 
     lines.extend([
         "",
-        "## 2. График динамики риска во времени",
+        "## 2. Динамика риска по проектам",
         "",
-        "На графике показана траектория накопления риска при изменениях кода, момент превышения порога и сброс риска в ноль при подтверждении исправления docstring:",
+        "На графиках показана траектория накопления риска при изменениях кода, момент превышения порога и сброс риска в ноль при подтверждении исправления docstring (по 2 самые насыщенные функции с doc-фиксом на проект):",
         "",
-        "![Динамика риска](figures/replay_risk_timeline.png)",
-        "",
+    ])
+    for proj in metrics:
+        fig = figure_paths.get(proj, "figures/replay_risk_timeline.png")
+        lines.extend([f"### {proj}", "", f"![Динамика риска ({proj})]({fig})", ""])
+    lines.extend([
         "## 3. Анализ шума и опережения",
         "",
         "1. **Эмпирические результаты по опережению:**",
@@ -412,15 +496,99 @@ def generate_report(
         m0 = m_dict["m0"]
         m2 = m_dict["m2"]
         if m0.preceded_fixes > 0 and m2.preceded_fixes > 0:
-            lines.append(
-                f"     * Медиана опережения на `{proj}`: M2 — {m2.median_lead_time_days:.1f} дн. "
-                f"против {m0.median_lead_time_days:.1f} дн. у M0. Более позднее срабатывание M2 "
-                f"означает отсечение преждевременных срабатываний на поверхностных изменениях сигнатуры."
-            )
+            if m2.median_lead_time_days < m0.median_lead_time_days:
+                lines.append(
+                    f"     * Медиана опережения на `{proj}`: M2 — {m2.median_lead_time_days:.1f} дн. "
+                    f"против {m0.median_lead_time_days:.1f} дн. у M0. Более позднее срабатывание M2 "
+                    f"означает отсечение преждевременных срабатываний на поверхностных изменениях сигнатуры."
+                )
+            elif m2.median_lead_time_days == m0.median_lead_time_days:
+                lines.append(
+                    f"     * Медиана опережения на `{proj}` совпадает у M0 и M2 "
+                    f"({m2.median_lead_time_days:.1f} дн.): обе модели сработали на одних и тех же "
+                    f"изменениях сигнатуры."
+                )
+            else:
+                lines.append(
+                    f"     * Медиана опережения на `{proj}`: M2 — {m2.median_lead_time_days:.1f} дн. "
+                    f"против {m0.median_lead_time_days:.1f} дн. у M0 (M2 сработала раньше)."
+                )
+    tot_m0_90 = sum(m_dict["m0"].open_flags_older_90d for m_dict in metrics.values())
+    tot_m2_90 = sum(m_dict["m2"].open_flags_older_90d for m_dict in metrics.values())
+    lines.append(
+        f"   - Итого по ферме висячих пометок старше 90 дней: M0 — {tot_m0_90}, M2 — {tot_m2_90}."
+    )
+
+    # DLC survival (pooled farm): KM curve stats per scorer + cutoff sensitivity.
+    pooled_stats: dict[str, dict] = {}
+    pooled_open: dict[str, int] = {}
+    pooled_cens: dict[str, list[float]] = {}
+    for key in ("m0", "m2"):
+        durs: list[float] = []
+        obs: list[bool] = []
+        for m_dict in metrics.values():
+            m = m_dict[key]
+            durs += list(m.fix_times) + list(m.censored_times)
+            obs += [True] * len(m.fix_times) + [False] * len(m.censored_times)
+        pooled_stats[key] = survival_stats(durs, obs, marks=CUTOFF_MARKS)
+        pooled_open[key] = sum(m_dict[key].open_flags for m_dict in metrics.values())
+        pooled_cens[key] = [c for m_dict in metrics.values() for c in m_dict[key].censored_times]
 
     lines.extend([
         "",
-        "2. **Оценка шума (висячие пометки >90 дней):**",
+        "## 4. Выживаемость предупреждений (Kaplan-Meier, пул фермы)",
+        "",
+        "X — дни от пометки, Y — доля всё ещё открытых алертов. Открытые пометки — правая цензура (учитываются в at-risk, кривую роняют только состоявшиеся исправления).",
+        "",
+        "![Выживаемость предупреждений](figures/replay_survival.png)",
+        "",
+    ])
+    for key in ("m0", "m2"):
+        st = pooled_stats[key]
+        med = f"{st['median_days']:.1f} дн." if st["median_days"] is not None else "не достигнута (цензура)"
+        lines.append(
+            f"   - **{key.upper()}**: событий {st['n_events']}, цензурировано {st['n_censored']}; "
+            f"медиана дожития {med}."
+        )
+    n_ev = pooled_stats["m2"]["n_events"]
+    if n_ev < 10:
+        lines.append(
+            f"   - Событий мало ({n_ev}), поэтому сильные заявления вида «95%» неуместны: "
+            f"ниже — только эмпирика и честная оговорка."
+        )
+    lines.extend([
+        "",
+        "Доля исправленных к сроку (1 − S, по кривой):",
+        "",
+        "| Модель | ≤30 дн | ≤60 дн | ≤90 дн | ≤180 дн |",
+        "|---|---|---|---|---|",
+    ])
+    for key in ("m0", "m2"):
+        fb = pooled_stats[key]["fixed_by_mark"]
+        lines.append(
+            f"| {key.upper()} | {fb[30.0] * 100:.1f}% | {fb[60.0] * 100:.1f}% | "
+            f"{fb[90.0] * 100:.1f}% | {fb[180.0] * 100:.1f}% |"
+        )
+    lines.extend([
+        "",
+        "Чувствительность доли шума к отсечке (открытые пометки старше T, пул фермы):",
+        "",
+        "| Модель | >30 дн | >60 дн | >90 дн | >180 дн |",
+        "|---|---|---|---|---|",
+    ])
+    for key in ("m0", "m2"):
+        cells = []
+        for t in CUTOFF_MARKS:
+            share = (sum(1 for c in pooled_cens[key] if c > t) / pooled_open[key]
+                     if pooled_open[key] else 0.0)
+            cells.append(f"{share * 100:.1f}%")
+        lines.append(f"| {key.upper()} | " + " | ".join(cells) + " |")
+
+    lines.extend([
+        "",
+        "## 5. Шум по проектам",
+        "",
+        "**Висячие пометки >90 дней:**",
     ])
     for proj, m_dict in metrics.items():
         m2 = m_dict["m2"]
@@ -432,14 +600,14 @@ def generate_report(
         "   - В реальных open-source библиотеках устаревание второстепенных параметров и внутренних утилит может игнорироваться разработчиками месяцами или годами, пока не возникнет тикет или внешний pull request.",
         "   - Это доказывает необходимость механизма ручного подтверждения (`POST /verify`) и дашборда приоритетов (FD-30), где функции ранжируются не только по риску, но и по влиянию (`impact`) и срочности (`urgency`).",
         "",
-        "3. **Методологические допущения (по R12):**",
+        "**Методологические допущения (по R12):**",
         "   - **Правка docstring без связанного изменения кода** в том же коммите трактуется как исправление накопившегося ранее дрейфа (подтверждение актуальности). Удаление docstring (`doc_removed`) и деградация ниже 40 символов (`doc_degraded`) — не исправления: риск доводится до 1.0.",
         "   - История исследовалась строго по первому родителю (`--first-parent`), что отражает реальный ход интеграции веток в основную линию разработки.",
         "   - `impact` — приближение по R12/FD-28: число вызовов функции по имени на HEAD-чекауте проекта (одинаковые имена склеиваются); переименования файлов (статус R в git) не отслеживаются и теряются как исчезнувшие функции.",
         "   - Фильтры R1 (публичные имена без `_` во всех частях qualified name, docstring ≥ 40 символов, 4–300 строк) применяются к каждому событию; формула строк повторяет `miner.compare_pair` (нормализованный код + docstring).",
         "   - Возраст для `urgency` отсчитывается от последнего подтверждения, а при его отсутствии — от первого появления секции в окне (иначе заброшенные docs не набирают срочность).",
         "",
-        "4. **Работа кэша:**",
+        "**Работа кэша:**",
         f"   - Обращений к кэшу за сессию: {cache.hits} попаданий, {cache.misses} промахов; всего записей в файле: {len(cache._data)}.",
         "   - Ключ кэша: `{scorer}:sha1(sig_old + \"::\" + diff_code + \"::\" + doc_old)` per R12 step 5 (префикс scorer изолирует M0/M2; сигнатура входит в ключ, т.к. M2 принимает sig+diff+doc). Повторный запуск полностью исключает повторные вызовы инференса модели. Запись атомарна (tmp + `os.replace`), повреждённый файл карантинируется в `*.corrupted.bak`.",
     ])
