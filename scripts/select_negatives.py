@@ -70,7 +70,7 @@ def _plot_svg(pos, cand_all, selected, path: Path) -> None:
                 bh = (v / vmax) * plot_h
                 x = x0 + i * 3 * bw + j * bw
                 y = top + plot_h - bh
-                color = "#4a90d9" if j == 0 else "#e07a5f"
+                color = "#6B7C9B" if j == 0 else "#C17C60"
                 parts.append(
                     f'<rect x="{x:.0f}" y="{y:.0f}" width="{bw - 2}" '
                     f'height="{bh:.0f}" fill="{color}"/>'
@@ -99,24 +99,44 @@ def plot_before_after(pos, cand_all, selected, path: Path) -> None:
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
+    # Muted note gamma (FD-33): paper #FAF9F7, axes #FFFFFF, ink #2B2B2B,
+    # positive slate #6B7C9B / negative terra #C17C60, grid #E5E0D8.
+    PAPER = "#FAF9F7"
+    CARD = "#FFFFFF"
+    INK = "#2B2B2B"
+    MUTED = "#6B7280"
+    SLATE = "#6B7C9B"
+    TERRA = "#C17C60"
+    BORDER = "#E5E0D8"
+
     order = ["4-8", "9-15", "16-40", "41-300"]
     fig, axes = plt.subplots(1, 2, figsize=(12, 5), sharey=True)
+    fig.patch.set_facecolor(PAPER)
     for ax, frame, title in (
         (axes[0], cand_all, "До: положительные vs все кандидаты"),
         (axes[1], selected, "После: положительные vs отобрано"),
     ):
+        ax.set_facecolor(CARD)
+        for spine in ax.spines.values():
+            spine.set_color(BORDER)
         p = pos["bin"].value_counts(normalize=True).reindex(order)
         q = frame["bin"].value_counts(normalize=True).reindex(order)
         x = range(len(order))
-        ax.bar([i - 0.2 for i in x], p.values, width=0.4, label="positive")
-        ax.bar([i + 0.2 for i in x], q.values, width=0.4, label="negative")
+        ax.bar([i - 0.2 for i in x], p.values, width=0.4, label="positive",
+               color=SLATE, edgecolor=CARD, zorder=3)
+        ax.bar([i + 0.2 for i in x], q.values, width=0.4, label="negative",
+               color=TERRA, edgecolor=CARD, zorder=3)
         ax.set_xticks(list(x), order)
-        ax.set_title(title)
-        ax.set_ylabel("доля")
-        ax.legend()
+        ax.set_title(title, fontsize=13, fontweight="bold", color=INK)
+        ax.set_ylabel("доля", fontsize=11, color=INK)
+        ax.tick_params(colors=MUTED, labelsize=10)
+        ax.grid(True, axis="y", linestyle="--", alpha=0.7, color=BORDER, zorder=0)
+        leg = ax.legend(fontsize=10, frameon=True, facecolor=CARD, edgecolor=BORDER)
+        for t in leg.get_texts():
+            t.set_color(INK)
     fig.tight_layout()
     path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(path, dpi=120)
+    fig.savefig(path, dpi=200, facecolor=PAPER)
     plt.close(fig)
 
 

@@ -18,6 +18,13 @@ import numpy as np
 import pandas as pd
 
 from src.data.dataset import REAL_SOURCES
+from src.figures_muted import (
+    PAPER,
+    DPI,
+    LEGEND_FONTSIZE,
+    apply_muted_style,
+    color_for_model,
+)
 from src.models.metrics import (
     EVAL_GROUPS,
     EVAL_SPLITS,
@@ -256,6 +263,8 @@ def main() -> int:
     print(f"Таблица: {out_t} ({len(flat)} строк)")
 
     # PR-кривые: все модели на одном графике для каждого сплита и группы.
+    # FD-33: единый muted-стиль (палитра/шрифты), содержание без изменений.
+    apply_muted_style(plt)
     figdir = Path(args.figdir)
     figdir.mkdir(parents=True, exist_ok=True)
     for (split, group), per_model in sorted(curves.items()):
@@ -265,20 +274,24 @@ def main() -> int:
             pts = per_model[name]
             if not pts["recall"]:
                 continue
-            plt.step(pts["recall"], pts["precision"], where="post", label=name)
+            plt.step(pts["recall"], pts["precision"], where="post",
+                     color=color_for_model(name), linewidth=2.0, label=name)
             n_lines += 1
         plt.xlabel("Recall")
         plt.ylabel("Precision")
         plt.title(f"PR: {split}/{group}")
         plt.ylim(-0.05, 1.05)
         plt.xlim(-0.05, 1.05)
+        plt.grid(True, linestyle="--", linewidth=0.8, alpha=0.9)
         if n_lines == 0:
             plt.text(0.5, 0.5, "single class: no PR curve",
                      ha="center", va="center", transform=plt.gca().transAxes)
         else:
-            plt.legend()
+            leg = plt.legend(fontsize=LEGEND_FONTSIZE)
+            leg.get_frame().set_facecolor("#FFFFFF")
+            leg.get_frame().set_edgecolor("#E5E0D8")
         fig = figdir / f"pr_{split}_{group}.png"
-        plt.savefig(fig, dpi=150, bbox_inches="tight")
+        plt.savefig(fig, dpi=DPI, bbox_inches="tight", facecolor=PAPER)
         plt.close()
         print(f"График: {fig}")
 

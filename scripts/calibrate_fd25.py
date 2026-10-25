@@ -37,6 +37,17 @@ import numpy as np
 import pandas as pd
 
 from src.data.dataset import REAL_SOURCES
+from src.figures_muted import (
+    INK,
+    PAPER,
+    SAGE,
+    SLATE,
+    STONE,
+    TERRA,
+    DPI,
+    LEGEND_FONTSIZE,
+    apply_muted_style,
+)
 from src.models.calibration import (
     apply_temperature,
     fit_temperature,
@@ -70,42 +81,51 @@ def _val_real_mask(df: pd.DataFrame) -> np.ndarray:
 
 
 def _reliability_fig(val_table_before: list[dict], val_table_after: list[dict], out: Path) -> None:
+    # FD-33: muted-гамма, содержание (корзины/подписи) без изменений.
+    apply_muted_style(plt)
     plt.figure()
-    for tbl, label, marker in ((val_table_before, "до (сырые)", "o"),
-                               (val_table_after, "после (T)", "s")):
+    for tbl, label, marker, color in ((val_table_before, "до (сырые)", "o", SLATE),
+                                      (val_table_after, "после (T)", "s", TERRA)):
         xs = [r["conf"] for r in tbl if r["n"] > 0]
         ys = [r["acc"] for r in tbl if r["n"] > 0]
-        plt.plot(xs, ys, marker=marker, label=label)
-    plt.plot([0, 1], [0, 1], "--", color="gray", label="идеал")
+        plt.plot(xs, ys, marker=marker, color=color, linewidth=2.0, label=label)
+    plt.plot([0, 1], [0, 1], "--", color=INK, linewidth=1.5, label="идеал")
     plt.xlabel("Средняя уверенность (conf)")
     plt.ylabel("Доля положительных (acc)")
     plt.title("Диаграмма надёжности, val real (10 корзин)")
-    plt.legend()
-    plt.grid(True, alpha=0.3)
+    leg = plt.legend(fontsize=LEGEND_FONTSIZE)
+    leg.get_frame().set_facecolor("#FFFFFF")
+    leg.get_frame().set_edgecolor("#E5E0D8")
+    plt.grid(True, linestyle="--", linewidth=0.8, alpha=0.9)
     out.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(out, dpi=150, bbox_inches="tight")
+    plt.savefig(out, dpi=DPI, bbox_inches="tight", facecolor=PAPER)
     plt.close()
 
 
 def _threshold_fig(thr_rows: list[dict], working_thr: float, out: Path) -> None:
+    # FD-33: muted-гамма, содержание (метрики/порог) без изменений.
+    apply_muted_style(plt)
     xs = [r["threshold"] for r in thr_rows]
     ps = [r["precision"] for r in thr_rows]
     rs = [r["recall"] for r in thr_rows]
     fs = [r["f1"] for r in thr_rows]
     plt.figure()
-    plt.plot(xs, ps, label="precision")
-    plt.plot(xs, rs, label="recall")
-    plt.plot(xs, fs, label="F1")
-    plt.axvline(working_thr, color="red", linestyle="--", label=f"рабочий {working_thr:.3f}")
-    plt.axhline(0.8, color="gray", linestyle=":", label="precision=0.8")
+    plt.plot(xs, ps, color=TERRA, linewidth=2.0, label="precision")
+    plt.plot(xs, rs, color=SAGE, linewidth=2.0, label="recall")
+    plt.plot(xs, fs, color=SLATE, linewidth=2.0, label="F1")
+    plt.axvline(working_thr, color=INK, linestyle="--", linewidth=1.5,
+                label=f"рабочий {working_thr:.3f}")
+    plt.axhline(0.8, color=STONE, linestyle=":", linewidth=1.5, label="precision=0.8")
     plt.xlabel("Порог")
     plt.ylabel("Метрика")
     plt.title("E6: порог -> precision/recall/F1 (val, калиброванные)")
-    plt.legend()
-    plt.grid(True, alpha=0.3)
+    leg = plt.legend(fontsize=LEGEND_FONTSIZE)
+    leg.get_frame().set_facecolor("#FFFFFF")
+    leg.get_frame().set_edgecolor("#E5E0D8")
+    plt.grid(True, linestyle="--", linewidth=0.8, alpha=0.9)
     plt.ylim(-0.05, 1.05)
     out.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(out, dpi=150, bbox_inches="tight")
+    plt.savefig(out, dpi=DPI, bbox_inches="tight", facecolor=PAPER)
     plt.close()
 
 

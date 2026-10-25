@@ -11,7 +11,7 @@
    (`train: 21997 / val: 559 / test_real: 2895 / test_synth: 1552 / gold: 200`).
    Блокнот находит его сам через `/kaggle/input/**/dataset_v1.parquet`, путь кладёт в `$DATA_PATH`.
 2. **Код и `train_best.yaml` — из git**, заливать не нужно: блокнот клонирует репозиторий
-   и пинится на коммит `f4cb887` (черновик freeze-1, ветка `feat/FD-31-freeze-final-runs`).
+   и пинится на коммит `c512dd7` (freeze-1: финал 3 сидов).
 3. **Секреты (Add-ons → Secrets):** `GITHUB_TOKEN` (read-доступ к репозиторию).
 4. **Настройки сессии:** Accelerator **GPU T4 x2**, Internet **Always ON**.
 
@@ -20,7 +20,7 @@
 | # | Ячейка | Что делает | Время |
 |---|---|---|---|
 | 0 | Заголовок (markdown) | Контекст, инвариант, бюджет | — |
-| 1 | Env setup | `nvidia-smi`, clone + checkout `f4cb887`, `NCCL_P2P_DISABLE=1`, guard transformers≥4.48 **только с `--no-deps`** (рецепт FD-24), smoke-check `import torch, transformers; from transformers import Trainer` | ~1 мин |
+| 1 | Env setup | `nvidia-smi`, clone + checkout `c512dd7`, `NCCL_P2P_DISABLE=1`, guard transformers≥4.48 **только с `--no-deps`** (рецепт FD-24), smoke-check `import torch, transformers; from transformers import Trainer` | ~1 мин |
 | 2 | Данные | Поиск parquet в `/kaggle/input`, assert 27 203 + сплиты, `validate_dataset.py` (16 проверок) | ~1 мин |
 | 3 | M0/M1 | `baselines_m0_m1.py` → `/kaggle/working/m0.csv`, `m1.csv` (вход для `evaluate.py`) | ~1 мин |
 | 4 | Обучение ×3 | Цикл: `torchrun --nproc_per_node=2 scripts/train_m2.py --config config/train_best.yaml --seed 42/43/44 --output_dir /kaggle/working/checkpoints/fd31_seed$S`; `rm checkpoint-*` после каждого | ~27 мин × 3 |
