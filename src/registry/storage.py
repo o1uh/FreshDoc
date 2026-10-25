@@ -562,3 +562,49 @@ def merge_branch(
     return latest(
         db_path, repo=repo, branch=target_branch, commit=merge_commit_sha
     )
+
+
+def list_repos(db_path: str | Path) -> list[str]:
+    """Return distinct repository names present in the registry."""
+    with closing(get_connection(db_path)) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT DISTINCT repo FROM doc_state ORDER BY repo ASC")
+        return [row[0] for row in cursor.fetchall() if row[0] is not None]
+
+
+def list_branches(db_path: str | Path, repo: str) -> list[str]:
+    """Return distinct branch names for a repository in the registry."""
+    with closing(get_connection(db_path)) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT DISTINCT branch FROM doc_state WHERE repo = ? ORDER BY branch ASC",
+            (repo,),
+        )
+        return [row[0] for row in cursor.fetchall() if row[0] is not None]
+
+
+def list_commits(
+    db_path: str | Path, repo: str, branch: str
+) -> list[dict[str, Any]]:
+    """Return distinct commit SHAs and their timestamps in reverse order of appearance."""
+    with closing(get_connection(db_path)) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT commit_sha, MAX(computed_at) AS computed_at, MAX(seq) AS max_seq
+            FROM doc_state
+            WHERE repo = ? AND branch = ?
+            GROUP BY commit_sha
+            ORDER BY max_seq DESC
+            """,
+            (repo, branch),
+        )
+        return [
+            {
+                "commit_sha": row["commit_sha"],
+                "computed_at": row["computed_at"],
+                "max_seq": row["max_seq"],
+            }
+            for row in cursor.fetchall()
+        ]
+

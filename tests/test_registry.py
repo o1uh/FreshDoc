@@ -13,6 +13,9 @@ from src.registry.storage import (
     insert,
     insert_batch,
     latest,
+    list_branches,
+    list_commits,
+    list_repos,
     merge_branch,
     replace_branch_records,
     verify,
@@ -479,3 +482,59 @@ def test_memory_db_shared_across_connections() -> None:
     res = latest(":memory:", repo="owner/repo", branch="main")
     assert len(res) == 1
     assert res[0]["section_id"] == "mod.py::mem#docstring"
+
+
+def test_list_repos_branches_commits(db_path: Path) -> None:
+    """Check list_repos, list_branches, and list_commits inspection functions."""
+    assert list_repos(db_path) == []
+    assert list_branches(db_path, "repo1") == []
+    assert list_commits(db_path, "repo1", "main") == []
+
+    insert_batch(
+        db_path,
+        [
+            {
+                "repo": "repo1",
+                "branch": "main",
+                "commit_sha": "c1",
+                "section_id": "a.py::f1#docstring",
+                "risk": 0.2,
+                "computed_at": "2026-01-01T10:00:00Z",
+            },
+            {
+                "repo": "repo1",
+                "branch": "main",
+                "commit_sha": "c2",
+                "section_id": "a.py::f1#docstring",
+                "risk": 0.8,
+                "computed_at": "2026-01-02T10:00:00Z",
+            },
+            {
+                "repo": "repo1",
+                "branch": "feat",
+                "commit_sha": "c3",
+                "section_id": "a.py::f2#docstring",
+                "risk": 0.5,
+                "computed_at": "2026-01-03T10:00:00Z",
+            },
+            {
+                "repo": "repo2",
+                "branch": "dev",
+                "commit_sha": "c4",
+                "section_id": "b.py::g1#docstring",
+                "risk": 0.1,
+                "computed_at": "2026-01-04T10:00:00Z",
+            },
+        ],
+    )
+
+    assert list_repos(db_path) == ["repo1", "repo2"]
+    assert list_branches(db_path, "repo1") == ["feat", "main"]
+    assert list_branches(db_path, "repo2") == ["dev"]
+
+    commits_main = list_commits(db_path, "repo1", "main")
+    assert len(commits_main) == 2
+    # c2 was inserted after c1, so max_seq for c2 > c1
+    assert commits_main[0]["commit_sha"] == "c2"
+    assert commits_main[1]["commit_sha"] == "c1"
+
