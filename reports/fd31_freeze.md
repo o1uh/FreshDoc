@@ -109,6 +109,7 @@
 
 - F1 при пороге max-F1 на val real (тот же источник): val 0.9209 / 0.9198 / 0.9103 (mean 0.9170 ± 0.0058); test_real 0.9326 / 0.9384 / 0.9207 (mean 0.9306 ± 0.0090); gold 0.5926 / 0.6098 / 0.5746 (mean 0.5923 ± 0.0176).
 - Примечание: eval_pr_auc в `runs.csv` (0.97058 / 0.96687 / 0.96547) отличается от pr_auc сводки на ~2e-5 — округление разных стадий (run_meta vs evaluate); отчётные цифры — из сводки.
+- Артефакты — из `fd31_final3seeds_artifacts.tar.gz` (Kaggle): per-seed `reports/fd31_seed{42,43,44}_{metrics.json,table_e1.csv}` — копии `checkpoints/fd31_seed*/{metrics.json,table_e1.csv}` из архива (предикты/веса в репо не входят); PR-графики перестроены локально (`scripts/evaluate.py`, 5 моделей seed42/43/44+M0/M1, CPU) в `reports/figures/fd31/`.
 
 ## 7. `.gitignore` — веса/данные/предикты в коммит не попадут
 
