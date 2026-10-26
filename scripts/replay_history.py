@@ -95,12 +95,29 @@ def plot_risk_timelines(
         print("Warning: no timeline symbols provided for plotting.")
         return
 
+    # Muted note gamma (FD-33): paper #FAF9F7, axes #FFFFFF, ink #2B2B2B,
+    # accents M0 terra #C17C60 / M2 slate #6B7C9B / fix sage #7D9B8A,
+    # removed warm-gray #A8A29E, grid #E5E0D8. No bright colors.
+    PAPER = "#FAF9F7"
+    CARD = "#FFFFFF"
+    INK = "#2B2B2B"
+    MUTED = "#6B7280"
+    TERRA = "#C17C60"
+    SLATE = "#6B7C9B"
+    SAGE = "#7D9B8A"
+    STONE = "#A8A29E"
+    BORDER = "#E5E0D8"
+
     n_plots = len(symbols)
-    fig, axes = plt.subplots(n_plots, 1, figsize=(11, 3.2 * n_plots), sharex=False)
+    fig, axes = plt.subplots(n_plots, 1, figsize=(12.5, 3.2 * n_plots), sharex=False)
+    fig.patch.set_facecolor(PAPER)
     if n_plots == 1:
         axes = [axes]
 
     for ax, sym in zip(axes, symbols):
+        ax.set_facecolor(CARD)
+        for spine in ax.spines.values():
+            spine.set_color(BORDER)
         # M0 points
         events_m0 = timelines_m0.get(sym, [])
         if events_m0:
@@ -110,12 +127,12 @@ def plot_risk_timelines(
                 dates_m0,
                 risks_m0,
                 where="post",
-                color="#e67e22",
+                color=TERRA,
                 linestyle="--",
                 label="M0 (Rule)",
-                alpha=0.75,
+                alpha=0.85,
             )
-            ax.scatter(dates_m0, risks_m0, color="#e67e22", s=25, alpha=0.75)
+            ax.scatter(dates_m0, risks_m0, color=TERRA, s=25, alpha=0.85)
 
         # M2 points
         events_m2 = timelines_m2.get(sym, [])
@@ -126,11 +143,11 @@ def plot_risk_timelines(
                 dates_m2,
                 risks_m2,
                 where="post",
-                color="#2980b9",
+                color=SLATE,
                 linewidth=2,
                 label="M2 (Neural Calibrated)",
             )
-            ax.scatter(dates_m2, risks_m2, color="#2980b9", s=35)
+            ax.scatter(dates_m2, risks_m2, color=SLATE, s=35)
 
             # Mark docstring fixes and removals
             for e in events_m2:
@@ -138,37 +155,40 @@ def plot_risk_timelines(
                     fix_dt = datetime.fromisoformat(e["date"])
                     ax.axvline(
                         fix_dt,
-                        color="#27ae60",
+                        color=SAGE,
                         linestyle=":",
-                        alpha=0.7,
+                        alpha=0.8,
                         label="Doc Fix" if "Doc Fix" not in ax.get_legend_handles_labels()[1] else "",
                     )
                 elif e["event"] in ("doc_removed", "doc_degraded"):
                     rm_dt = datetime.fromisoformat(e["date"])
                     ax.axvline(
                         rm_dt,
-                        color="#c0392b",
+                        color=STONE,
                         linestyle=":",
-                        alpha=0.7,
+                        alpha=0.8,
                         label="Doc Removed" if "Doc Removed" not in ax.get_legend_handles_labels()[1] else "",
                     )
 
         ax.axhline(
             threshold_m2,
-            color="#c0392b",
+            color=TERRA,
             linestyle="-.",
             alpha=0.6,
             label=f"M2 threshold (tau={threshold_m2:.2f})",
         )
-        ax.set_ylabel("Risk R")
+        ax.set_ylabel("Risk R", fontsize=11, color=INK)
         ax.set_ylim(-0.05, 1.05)
-        ax.set_title(f"Section: {sym} ({len(events_m2)} events)", fontsize=11, fontweight="bold")
+        ax.set_title(f"Section: {sym} ({len(events_m2)} events)", fontsize=13, fontweight="bold", color=INK)
         ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d"))
-        ax.grid(True, linestyle=":", alpha=0.6)
-        ax.legend(loc="upper left", fontsize=8)
+        ax.tick_params(colors=MUTED, labelsize=10)
+        ax.grid(True, linestyle="--", alpha=0.7, color=BORDER)
+        leg = ax.legend(loc="upper left", fontsize=10, frameon=True, facecolor=CARD, edgecolor=BORDER)
+        for t in leg.get_texts():
+            t.set_color(INK)
 
     plt.tight_layout()
-    plt.savefig(out_path, dpi=200)
+    plt.savefig(out_path, dpi=200, facecolor=PAPER)
     plt.close()
     print(f"Risk timeline chart saved to {out_path} ({n_plots} functions)", flush=True)
 
@@ -182,9 +202,23 @@ def plot_survival_curves(
     the at-risk set; the curve drops solely at observed fixes."""
     from src.registry.survival import kaplan_meier
 
+    # Muted note gamma (FD-33): paper #FAF9F7, axes #FFFFFF, ink #2B2B2B,
+    # M0 terra #C17C60 dashed / M2 slate #6B7C9B solid, grid #E5E0D8.
+    PAPER = "#FAF9F7"
+    CARD = "#FFFFFF"
+    INK = "#2B2B2B"
+    MUTED = "#6B7280"
+    TERRA = "#C17C60"
+    SLATE = "#6B7C9B"
+    BORDER = "#E5E0D8"
+
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    colors = {"m0": ("#e67e22", "--", "M0 (Rule)"), "m2": ("#2980b9", "-", "M2 (Neural)")}
+    colors = {"m0": (TERRA, "--", "M0 (Rule)"), "m2": (SLATE, "-", "M2 (Neural)")}
     fig, ax = plt.subplots(1, 1, figsize=(9, 5))
+    fig.patch.set_facecolor(PAPER)
+    ax.set_facecolor(CARD)
+    for spine in ax.spines.values():
+        spine.set_color(BORDER)
     for key in ("m0", "m2"):
         durs, obs = pooled.get(key, ([], []))
         curve = kaplan_meier(list(durs), list(obs))
@@ -196,14 +230,17 @@ def plot_survival_curves(
         ax.step(xs, ys, where="post", color=color, linestyle=style,
                 label=f"{label} (n_fix={sum(obs)}, n_open={len(obs) - sum(obs)})")
         ax.scatter(xs, ys, color=color, s=20)
-    ax.set_xlabel("Days since flag")
-    ax.set_ylabel("Share of alerts still open")
+    ax.set_xlabel("Days since flag", fontsize=11, color=INK)
+    ax.set_ylabel("Share of alerts still open", fontsize=11, color=INK)
     ax.set_ylim(-0.05, 1.05)
-    ax.set_title("Warning survival (Kaplan-Meier, pooled farm)", fontsize=11, fontweight="bold")
-    ax.grid(True, linestyle=":", alpha=0.6)
-    ax.legend(loc="upper right", fontsize=9)
+    ax.set_title("Warning survival (Kaplan-Meier, pooled farm)", fontsize=13, fontweight="bold", color=INK)
+    ax.tick_params(colors=MUTED, labelsize=10)
+    ax.grid(True, linestyle="--", alpha=0.7, color=BORDER)
+    leg = ax.legend(loc="upper right", fontsize=10, frameon=True, facecolor=CARD, edgecolor=BORDER)
+    for t in leg.get_texts():
+        t.set_color(INK)
     plt.tight_layout()
-    plt.savefig(out_path, dpi=200)
+    plt.savefig(out_path, dpi=200, facecolor=PAPER)
     plt.close()
     print(f"Survival curve saved to {out_path}", flush=True)
 

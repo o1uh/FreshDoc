@@ -1,0 +1,37 @@
+{
+  "hardware": {
+    "gpu_name": "NVIDIA GeForce GTX 1070",
+    "cpu_threads": 6,
+    "torch_version": "2.7.1+cu118"
+  },
+  "m0_heuristic_cpu": {
+    "mean_ms": 0.0215,
+    "p50_ms": 0.0205,
+    "p95_ms": 0.0262,
+    "samples": 200
+  },
+  "m1_features_gbdt_cpu": {
+    "mean_ms": 5.227,
+    "p50_ms": 4.8633,
+    "p95_ms": 6.7162,
+    "samples": 100
+  },
+  "m2_gpu_single": {
+    "mean_ms": 10.82,
+    "p50_ms": 10.775,
+    "p95_ms": 11.282,
+    "samples": 50
+  },
+  "m2_gpu_batch16_per_item": {
+    "mean_ms": 5.789,
+    "p50_ms": 5.79,
+    "p95_ms": 5.828,
+    "samples": 320
+  },
+  "m2_cpu_single": {
+    "mean_ms": 77.537,
+    "p50_ms": 76.742,
+    "p95_ms": 83.528,
+    "samples": 15
+  }
+}
