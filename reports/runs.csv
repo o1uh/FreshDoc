@@ -9,3 +9,6 @@ timestamp,output_dir,model_name,max_len,seed,epochs,train_time_sec,eval_pr_auc,n
 2026-10-22T04:25:59.993436+00:00,/kaggle/working/checkpoints/slot6_gte2048,Alibaba-NLP/gte-modernbert-base,2048,42,3.0,4667.6,0.9601826090296199,21997,559,full,False
 2026-10-22T05:22:55.216652+00:00,/kaggle/working/checkpoints/slot8_stacking,stacking_m1_m2,1024,42,0.0,0.5,0.958056394318148,559,559,val_preds,False
 2026-10-22T05:39:29.376446+00:00,/kaggle/working/checkpoints/slot9_ablation_no_diff,microsoft/unixcoder-base,1024,42,3.0,932.5,0.9583007951810241,21997,559,full,True
+2026-10-25T20:50:58.807114+00:00,/kaggle/working/checkpoints/fd31_seed42,microsoft/unixcoder-base,1024,42,3.0,1710.3,0.9705824431056841,21997,559,full,False
+2026-10-25T21:20:13.435340+00:00,/kaggle/working/checkpoints/fd31_seed43,microsoft/unixcoder-base,1024,43,3.0,1712.1,0.9668728573271731,21997,559,full,False
+2026-10-25T21:49:14.953925+00:00,/kaggle/working/checkpoints/fd31_seed44,microsoft/unixcoder-base,1024,44,3.0,1699.4,0.9654719080645192,21997,559,full,False
